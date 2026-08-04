@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import { App } from '../../App'
@@ -43,6 +43,27 @@ test('登入後載入啟用分類並進入首頁', async () => {
   expect(screen.getByRole('heading', { name: '每日記事' })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: '使用 Google 帳號登入' })).not.toBeInTheDocument()
   expect(calls).toEqual(['signIn', 'run'])
+})
+
+test('登入授權完成前不呼叫 bootstrap', async () => {
+  let resolveSignIn: (() => void) | undefined
+  const client = {
+    signIn: vi.fn().mockImplementation(() => new Promise<void>((resolve) => {
+      resolveSignIn = resolve
+    })),
+    run: vi.fn().mockResolvedValue({ timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }),
+  }
+  const user = userEvent.setup()
+  render(<App client={client} />)
+
+  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+
+  expect(client.signIn).toHaveBeenCalledOnce()
+  expect(client.run).not.toHaveBeenCalled()
+
+  resolveSignIn?.()
+
+  await waitFor(() => expect(client.run).toHaveBeenCalledWith({ action: 'bootstrap' }))
 })
 
 test('JournalClient 在 TypeScript 層要求 signIn', () => {
