@@ -1,13 +1,13 @@
+import { zhTW } from '../i18n/zh-TW'
+
 export type RuntimeConfig = {
   googleClientId: string
   gasScriptId: string
 }
 
-const missingConfigMessage = '找不到部署設定。請設定 APP_GOOGLE_CLIENT_ID 與 APP_GAS_SCRIPT_ID，或建立 public/app-config.js。'
-
 export class ConfigError extends Error {
   constructor() {
-    super(missingConfigMessage)
+    super(zhTW.config.missingDeployment)
     this.name = 'ConfigError'
   }
 }
@@ -25,11 +25,18 @@ export function loadRuntimeConfig(): RuntimeConfig {
   throw new ConfigError()
 }
 
-function toRuntimeConfig(config: Partial<RuntimeConfig> | undefined): RuntimeConfig | undefined {
-  const googleClientId = config?.googleClientId?.trim()
-  const gasScriptId = config?.gasScriptId?.trim()
+function toRuntimeConfig(config: unknown): RuntimeConfig | undefined {
+  if (!config || typeof config !== 'object') return undefined
 
-  if (!googleClientId || !gasScriptId) return undefined
+  const { googleClientId, gasScriptId } = config as Partial<RuntimeConfig>
+  if (typeof googleClientId !== 'string' || typeof gasScriptId !== 'string') return undefined
 
-  return { googleClientId, gasScriptId }
+  const normalizedGoogleClientId = googleClientId.trim()
+  const normalizedGasScriptId = gasScriptId.trim()
+  if (!normalizedGoogleClientId || !normalizedGasScriptId) return undefined
+
+  return {
+    googleClientId: normalizedGoogleClientId,
+    gasScriptId: normalizedGasScriptId,
+  }
 }

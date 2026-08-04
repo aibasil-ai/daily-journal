@@ -1,4 +1,5 @@
 import type { EntryInput } from './journal'
+import { zhTW } from '../i18n/zh-TW'
 
 export type ValidationIssue = {
   field: 'entryDate' | 'content' | 'categoryId' | 'links'
@@ -21,17 +22,17 @@ export function validateEntryInput(input: EntryInput, activeCategoryIds: Set<str
   const issues: ValidationIssue[] = []
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.entryDate)) {
-    issues.push({ field: 'entryDate', message: '請選擇記錄日期。' })
+    issues.push({ field: 'entryDate', message: zhTW.validation.entryDate })
   }
   if (!input.content.trim()) {
-    issues.push({ field: 'content', message: '請輸入記事內容。' })
+    issues.push({ field: 'content', message: zhTW.validation.content })
   }
   if (!activeCategoryIds.has(input.categoryId)) {
-    issues.push({ field: 'categoryId', message: '請選擇啟用中的分類。' })
+    issues.push({ field: 'categoryId', message: zhTW.validation.categoryId })
   }
   for (const link of input.links) {
     if (!link.label || !isHttpUrl(link.url)) {
-      issues.push({ field: 'links', message: '每個連結都需要名稱與有效的 http 或 https 網址。' })
+      issues.push({ field: 'links', message: zhTW.validation.links })
     }
   }
 

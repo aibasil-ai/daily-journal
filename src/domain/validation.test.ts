@@ -56,4 +56,23 @@ describe('validateEntryInput', () => {
       { field: 'links', message: '每個連結都需要名稱與有效的 http 或 https 網址。' },
     ])
   })
+
+  test('接受有效的 http 與 https 連結', () => {
+    const issues = validateEntryInput(
+      {
+        entryDate: '2026-08-04',
+        title: '',
+        content: '內容',
+        categoryId: 'work',
+        tags: [],
+        links: [
+          { label: 'HTTP 文件', url: 'http://example.com' },
+          { label: 'HTTPS 文件', url: 'https://example.com' },
+        ],
+      },
+      new Set(['work']),
+    )
+
+    expect(issues.filter((issue) => issue.field === 'links')).toEqual([])
+  })
 })

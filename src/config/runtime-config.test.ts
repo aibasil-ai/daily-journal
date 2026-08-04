@@ -39,6 +39,22 @@ describe('loadRuntimeConfig', () => {
     })
   })
 
+  test('靜態設定含非字串值時使用編譯期設定', () => {
+    vi.stubGlobal('__BUILD_JOURNAL_CONFIG__', {
+      googleClientId: 'build-id',
+      gasScriptId: 'build-script',
+    })
+    window.__JOURNAL_CONFIG__ = {
+      googleClientId: 123,
+      gasScriptId: 'runtime-script',
+    } as unknown as Window['__JOURNAL_CONFIG__']
+
+    expect(loadRuntimeConfig()).toEqual({
+      googleClientId: 'build-id',
+      gasScriptId: 'build-script',
+    })
+  })
+
   test('缺少部署設定時提供處理指引', () => {
     vi.stubGlobal('__BUILD_JOURNAL_CONFIG__', {
       googleClientId: '',
