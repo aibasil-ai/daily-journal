@@ -1,0 +1,107 @@
+import { useState } from 'react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { expect, test, vi } from 'vitest'
+import type { Category, Entry, EntryFilter } from '../../domain/journal'
+import { EntryCard } from './entry-card'
+import { FilterBar } from './filter-bar'
+import { Timeline } from './timeline'
+
+test('依記錄日期分組並僅在有游標時顯示載入更多', async () => {
+  const onLoadMore = vi.fn()
+  const user = userEvent.setup()
+  const { rerender } = render(
+    <Timeline entries={[entry('first', '2026-08-04'), entry('second', '2026-08-03')]} nextCursor="cursor-2" onEdit={vi.fn()} onDelete={vi.fn()} onLoadMore={onLoadMore} />,
+  )
+
+  expect(screen.getByRole('heading', { name: '2026-08-04' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: '2026-08-03' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: '載入更多' }))
+  expect(onLoadMore).toHaveBeenCalledOnce()
+
+  rerender(<Timeline entries={[]} nextCursor={null} onEdit={vi.fn()} onDelete={vi.fn()} onLoadMore={vi.fn()} />)
+  expect(screen.queryByRole('button', { name: '載入更多' })).not.toBeInTheDocument()
+})
+
+test('標題留空時以記事內容前八十字顯示摘要，外部連結安全開啟', () => {
+  const content = '這是一段用來驗證摘要行為的記事內容，會超過八十個字元，以確保卡片顯示正確截斷的標題。'.repeat(2)
+
+  render(<EntryCard entry={entry('empty-title', '2026-08-04', { title: '', content, links: [{ label: '參考資料', url: 'https://example.com' }] })} onEdit={vi.fn()} onDelete={vi.fn()} />)
+
+  expect(screen.getByRole('heading', { name: content.slice(0, 80) })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: '參考資料' })).toHaveAttribute('target', '_blank')
+  expect(screen.getByRole('link', { name: '參考資料' })).toHaveAttribute('rel', 'noreferrer noopener')
+})
+
+test('刪除前要求再次確認，失敗後保留記事並顯示錯誤', async () => {
+  const onDelete = vi.fn().mockRejectedValue(new Error('刪除失敗'))
+  const user = userEvent.setup()
+
+  render(<EntryCard entry={entry('delete', '2026-08-04')} onEdit={vi.fn()} onDelete={onDelete} />)
+
+  await user.click(screen.getByRole('button', { name: '刪除記事' }))
+  expect(screen.getByRole('dialog', { name: '刪除記事確認' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '確認刪除' })).toHaveFocus()
+  await user.click(screen.getByRole('button', { name: '確認刪除' }))
+
+  expect(await screen.findByText('刪除失敗')).toBeInTheDocument()
+  expect(screen.getByText('記事內容 delete')).toBeInTheDocument()
+})
+
+test('任一篩選欄位變動時重設游標並傳出完整複合篩選', async () => {
+  const onChange = vi.fn()
+  const user = userEvent.setup()
+  const filter: EntryFilter = { query: '', from: null, to: null, categoryId: null, tag: null, cursor: 'next-page', limit: 20 }
+
+  render(<FilterBarHarness initialFilter={filter} onChange={onChange} />)
+
+  await user.type(screen.getByLabelText('關鍵字'), '週會')
+  expect(onChange).toHaveBeenLastCalledWith({ ...filter, query: '週會', cursor: null })
+  await user.type(screen.getByLabelText('起始日期'), '2026-08-01')
+  expect(onChange).toHaveBeenLastCalledWith({ ...filter, query: '週會', from: '2026-08-01', cursor: null })
+  await user.selectOptions(screen.getByLabelText('分類篩選'), 'work')
+  expect(onChange).toHaveBeenLastCalledWith({ ...filter, query: '週會', from: '2026-08-01', categoryId: 'work', cursor: null })
+  await user.selectOptions(screen.getByLabelText('標籤篩選'), '會議')
+  expect(onChange).toHaveBeenLastCalledWith({ ...filter, query: '週會', from: '2026-08-01', categoryId: 'work', tag: '會議', cursor: null })
+})
+
+function FilterBarHarness({ initialFilter, onChange }: { initialFilter: EntryFilter; onChange: (filter: EntryFilter) => void }) {
+  const [filter, setFilter] = useState(initialFilter)
+
+  return (
+    <FilterBar
+      categories={[category('work')]}
+      tagSuggestions={['會議']}
+      filter={filter}
+      onChange={(nextFilter) => {
+        setFilter(nextFilter)
+        onChange(nextFilter)
+      }}
+    />
+  )
+}
+
+function category(id: string): Category {
+  return {
+    id,
+    name: id,
+    isActive: true,
+    createdAt: '2026-08-04T00:00:00+08:00',
+    updatedAt: '2026-08-04T00:00:00+08:00',
+  }
+}
+
+function entry(id: string, entryDate: string, overrides: Partial<Entry> = {}): Entry {
+  return {
+    id,
+    entryDate,
+    title: `標題 ${id}`,
+    content: `記事內容 ${id}`,
+    categoryId: 'work',
+    tags: ['會議'],
+    links: [],
+    createdAt: '2026-08-04T00:00:00+08:00',
+    updatedAt: '2026-08-04T00:00:00+08:00',
+    ...overrides,
+  }
+}

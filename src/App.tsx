@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
 import { loadRuntimeConfig } from './config/runtime-config'
+import { EntryForm } from './features/entries/entry-form'
+import { FilterBar } from './features/entries/filter-bar'
+import { Timeline } from './features/entries/timeline'
 import { ConnectionScreen } from './features/journal/connection-screen'
 import { type JournalClient, useJournal } from './features/journal/use-journal'
+import type { Entry } from './domain/journal'
 import { zhTW } from './i18n/zh-TW'
 import { GoogleOAuth } from './services/google-oauth'
 import { ExecutionClient } from './services/execution-client'
@@ -65,8 +69,41 @@ export function App({ client }: AppProps) {
 
 function JournalApplication({ client }: { client: JournalClient }) {
   const journal = useJournal(client)
+  const [editingEntry, setEditingEntry] = useState<Entry | undefined>()
 
-  if (journal.status === 'ready') return <p>{zhTW.journal.ready}</p>
+  if (journal.status === 'ready') {
+    return (
+      <div className="journal-application">
+        <p>{zhTW.journal.ready}</p>
+        <EntryForm
+          key={editingEntry?.id ?? 'new'}
+          entry={editingEntry}
+          categories={journal.categories}
+          tagSuggestions={journal.tagSuggestions}
+          onSave={async (input) => {
+            await journal.saveEntry(input)
+            setEditingEntry(undefined)
+          }}
+          onCancel={editingEntry ? () => setEditingEntry(undefined) : undefined}
+        />
+        <FilterBar
+          categories={journal.categories}
+          tagSuggestions={journal.tagSuggestions}
+          filter={journal.filter}
+          onChange={journal.setFilter}
+        />
+        {journal.error && <p className="journal-error" role="alert">{journal.error}</p>}
+        <Timeline
+          entries={journal.entries}
+          nextCursor={journal.nextCursor}
+          isLoadingMore={journal.isLoadingEntries}
+          onEdit={setEditingEntry}
+          onDelete={journal.deleteEntry}
+          onLoadMore={() => journal.loadEntries({ ...journal.filter, cursor: journal.nextCursor }, true)}
+        />
+      </div>
+    )
+  }
 
   return (
     <ConnectionScreen
