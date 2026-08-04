@@ -39,11 +39,15 @@ describe('JournalService 分類與記事寫入', () => {
     expect(() => service.saveEntry(entryInput({ categoryId: 'old' }))).toThrow('請選擇啟用中的分類。')
   })
 
-  test('拒絕編輯已停用分類的歷史記事', () => {
-    const store = new FakeJournalStore({ categories: [inactiveCategory('old'), activeCategory('work')], entries: [storedEntry({ categoryId: 'old' })] })
+  test('更新停用分類的歷史記事時必須改選啟用分類', () => {
+    const current = storedEntry({ categoryId: 'old', createdAt: '2026-08-01T09:00:00+08:00' })
+    const store = new FakeJournalStore({ categories: [inactiveCategory('old'), activeCategory('work')], entries: [current] })
     const service = new JournalService(store, now, uuid)
 
-    expect(() => service.saveEntry(entryInput({ id: 'entry-1', categoryId: 'work' }))).toThrow('請選擇啟用中的分類。')
+    expect(() => service.saveEntry(entryInput({ id: 'entry-1', categoryId: 'old' }))).toThrow('請選擇啟用中的分類。')
+    expect(service.saveEntry(entryInput({ id: 'entry-1', categoryId: 'work', content: '改選分類後更新' }))).toMatchObject({
+      categoryId: 'work', content: '改選分類後更新', createdAt: '2026-08-01T09:00:00+08:00',
+    })
   })
 
   test('新增記事會正規化內容、標籤與連結並寫入時間戳記', () => {
@@ -105,6 +109,33 @@ describe('JournalService 分類與記事寫入', () => {
 
     expect(() => service.saveEntry(entryInput({ content: '   ' }))).toThrow('請輸入記事內容。')
     expect(() => service.saveEntry(entryInput({ links: [{ label: '參考', url: 'ftp://example.com' }] }))).toThrow('每個連結都需要名稱與有效的 http 或 https 網址。')
+  })
+
+  test('所有寫入操作都在同一交易內完成規則讀取與寫入', () => {
+    const categoryStore = new FakeJournalStore({ categories: [activeCategory('work')] })
+    new JournalService(categoryStore, now, uuid).saveCategory({ name: '生活' })
+    expect(categoryStore.writeLockCalls).toBe(1)
+    expect(categoryStore.operations).toEqual(['listCategories:locked', 'saveCategory:locked'])
+
+    const deactivateStore = new FakeJournalStore({ categories: [activeCategory('work')] })
+    new JournalService(deactivateStore, now, uuid).deactivateCategory('work')
+    expect(deactivateStore.writeLockCalls).toBe(1)
+    expect(deactivateStore.operations).toEqual(['listCategories:locked', 'saveCategory:locked'])
+
+    const newEntryStore = new FakeJournalStore({ categories: [activeCategory('work')] })
+    new JournalService(newEntryStore, now, uuid).saveEntry(entryInput())
+    expect(newEntryStore.writeLockCalls).toBe(1)
+    expect(newEntryStore.operations).toEqual(['listCategories:locked', 'saveEntry:locked'])
+
+    const updateEntryStore = new FakeJournalStore({ categories: [activeCategory('work')], entries: [storedEntry()] })
+    new JournalService(updateEntryStore, now, uuid).saveEntry(entryInput({ id: 'entry-1' }))
+    expect(updateEntryStore.writeLockCalls).toBe(1)
+    expect(updateEntryStore.operations).toEqual(['getEntry:locked', 'listCategories:locked', 'saveEntry:locked'])
+
+    const deleteStore = new FakeJournalStore({ categories: [activeCategory('work')], entries: [storedEntry()] })
+    new JournalService(deleteStore, now, uuid).deleteEntry('entry-1')
+    expect(deleteStore.writeLockCalls).toBe(1)
+    expect(deleteStore.operations).toEqual(['getEntry:locked', 'deleteEntry:locked'])
   })
 })
 

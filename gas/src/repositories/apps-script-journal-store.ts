@@ -77,6 +77,10 @@ export class AppsScriptJournalStore implements JournalStore {
     this.withScriptLock(() => this.ensureSchemaUnlocked())
   }
 
+  withWriteLock<T>(operation: () => T): T {
+    return this.withScriptLock(operation)
+  }
+
   listCategories(): Category[] {
     const sheet = this.getRequiredSheet('categories')
     if (sheet.getLastRow() <= 1) return []
@@ -92,9 +96,9 @@ export class AppsScriptJournalStore implements JournalStore {
   }
 
   saveCategory(category: Category): Category {
-    this.withScriptLock(() => this.saveRow(this.getRequiredSheet('categories'), CATEGORY_HEADERS, category.id, [
+    this.saveRow(this.getRequiredSheet('categories'), CATEGORY_HEADERS, category.id, [
       category.id, category.name, category.isActive, category.createdAt, category.updatedAt,
-    ]))
+    ])
     return category
   }
 
@@ -113,19 +117,17 @@ export class AppsScriptJournalStore implements JournalStore {
   }
 
   saveEntry(entry: Entry): Entry {
-    this.withScriptLock(() => this.saveRow(this.getRequiredSheet('entries'), ENTRY_HEADERS, entry.id, [
+    this.saveRow(this.getRequiredSheet('entries'), ENTRY_HEADERS, entry.id, [
       entry.id, entry.entryDate, entry.title, entry.content, entry.categoryId,
       JSON.stringify(entry.tags), JSON.stringify(entry.links), entry.createdAt, entry.updatedAt,
-    ]))
+    ])
     return entry
   }
 
   deleteEntry(id: string): void {
-    this.withScriptLock(() => {
-      const sheet = this.getRequiredSheet('entries')
-      const row = this.findRow(sheet, id)
-      if (row) sheet.deleteRow(row)
-    })
+    const sheet = this.getRequiredSheet('entries')
+    const row = this.findRow(sheet, id)
+    if (row) sheet.deleteRow(row)
   }
 
   getTimezone(): string {

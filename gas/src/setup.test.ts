@@ -78,7 +78,7 @@ describe('AppsScriptJournalStore', () => {
     expect(releases).toBe(1)
   })
 
-  test('儲存與刪除資料列時以 ScriptLock 保護並保留 JSON 欄位', () => {
+  test('交易內所有實際寫入只取得一次 ScriptLock 並保留 JSON 欄位', () => {
     const properties = new Map([['SPREADSHEET_ID', 'spreadsheet-id']])
     const lockTimeouts: number[] = []
     let releases = 0
@@ -94,14 +94,32 @@ describe('AppsScriptJournalStore', () => {
       formatDate: () => '',
     })
 
-    store.saveCategory({ id: 'work', name: '工作', isActive: true, createdAt: '2026-08-04T09:00:00+08:00', updatedAt: '2026-08-04T09:00:00+08:00' })
-    store.saveEntry({ id: 'entry-1', entryDate: '2026-08-04', title: '每日記事', content: '內容', categoryId: 'work', tags: ['工作'], links: [{ label: '文件', url: 'https://example.com' }], createdAt: '2026-08-04T09:00:00+08:00', updatedAt: '2026-08-04T09:00:00+08:00' })
+    store.withWriteLock(() => {
+      store.saveCategory({ id: 'work', name: '工作', isActive: true, createdAt: '2026-08-04T09:00:00+08:00', updatedAt: '2026-08-04T09:00:00+08:00' })
+      store.saveEntry({ id: 'entry-1', entryDate: '2026-08-04', title: '每日記事', content: '內容', categoryId: 'work', tags: ['工作'], links: [{ label: '文件', url: 'https://example.com' }], createdAt: '2026-08-04T09:00:00+08:00', updatedAt: '2026-08-04T09:00:00+08:00' })
+      expect(store.getEntry('entry-1')).toMatchObject({ id: 'entry-1', tags: ['工作'], links: [{ label: '文件', url: 'https://example.com' }] })
+      store.deleteEntry('entry-1')
+    })
 
-    expect(store.getEntry('entry-1')).toMatchObject({ id: 'entry-1', tags: ['工作'], links: [{ label: '文件', url: 'https://example.com' }] })
-    store.deleteEntry('entry-1')
     expect(store.getEntry('entry-1')).toBeUndefined()
-    expect(lockTimeouts).toEqual([10_000, 10_000, 10_000])
-    expect(releases).toBe(3)
+    expect(lockTimeouts).toEqual([10_000])
+    expect(releases).toBe(1)
+  })
+
+  test('交易內寫入拋出錯誤時仍釋放 ScriptLock', () => {
+    const properties = new Map([['SPREADSHEET_ID', 'spreadsheet-id']])
+    const lockTimeouts: number[] = []
+    let releases = 0
+    const store = new AppsScriptJournalStore({
+      getScriptLock: () => ({ waitLock: (timeoutInMillis) => lockTimeouts.push(timeoutInMillis), releaseLock: () => { releases += 1 } }),
+      getScriptProperties: () => ({ getProperty: (key) => properties.get(key) ?? null, setProperty: (key, value) => properties.set(key, value) }),
+      openById: () => ({ getSheetByName: () => null, insertSheet: () => { throw new Error('不應建立工作表。') }, getSpreadsheetTimeZone: () => 'Asia/Taipei' }),
+      formatDate: () => '',
+    })
+
+    expect(() => store.withWriteLock(() => store.saveEntry({ id: 'entry-1', entryDate: '2026-08-04', title: '', content: '內容', categoryId: 'work', tags: [], links: [], createdAt: '', updatedAt: '' }))).toThrow('找不到工作表「entries」，請先執行 initializeJournal。')
+    expect(lockTimeouts).toEqual([10_000])
+    expect(releases).toBe(1)
   })
 
   test('讀取損壞的 JSON 欄位時回報資料列 ID', () => {
