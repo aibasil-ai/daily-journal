@@ -14,6 +14,7 @@ type SheetRange = {
 type Sheet = {
   getLastRow(): number
   getRange(row: number, column: number, numRows: number, numColumns: number): SheetRange
+  deleteRow(rowPosition: number): void
 }
 
 type Spreadsheet = {
@@ -91,23 +92,40 @@ export class AppsScriptJournalStore implements JournalStore {
   }
 
   saveCategory(category: Category): Category {
-    void category
-    throw new Error('分類儲存功能尚未完成。')
+    this.withScriptLock(() => this.saveRow(this.getRequiredSheet('categories'), CATEGORY_HEADERS, category.id, [
+      category.id, category.name, category.isActive, category.createdAt, category.updatedAt,
+    ]))
+    return category
   }
 
   listEntries(filter: EntryFilter): Entry[] {
     void filter
-    throw new Error('記事查詢功能尚未完成。')
+    const sheet = this.getRequiredSheet('entries')
+    if (sheet.getLastRow() <= 1) return []
+
+    return sheet.getRange(2, 1, sheet.getLastRow() - 1, ENTRY_HEADERS.length).getValues()
+      .map((row) => this.entryFromRow(row))
+  }
+
+  getEntry(id: string): Entry | undefined {
+    return this.listEntries({ query: '', from: null, to: null, categoryId: null, tag: null, cursor: null, limit: 0 })
+      .find((entry) => entry.id === id)
   }
 
   saveEntry(entry: Entry): Entry {
-    void entry
-    throw new Error('記事儲存功能尚未完成。')
+    this.withScriptLock(() => this.saveRow(this.getRequiredSheet('entries'), ENTRY_HEADERS, entry.id, [
+      entry.id, entry.entryDate, entry.title, entry.content, entry.categoryId,
+      JSON.stringify(entry.tags), JSON.stringify(entry.links), entry.createdAt, entry.updatedAt,
+    ]))
+    return entry
   }
 
   deleteEntry(id: string): void {
-    void id
-    throw new Error('記事刪除功能尚未完成。')
+    this.withScriptLock(() => {
+      const sheet = this.getRequiredSheet('entries')
+      const row = this.findRow(sheet, id)
+      if (row) sheet.deleteRow(row)
+    })
   }
 
   getTimezone(): string {
@@ -136,6 +154,60 @@ export class AppsScriptJournalStore implements JournalStore {
     if (actualHeaders.join('\u0000') !== headers.join('\u0000')) {
       throw new Error(`工作表「${name}」欄位不符合預期。`)
     }
+  }
+
+  private saveRow(sheet: Sheet, headers: string[], id: string, values: unknown[]): void {
+    const row = this.findRow(sheet, id) ?? sheet.getLastRow() + 1
+    sheet.getRange(row, 1, 1, headers.length).setValues([values])
+  }
+
+  private findRow(sheet: Sheet, id: string): number | undefined {
+    if (sheet.getLastRow() <= 1) return undefined
+    const ids = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues()
+    const index = ids.findIndex(([current]) => String(current) === id)
+    return index === -1 ? undefined : index + 2
+  }
+
+  private entryFromRow(row: unknown[]): Entry {
+    const [id, entryDate, title, content, categoryId, tags, links, createdAt, updatedAt] = row
+    const rowId = String(id)
+    return {
+      id: rowId,
+      entryDate: String(entryDate),
+      title: String(title),
+      content: String(content),
+      categoryId: String(categoryId),
+      tags: this.parseTags(tags, rowId),
+      links: this.parseLinks(links, rowId),
+      createdAt: String(createdAt),
+      updatedAt: String(updatedAt),
+    }
+  }
+
+  private parseTags(value: unknown, rowId: string): string[] {
+    try {
+      const tags: unknown = JSON.parse(String(value))
+      if (!Array.isArray(tags) || !tags.every((tag) => typeof tag === 'string')) throw new Error()
+      return tags
+    } catch {
+      throw new Error(`資料列「${rowId}」的標籤 JSON 格式錯誤。`)
+    }
+  }
+
+  private parseLinks(value: unknown, rowId: string): Entry['links'] {
+    try {
+      const links: unknown = JSON.parse(String(value))
+      if (!Array.isArray(links) || !links.every((link) => this.isJournalLink(link))) throw new Error()
+      return links
+    } catch {
+      throw new Error(`資料列「${rowId}」的連結 JSON 格式錯誤。`)
+    }
+  }
+
+  private isJournalLink(value: unknown): value is Entry['links'][number] {
+    return typeof value === 'object' && value !== null
+      && typeof (value as { label?: unknown }).label === 'string'
+      && typeof (value as { url?: unknown }).url === 'string'
   }
 
   private getRequiredSheet(name: string): Sheet {

@@ -77,19 +77,89 @@ describe('AppsScriptJournalStore', () => {
     expect(() => store.ensureSchema()).toThrow('工作表「entries」欄位不符合預期。')
     expect(releases).toBe(1)
   })
+
+  test('儲存與刪除資料列時以 ScriptLock 保護並保留 JSON 欄位', () => {
+    const properties = new Map([['SPREADSHEET_ID', 'spreadsheet-id']])
+    const lockTimeouts: number[] = []
+    let releases = 0
+    const sheets = new Map([
+      ['entries', createSheet(ENTRY_HEADERS)],
+      ['categories', createSheet(CATEGORY_HEADERS)],
+      ['settings', createSheet(['key', 'value'])],
+    ])
+    const store = new AppsScriptJournalStore({
+      getScriptLock: () => ({ waitLock: (timeoutInMillis) => lockTimeouts.push(timeoutInMillis), releaseLock: () => { releases += 1 } }),
+      getScriptProperties: () => ({ getProperty: (key) => properties.get(key) ?? null, setProperty: (key, value) => properties.set(key, value) }),
+      openById: () => ({ getSheetByName: (name) => sheets.get(name) ?? null, insertSheet: (name) => { const sheet = createSheet(); sheets.set(name, sheet); return sheet }, getSpreadsheetTimeZone: () => 'Asia/Taipei' }),
+      formatDate: () => '',
+    })
+
+    store.saveCategory({ id: 'work', name: '工作', isActive: true, createdAt: '2026-08-04T09:00:00+08:00', updatedAt: '2026-08-04T09:00:00+08:00' })
+    store.saveEntry({ id: 'entry-1', entryDate: '2026-08-04', title: '每日記事', content: '內容', categoryId: 'work', tags: ['工作'], links: [{ label: '文件', url: 'https://example.com' }], createdAt: '2026-08-04T09:00:00+08:00', updatedAt: '2026-08-04T09:00:00+08:00' })
+
+    expect(store.getEntry('entry-1')).toMatchObject({ id: 'entry-1', tags: ['工作'], links: [{ label: '文件', url: 'https://example.com' }] })
+    store.deleteEntry('entry-1')
+    expect(store.getEntry('entry-1')).toBeUndefined()
+    expect(lockTimeouts).toEqual([10_000, 10_000, 10_000])
+    expect(releases).toBe(3)
+  })
+
+  test('讀取損壞的 JSON 欄位時回報資料列 ID', () => {
+    const properties = new Map([['SPREADSHEET_ID', 'spreadsheet-id']])
+    const sheets = new Map([
+      ['entries', createSheet(ENTRY_HEADERS, [['entry-1', '2026-08-04', '每日記事', '內容', 'work', '{錯誤 JSON', '[]', '2026-08-04T09:00:00+08:00', '2026-08-04T09:00:00+08:00']])],
+      ['categories', createSheet(CATEGORY_HEADERS)],
+      ['settings', createSheet(['key', 'value'])],
+    ])
+    const store = new AppsScriptJournalStore({
+      getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }),
+      getScriptProperties: () => ({ getProperty: (key) => properties.get(key) ?? null, setProperty: () => {} }),
+      openById: () => ({ getSheetByName: (name) => sheets.get(name) ?? null, insertSheet: () => { throw new Error('不應建立工作表。') }, getSpreadsheetTimeZone: () => 'Asia/Taipei' }),
+      formatDate: () => '',
+    })
+
+    expect(() => store.getEntry('entry-1')).toThrow('資料列「entry-1」的標籤 JSON 格式錯誤。')
+  })
+
+  test('讀取損壞的連結 JSON 欄位時回報資料列 ID', () => {
+    const properties = new Map([['SPREADSHEET_ID', 'spreadsheet-id']])
+    const sheets = new Map([
+      ['entries', createSheet(ENTRY_HEADERS, [['entry-1', '2026-08-04', '每日記事', '內容', 'work', '[]', '{錯誤 JSON', '2026-08-04T09:00:00+08:00', '2026-08-04T09:00:00+08:00']])],
+      ['categories', createSheet(CATEGORY_HEADERS)],
+      ['settings', createSheet(['key', 'value'])],
+    ])
+    const store = new AppsScriptJournalStore({
+      getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }),
+      getScriptProperties: () => ({ getProperty: (key) => properties.get(key) ?? null, setProperty: () => {} }),
+      openById: () => ({ getSheetByName: (name) => sheets.get(name) ?? null, insertSheet: () => { throw new Error('不應建立工作表。') }, getSpreadsheetTimeZone: () => 'Asia/Taipei' }),
+      formatDate: () => '',
+    })
+
+    expect(() => store.getEntry('entry-1')).toThrow('資料列「entry-1」的連結 JSON 格式錯誤。')
+  })
 })
 
-function createSheet(headers: string[] = []) {
+function createSheet(headers: string[] = [], rows: unknown[][] = []) {
+  const data = headers.length === 0 ? [] : [headers, ...rows]
   const sheet = {
-    headers,
-    getLastRow: () => sheet.headers.length === 0 ? 0 : 1,
-    getRange: (..._args: [number, number, number, number]) => {
-      void _args
-      return {
-      getValues: () => [sheet.headers],
-      setValues: (values: unknown[][]) => { sheet.headers = values[0].map(String) },
-      }
+    get headers() {
+      return (data[0] ?? []).map(String)
     },
+    getLastRow: () => data.length,
+    getRange: (row: number, column: number, numRows: number, numColumns: number) => ({
+      getValues: () => Array.from({ length: numRows }, (_unused, rowOffset) => Array.from(
+        { length: numColumns },
+        (_otherUnused, columnOffset) => data[row - 1 + rowOffset]?.[column - 1 + columnOffset] ?? '',
+      )),
+      setValues: (values: unknown[][]) => {
+        values.forEach((valuesRow, rowOffset) => {
+          const target = data[row - 1 + rowOffset] ?? []
+          data[row - 1 + rowOffset] = target
+          valuesRow.forEach((value, columnOffset) => { target[column - 1 + columnOffset] = value })
+        })
+      },
+    }),
+    deleteRow: (row: number) => { data.splice(row - 1, 1) },
   }
   return sheet
 }

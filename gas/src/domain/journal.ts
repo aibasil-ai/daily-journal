@@ -44,7 +44,7 @@ export type ApiRequest =
   | { action: 'getMonthlyEntryCounts'; year: number; month: number; filter: Omit<EntryFilter, 'cursor' | 'limit'> }
   | { action: 'saveEntry'; entry: EntryInput }
   | { action: 'deleteEntry'; id: string }
-  | { action: 'saveCategory'; category: Pick<Category, 'id' | 'name'> & { id?: string } }
+  | { action: 'saveCategory'; category: Pick<Category, 'name'> & { id?: string } }
   | { action: 'deactivateCategory'; id: string }
   | { action: 'exportEntries'; filter: Omit<EntryFilter, 'cursor' | 'limit'> }
 
