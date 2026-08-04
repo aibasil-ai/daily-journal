@@ -1,0 +1,19 @@
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+app-config.js
+
+# Local tooling
+.superpowers/
+.vscode/
+*.log
+
+# Python virtual environments
+.venv/
+venv/
