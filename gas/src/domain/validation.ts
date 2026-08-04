@@ -1,9 +1,5 @@
 import type { EntryInput } from './journal'
 
-declare const URL: {
-  new (value: string): { protocol: string }
-}
-
 export type ValidationIssue = {
   field: 'entryDate' | 'content' | 'categoryId' | 'links'
   message: string
@@ -43,10 +39,9 @@ export function validateEntryInput(input: EntryInput, activeCategoryIds: Set<str
 }
 
 function isHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value)
-    return url.protocol === 'http:' || url.protocol === 'https:'
-  } catch {
-    return false
-  }
+  const match = /^https?:\/\/([^\s/?#]+)(?:[/?#][^\s]*)?$/i.exec(value)
+  if (!match) return false
+
+  const host = match[1].replace(/^.*@/, '').replace(/:\d+$/, '')
+  return /^[a-z0-9.-]+$/i.test(host) || /^\[[a-f0-9:]+\]$/i.test(host)
 }

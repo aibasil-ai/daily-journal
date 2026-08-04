@@ -9,7 +9,7 @@ export type BootstrapData = {
 
 export class JournalService {
   constructor(
-    private readonly store: JournalStore,
+    private readonly store: Pick<JournalStore, 'getTimezone' | 'listCategories'>,
     private readonly now: () => string,
     private readonly uuid: () => string,
   ) {}

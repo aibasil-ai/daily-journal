@@ -55,11 +55,33 @@ describe('AppsScriptJournalStore', () => {
     expect(releases).toBe(1)
     expect(store.formatTimestamp(new Date('2026-08-04T00:00:00Z'))).toBe("Asia/Taipei yyyy-MM-dd'T'HH:mm:ssXXX")
   })
+
+  test('schema 驗證失敗時仍釋放 ScriptLock', () => {
+    const properties = new Map([['SPREADSHEET_ID', 'spreadsheet-id']])
+    let releases = 0
+    const sheet = createSheet(['錯誤欄位'])
+    const store = new AppsScriptJournalStore({
+      getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => { releases += 1 } }),
+      getScriptProperties: () => ({
+        getProperty: (key) => properties.get(key) ?? null,
+        setProperty: (key, value) => properties.set(key, value),
+      }),
+      openById: () => ({
+        getSheetByName: () => sheet,
+        insertSheet: () => sheet,
+        getSpreadsheetTimeZone: () => 'Asia/Taipei',
+      }),
+      formatDate: () => '',
+    })
+
+    expect(() => store.ensureSchema()).toThrow('工作表「entries」欄位不符合預期。')
+    expect(releases).toBe(1)
+  })
 })
 
-function createSheet() {
+function createSheet(headers: string[] = []) {
   const sheet = {
-    headers: [] as string[],
+    headers,
     getLastRow: () => sheet.headers.length === 0 ? 0 : 1,
     getRange: (..._args: [number, number, number, number]) => {
       void _args
