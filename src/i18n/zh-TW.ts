@@ -17,4 +17,16 @@ export const zhTW = {
     invalidResponse: '服務回應格式錯誤，請稍後再試。',
     requestFailed: '暫時無法連線至服務，請稍後再試。',
   },
+  journal: {
+    connectionTitle: '連線至每日記事',
+    configErrorTitle: '部署設定有誤',
+    checkingConfig: '正在檢查部署設定...',
+    signedOutDescription: '登入後即可安全連線至你的 Google Sheets 記事資料。',
+    connectingDescription: '正在登入並連線至 Google Sheets，請稍候。',
+    signIn: '使用 Google 帳號登入',
+    signInAgain: '重新登入',
+    retry: '重新嘗試',
+    connecting: '連線中...',
+    ready: '已連線至 Google Sheets。',
+  },
 } as const

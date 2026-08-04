@@ -9,5 +9,47 @@ body {
 }
 
 main {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.connection-screen {
+  display: grid;
+  gap: 1rem;
   padding: 1.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.75rem;
+}
+
+.connection-screen h2,
+.connection-screen p {
+  margin: 0;
+}
+
+.connection-screen__error {
+  color: #b91c1c;
+}
+
+.connection-screen__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+button {
+  width: fit-content;
+  padding: 0.625rem 1rem;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 600;
+  background: #1d4ed8;
+  border: 0;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
