@@ -1,4 +1,4 @@
-import type { Category, Entry, EntryFilter } from '../domain/journal'
+import type { Category, Entry } from '../domain/journal'
 
 type FakeJournalStoreOptions = {
   timezone?: string
@@ -43,8 +43,7 @@ export class FakeJournalStore {
     return copyCategory(category)
   }
 
-  listEntries(filter: EntryFilter): Entry[] {
-    void filter
+  listEntries(): Entry[] {
     this.record('listEntries')
     return this.entries.map(copyEntry)
   }

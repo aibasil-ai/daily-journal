@@ -1,10 +1,10 @@
-import type { Category, Entry, EntryFilter } from '../domain/journal'
+import type { Category, Entry } from '../domain/journal'
 
 export interface JournalStore {
   withWriteLock<T>(operation: () => T): T
   listCategories(): Category[]
   saveCategory(category: Category): Category
-  listEntries(filter: EntryFilter): Entry[]
+  listEntries(): Entry[]
   getEntry(id: string): Entry | undefined
   saveEntry(entry: Entry): Entry
   deleteEntry(id: string): void

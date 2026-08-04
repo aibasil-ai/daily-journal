@@ -1,4 +1,4 @@
-import type { Category, Entry, EntryFilter } from '../domain/journal'
+import type { Category, Entry } from '../domain/journal'
 import type { JournalStore } from './journal-store'
 
 type ScriptLock = {
@@ -102,8 +102,7 @@ export class AppsScriptJournalStore implements JournalStore {
     return category
   }
 
-  listEntries(filter: EntryFilter): Entry[] {
-    void filter
+  listEntries(): Entry[] {
     const sheet = this.getRequiredSheet('entries')
     if (sheet.getLastRow() <= 1) return []
 
@@ -112,7 +111,7 @@ export class AppsScriptJournalStore implements JournalStore {
   }
 
   getEntry(id: string): Entry | undefined {
-    return this.listEntries({ query: '', from: null, to: null, categoryId: null, tag: null, cursor: null, limit: 0 })
+    return this.listEntries()
       .find((entry) => entry.id === id)
   }
 

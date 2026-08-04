@@ -1,4 +1,4 @@
-import type { Category, Entry, EntryInput } from '../domain/journal'
+import type { Category, Entry, EntryFilter, EntryInput } from '../domain/journal'
 import { normalizeEntryInput, validateEntryInput } from '../domain/validation'
 import type { JournalStore } from '../repositories/journal-store'
 
@@ -6,6 +6,23 @@ export type BootstrapData = {
   timezone: string
   categories: Category[]
   tagSuggestions: string[]
+}
+
+export type EntryListResult = {
+  items: Entry[]
+  nextCursor: string | null
+}
+
+export type EntrySearchFilter = Omit<EntryFilter, 'cursor' | 'limit'>
+
+export type MonthlyEntryCount = {
+  date: string
+  count: number
+}
+
+export type ExportEntriesResult = {
+  headers: string[]
+  rows: string[][]
 }
 
 export class JournalService {
@@ -19,7 +36,61 @@ export class JournalService {
     return {
       timezone: this.store.getTimezone(),
       categories: this.store.listCategories().filter((category) => category.isActive),
-      tagSuggestions: [],
+      tagSuggestions: this.listTagSuggestions(),
+    }
+  }
+
+  listEntries(filter: EntryFilter): EntryListResult {
+    const entries = this.filteredEntries(filter)
+    const cursorIndex = filter.cursor ? entries.findIndex((entry) => entry.id === filter.cursor) : -1
+    const entriesAfterCursor = entries.slice(cursorIndex + 1)
+    const limit = Math.max(0, Math.trunc(filter.limit))
+    const items = entriesAfterCursor.slice(0, limit)
+    const nextCursor = items.length > 0 && entriesAfterCursor.length > items.length ? items[items.length - 1].id : null
+
+    return { items, nextCursor }
+  }
+
+  getEntriesForDate(date: string, filter: EntrySearchFilter): Entry[] {
+    return this.filteredEntries(filter).filter((entry) => entry.entryDate === date)
+  }
+
+  getMonthlyEntryCounts(year: number, month: number, filter: EntrySearchFilter): MonthlyEntryCount[] {
+    if (!Number.isInteger(month) || month < 1 || month > 12) throw new Error('月份必須介於 1 到 12。')
+
+    const prefix = `${year}-${String(month).padStart(2, '0')}-`
+    const counts = new Map<string, number>()
+    for (const entry of this.filteredEntries(filter)) {
+      if (!entry.entryDate.startsWith(prefix)) continue
+      counts.set(entry.entryDate, (counts.get(entry.entryDate) ?? 0) + 1)
+    }
+
+    return Array.from(counts, ([date, count]) => ({ date, count })).sort((left, right) => left.date.localeCompare(right.date))
+  }
+
+  listTagSuggestions(): string[] {
+    const tags = new Set<string>()
+    for (const entry of this.store.listEntries()) {
+      for (const tag of entry.tags) tags.add(tag)
+    }
+    return Array.from(tags).sort()
+  }
+
+  exportEntries(filter: EntrySearchFilter): ExportEntriesResult {
+    const categories = new Map(this.store.listCategories().map((category) => [category.id, category.name]))
+    return {
+      headers: ['id', 'entryDate', 'title', 'content', 'categoryName', 'tags', 'links', 'createdAt', 'updatedAt'],
+      rows: this.filteredEntries(filter).map((entry) => [
+        entry.id,
+        entry.entryDate,
+        entry.title,
+        entry.content,
+        categories.get(entry.categoryId) ?? '',
+        entry.tags.join('; '),
+        entry.links.map((link) => `${link.label} (${link.url})`).join('; '),
+        entry.createdAt,
+        entry.updatedAt,
+      ]),
     }
   }
 
@@ -83,6 +154,31 @@ export class JournalService {
 
   private activeCategoryIds(): Set<string> {
     return new Set(this.store.listCategories().filter((category) => category.isActive).map((category) => category.id))
+  }
+
+  private filteredEntries(filter: EntrySearchFilter): Entry[] {
+    return this.store.listEntries()
+      .filter((entry) => this.matchesFilter(entry, filter))
+      .sort((left, right) => this.compareEntries(left, right))
+  }
+
+  private matchesFilter(entry: Entry, filter: EntrySearchFilter): boolean {
+    const query = filter.query.trim().toLocaleLowerCase()
+    const searchable = [entry.title, entry.content, ...entry.tags, ...entry.links.map((link) => link.label)]
+      .join('\n').toLocaleLowerCase()
+
+    return (!query || searchable.includes(query))
+      && (!filter.from || entry.entryDate >= filter.from)
+      && (!filter.to || entry.entryDate <= filter.to)
+      && (!filter.categoryId || entry.categoryId === filter.categoryId)
+      && (!filter.tag || entry.tags.includes(filter.tag))
+  }
+
+  private compareEntries(left: Entry, right: Entry): number {
+    if (left.entryDate !== right.entryDate) return left.entryDate > right.entryDate ? -1 : 1
+    if (left.createdAt !== right.createdAt) return left.createdAt > right.createdAt ? -1 : 1
+    if (left.id === right.id) return 0
+    return left.id > right.id ? -1 : 1
   }
 
   private assertValidEntry(input: EntryInput): void {
