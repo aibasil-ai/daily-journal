@@ -1,3 +1,5 @@
-export function initializeJournal(): never {
-  throw new Error('GAS 尚未完成初始化。')
-}
+import { initializeJournal } from './setup'
+
+export { initializeJournal }
+
+;(globalThis as typeof globalThis & { initializeJournal?: typeof initializeJournal }).initializeJournal = initializeJournal

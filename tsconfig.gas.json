@@ -11,5 +11,6 @@
     "noEmit": true,
     "types": []
   },
-  "include": ["gas/src"]
+  "include": ["gas/src"],
+  "exclude": ["gas/src/**/*.test.ts"]
 }
