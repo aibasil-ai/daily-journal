@@ -1,3 +1,6 @@
+// @vitest-environment jsdom
+
+import '../../test/dialog-setup'
 import { useState } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -31,6 +34,23 @@ test('標題留空時以記事內容前八十字顯示摘要，外部連結安�
   expect(screen.getByRole('heading', { name: content.slice(0, 80) })).toBeInTheDocument()
   expect(screen.getByRole('link', { name: '參考資料' })).toHaveAttribute('target', '_blank')
   expect(screen.getByRole('link', { name: '參考資料' })).toHaveAttribute('rel', 'noreferrer noopener')
+})
+
+test('不產生 data、javascript、ftp 協定的可點擊連結', () => {
+  render(<EntryCard entry={entry('unsafe-links', '2026-08-04', {
+    links: [
+      { label: '資料網址', url: 'data:text/html,unsafe' },
+      { label: '腳本網址', url: 'javascript:alert(1)' },
+      { label: 'FTP 網址', url: 'ftp://example.com' },
+    ],
+  })} onEdit={vi.fn()} onDelete={vi.fn()} />)
+
+  expect(screen.getByText('資料網址')).toBeInTheDocument()
+  expect(screen.getByText('腳本網址')).toBeInTheDocument()
+  expect(screen.getByText('FTP 網址')).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: '資料網址' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: '腳本網址' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'FTP 網址' })).not.toBeInTheDocument()
 })
 
 test('刪除前要求再次確認，失敗後保留記事並顯示錯誤', async () => {

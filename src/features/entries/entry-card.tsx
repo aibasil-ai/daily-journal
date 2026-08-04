@@ -50,7 +50,7 @@ export function EntryCard({ entry, onEdit, onDelete }: EntryCardProps) {
       {entry.tags.length > 0 && <p className="entry-card__tags">標籤：{entry.tags.join('、')}</p>}
       {entry.links.length > 0 && (
         <ul className="entry-card__links" aria-label={zhTW.entries.links}>
-          {entry.links.map((link) => <li key={`${link.label}-${link.url}`}><a href={link.url} target="_blank" rel="noreferrer noopener">{link.label}</a></li>)}
+          {entry.links.map((link) => <li key={`${link.label}-${link.url}`}>{isSafeHttpUrl(link.url) ? <a href={link.url} target="_blank" rel="noreferrer noopener">{link.label}</a> : link.label}</li>)}
         </ul>
       )}
       <dialog ref={dialogRef} aria-labelledby={`delete-title-${entry.id}`} onClose={() => setDeleteError(undefined)}>
@@ -64,4 +64,15 @@ export function EntryCard({ entry, onEdit, onDelete }: EntryCardProps) {
       </dialog>
     </article>
   )
+}
+
+function isSafeHttpUrl(value: unknown): value is string {
+  if (typeof value !== 'string') return false
+
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
 }

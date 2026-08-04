@@ -1,4 +1,4 @@
-import type { Category, CategoryInput, Entry, EntryFilter, EntryInput } from '../domain/journal'
+import type { Category, CategoryInput, Entry, EntryFilter, EntryInput, EntryListResult } from '../domain/journal'
 import { normalizeEntryInput, validateEntryInput } from '../domain/validation'
 import type { JournalStore } from '../repositories/journal-store'
 
@@ -17,11 +17,6 @@ export type BootstrapData = {
   timezone: string
   categories: Category[]
   tagSuggestions: string[]
-}
-
-export type EntryListResult = {
-  items: Entry[]
-  nextCursor: string | null
 }
 
 export type EntrySearchFilter = Omit<EntryFilter, 'cursor' | 'limit'>

@@ -1,8 +1,11 @@
+// @vitest-environment jsdom
+
+import '../../test/dialog-setup'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import { App } from '../../App'
-import type { Entry, EntryFilter, EntryInput } from '../../domain/journal'
+import type { Entry, EntryFilter, EntryInput, EntryListResult } from '../../domain/journal'
 import type { JournalClient } from './use-journal'
 import { AuthenticationError, ExecutionClientError } from '../../services/execution-client'
 
@@ -28,7 +31,7 @@ test('登入後載入啟用分類並進入首頁', async () => {
     }),
     run: vi.fn().mockImplementation(async (request: { action: string }) => {
       calls.push('run')
-      if (request.action === 'listEntries') return { entries: [], nextCursor: null }
+      if (request.action === 'listEntries') return entryPage()
       return {
         timezone: 'Asia/Taipei',
         categories: [category('work'), category('archived', false)],
@@ -55,7 +58,7 @@ test('登入授權完成前不呼叫 bootstrap', async () => {
     })),
     run: vi.fn().mockImplementation(async (request: { action: string }) => (
       request.action === 'listEntries'
-        ? { entries: [], nextCursor: null }
+        ? entryPage()
         : { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
     )),
   }
@@ -114,7 +117,7 @@ test('網路錯誤顯示可重新嘗試的指引', async () => {
   const client = { signIn: vi.fn().mockResolvedValue(undefined), run: vi.fn()
     .mockRejectedValueOnce(new ExecutionClientError())
     .mockResolvedValueOnce({ timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] })
-    .mockResolvedValueOnce({ entries: [], nextCursor: null }) }
+    .mockResolvedValueOnce(entryPage()) }
   const user = userEvent.setup()
   render(<App client={client} />)
 
@@ -163,8 +166,8 @@ test('連線後載入、儲存、追加與刪除時間軸記事', async () => {
   const second = entry('second', '2026-08-03')
   const run = vi.fn().mockImplementation(async (request: { action: string; filter?: EntryFilter; entry?: EntryInput; id?: string }) => {
     if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: ['會議'] }
-    if (request.action === 'listEntries' && request.filter?.cursor === null) return { entries: [first], nextCursor: 'page-2' }
-    if (request.action === 'listEntries' && request.filter?.cursor === 'page-2') return { entries: [second], nextCursor: null }
+    if (request.action === 'listEntries' && request.filter?.cursor === null) return entryPage([first], 'page-2')
+    if (request.action === 'listEntries' && request.filter?.cursor === 'page-2') return entryPage([second])
     if (request.action === 'saveEntry') return entry('saved', request.entry?.entryDate ?? '2026-08-04', { ...request.entry, id: 'saved' })
     if (request.action === 'deleteEntry') return undefined
     throw new Error('未預期的請求')
@@ -189,13 +192,13 @@ test('連線後載入、儲存、追加與刪除時間軸記事', async () => {
   await waitFor(() => expect(screen.queryByRole('heading', { name: '新記事' })).not.toBeInTheDocument())
 })
 
-test('套用篩選時保留輸入值並重設游標載入第一頁', async () => {
-  let resolveFilteredEntries: ((value: { entries: Entry[]; nextCursor: null }) => void) | undefined
+test('套用篩選時只採用最新請求的項目並重設游標', async () => {
+  const resolvers = new Map<string, (value: EntryListResult) => void>()
   const run = vi.fn().mockImplementation(async (request: { action: string; filter?: EntryFilter }) => {
     if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
-    if (request.action === 'listEntries' && !request.filter?.query) return { entries: [], nextCursor: null }
+    if (request.action === 'listEntries' && !request.filter?.query) return entryPage()
     if (request.action === 'listEntries') return new Promise((resolve) => {
-      resolveFilteredEntries = resolve
+      resolvers.set(request.filter?.query ?? '', resolve)
     })
     throw new Error('未預期的請求')
   })
@@ -208,11 +211,68 @@ test('套用篩選時保留輸入值並重設游標載入第一頁', async () =>
   await user.type(screen.getByRole('searchbox', { name: '關鍵字' }), '週會')
 
   expect(screen.getByRole('searchbox', { name: '關鍵字' })).toHaveValue('週會')
-  resolveFilteredEntries?.({ entries: [], nextCursor: null })
+  resolvers.get('週會')?.(entryPage([entry('new-filter', '2026-08-04')]))
+  expect(await screen.findByText('記事內容 new-filter')).toBeInTheDocument()
+  resolvers.get('週')?.(entryPage([entry('old-filter', '2026-08-03')]))
+  await waitFor(() => expect(screen.queryByText('記事內容 old-filter')).not.toBeInTheDocument())
+  expect(screen.getByText('記事內容 new-filter')).toBeInTheDocument()
   await waitFor(() => expect(run).toHaveBeenLastCalledWith({
     action: 'listEntries',
     filter: { query: '週會', from: null, to: null, categoryId: null, tag: null, cursor: null, limit: 20 },
   }))
+})
+
+test('儲存成功後忽略較舊的列表回應', async () => {
+  let resolveList: ((value: EntryListResult) => void) | undefined
+  const run = vi.fn().mockImplementation(async (request: { action: string; entry?: EntryInput }) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+    if (request.action === 'listEntries') return new Promise((resolve) => {
+      resolveList = resolve
+    })
+    if (request.action === 'saveEntry') return entry('saved', request.entry?.entryDate ?? '2026-08-04', { ...request.entry, id: 'saved' })
+    throw new Error('未預期的請求')
+  })
+  const user = userEvent.setup()
+
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
+  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  await waitFor(() => expect(run).toHaveBeenCalledWith(expect.objectContaining({ action: 'listEntries' })))
+
+  await user.type(screen.getByLabelText('記事內容'), '新記事')
+  await user.selectOptions(screen.getByLabelText('分類'), 'work')
+  await user.click(screen.getByRole('button', { name: '儲存記事' }))
+  expect(await screen.findByRole('heading', { name: '新記事' })).toBeInTheDocument()
+
+  resolveList?.(entryPage([entry('old-list', '2026-08-03')]))
+  await waitFor(() => expect(screen.queryByText('記事內容 old-list')).not.toBeInTheDocument())
+  expect(screen.getByRole('heading', { name: '新記事' })).toBeInTheDocument()
+})
+
+test('刪除成功後忽略較舊的列表回應', async () => {
+  const original = entry('delete-me', '2026-08-04')
+  let resolveFilteredList: ((value: EntryListResult) => void) | undefined
+  const run = vi.fn().mockImplementation(async (request: { action: string; filter?: EntryFilter }) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+    if (request.action === 'listEntries' && request.filter?.categoryId === null) return entryPage([original])
+    if (request.action === 'listEntries') return new Promise((resolve) => {
+      resolveFilteredList = resolve
+    })
+    if (request.action === 'deleteEntry') return undefined
+    throw new Error('未預期的請求')
+  })
+  const user = userEvent.setup()
+
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
+  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  expect(await screen.findByText('記事內容 delete-me')).toBeInTheDocument()
+
+  await user.selectOptions(screen.getByLabelText('分類篩選'), 'work')
+  await user.click(within(screen.getByText('記事內容 delete-me').closest('article')!).getByRole('button', { name: '刪除記事' }))
+  await user.click(screen.getByRole('button', { name: '確認刪除' }))
+  await waitFor(() => expect(screen.queryByText('記事內容 delete-me')).not.toBeInTheDocument())
+
+  resolveFilteredList?.(entryPage([original]))
+  await waitFor(() => expect(screen.queryByText('記事內容 delete-me')).not.toBeInTheDocument())
 })
 
 function category(id: string, isActive = true) {
@@ -238,4 +298,8 @@ function entry(id: string, entryDate: string, overrides: Partial<Entry> = {}): E
     updatedAt: '2026-08-04T00:00:00+08:00',
     ...overrides,
   }
+}
+
+function entryPage(items: Entry[] = [], nextCursor: string | null = null): EntryListResult {
+  return { items, nextCursor }
 }

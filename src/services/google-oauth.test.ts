@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { RuntimeConfig } from '../config/runtime-config'
 import { GoogleOAuth } from './google-oauth'

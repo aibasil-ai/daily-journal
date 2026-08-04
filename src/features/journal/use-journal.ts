@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ApiRequest, Category, Entry, EntryFilter, EntryInput } from '../../domain/journal'
+import type { ApiRequest, Category, Entry, EntryFilter, EntryInput, EntryListResult } from '../../domain/journal'
 import { zhTW } from '../../i18n/zh-TW'
 
 export type JournalStatus = 'checking-config' | 'signed-out' | 'loading' | 'ready' | 'error'
@@ -13,11 +13,6 @@ export type JournalBootstrap = {
 export type JournalClient = {
   signIn: () => Promise<void>
   run: <T>(request: ApiRequest) => Promise<T>
-}
-
-export type EntryPage = {
-  entries: Entry[]
-  nextCursor: string | null
 }
 
 type JournalState = {
@@ -50,7 +45,7 @@ function defaultFilter(): EntryFilter {
 
 export function useJournal(client: JournalClient) {
   const [state, setState] = useState<JournalState>(signedOutState)
-  const latestEntryRequest = useRef(0)
+  const entryEpoch = useRef(0)
 
   async function connect(requestSignIn: boolean) {
     if (state.status === 'loading') return
@@ -58,17 +53,17 @@ export function useJournal(client: JournalClient) {
     setState({ ...signedOutState, status: 'loading' })
     try {
       if (requestSignIn) await client.signIn()
-       const bootstrap = await client.run<JournalBootstrap>({ action: 'bootstrap' })
-       setState({
-         status: 'ready',
-         bootstrap,
-         categories: bootstrap.categories.filter((category) => category.isActive),
-         tagSuggestions: bootstrap.tagSuggestions,
-         entries: [],
-         filter: defaultFilter(),
-         nextCursor: null,
-         isLoadingEntries: false,
-         error: undefined,
+      const bootstrap = await client.run<JournalBootstrap>({ action: 'bootstrap' })
+      setState({
+        status: 'ready',
+        bootstrap,
+        categories: bootstrap.categories.filter((category) => category.isActive),
+        tagSuggestions: bootstrap.tagSuggestions,
+        entries: [],
+        filter: defaultFilter(),
+        nextCursor: null,
+        isLoadingEntries: false,
+        error: undefined,
       })
     } catch (error) {
       setState({
@@ -80,38 +75,41 @@ export function useJournal(client: JournalClient) {
   }
 
   async function loadEntries(filter: EntryFilter, append = false) {
-    const requestId = ++latestEntryRequest.current
+    const requestEpoch = ++entryEpoch.current
     setState((current) => ({ ...current, isLoadingEntries: true, error: undefined }))
     try {
-      const page = await client.run<EntryPage>({ action: 'listEntries', filter })
-      if (requestId !== latestEntryRequest.current) return
+      const page = await client.run<EntryListResult>({ action: 'listEntries', filter })
+      if (requestEpoch !== entryEpoch.current) return
       setState((current) => ({
         ...current,
-        entries: append ? [...current.entries, ...page.entries] : page.entries,
+        entries: append ? [...current.entries, ...page.items] : page.items,
         filter,
         nextCursor: page.nextCursor,
         isLoadingEntries: false,
       }))
     } catch (error) {
-      if (requestId !== latestEntryRequest.current) return
+      if (requestEpoch !== entryEpoch.current) return
       setState((current) => ({ ...current, isLoadingEntries: false, error: error instanceof Error ? error.message : zhTW.api.requestFailed }))
     }
   }
 
   async function saveEntry(input: EntryInput) {
     const saved = await client.run<Entry>({ action: 'saveEntry', entry: input })
+    entryEpoch.current += 1
     setState((current) => ({
       ...current,
       entries: input.id
         ? current.entries.map((entry) => entry.id === saved.id ? saved : entry)
         : [saved, ...current.entries],
       tagSuggestions: [...new Set([...current.tagSuggestions, ...saved.tags])],
+      isLoadingEntries: false,
     }))
   }
 
   async function deleteEntry(id: string) {
     await client.run<void>({ action: 'deleteEntry', id })
-    setState((current) => ({ ...current, entries: current.entries.filter((entry) => entry.id !== id) }))
+    entryEpoch.current += 1
+    setState((current) => ({ ...current, entries: current.entries.filter((entry) => entry.id !== id), isLoadingEntries: false }))
   }
 
   function setFilter(filter: EntryFilter) {
