@@ -42,7 +42,8 @@ export class JournalService {
 
   listEntries(filter: EntryFilter): EntryListResult {
     const entries = this.filteredEntries(filter)
-    const cursorIndex = filter.cursor ? entries.findIndex((entry) => entry.id === filter.cursor) : -1
+    const cursorIndex = filter.cursor === null ? -1 : entries.findIndex((entry) => entry.id === filter.cursor)
+    if (filter.cursor !== null && cursorIndex === -1) throw new Error('查詢游標已失效，請重新載入。')
     const entriesAfterCursor = entries.slice(cursorIndex + 1)
     const limit = Math.max(0, Math.trunc(filter.limit))
     const items = entriesAfterCursor.slice(0, limit)

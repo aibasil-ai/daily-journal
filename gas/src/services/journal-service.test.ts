@@ -142,12 +142,21 @@ describe('JournalService 分類與記事寫入', () => {
 describe('JournalService 查詢與匯出', () => {
   test('以關鍵字、日期、分類與標籤交集篩選記事', () => {
     const service = serviceWithEntries([
-      storedEntry({ id: '1', entryDate: '2026-08-03', title: '週會', content: '規劃專案', categoryId: 'work', tags: ['會議'] }),
-      storedEntry({ id: '2', entryDate: '2026-08-04', title: '閱讀', content: '閱讀文章', categoryId: 'life', tags: ['學習'] }),
+      storedEntry({ id: 'match', entryDate: '2026-08-15', title: 'needle', categoryId: 'work', tags: ['focus'] }),
+      storedEntry({ id: 'missing-query', entryDate: '2026-08-16', title: 'other', categoryId: 'work', tags: ['focus'] }),
+      storedEntry({ id: 'before-from', entryDate: '2026-08-09', title: 'needle', categoryId: 'work', tags: ['focus'] }),
+      storedEntry({ id: 'after-to', entryDate: '2026-08-21', title: 'needle', categoryId: 'work', tags: ['focus'] }),
+      storedEntry({ id: 'wrong-category', entryDate: '2026-08-17', title: 'needle', categoryId: 'life', tags: ['focus'] }),
+      storedEntry({ id: 'wrong-tag', entryDate: '2026-08-18', title: 'needle', categoryId: 'work', tags: ['other'] }),
     ])
+    const filter = { query: 'needle', from: '2026-08-10', to: '2026-08-20', categoryId: 'work', tag: 'focus', cursor: null, limit: 20 }
 
-    expect(service.listEntries({ query: '專案', from: '2026-08-01', to: '2026-08-04', categoryId: 'work', tag: '會議', cursor: null, limit: 20 }).items)
-      .toEqual([expect.objectContaining({ id: '1' })])
+    expect(service.listEntries(filter).items.map((entry) => entry.id)).toEqual(['match'])
+    expect(service.listEntries({ ...filter, query: '' }).items.map((entry) => entry.id)).toEqual(['missing-query', 'match'])
+    expect(service.listEntries({ ...filter, from: null }).items.map((entry) => entry.id)).toEqual(['match', 'before-from'])
+    expect(service.listEntries({ ...filter, to: null }).items.map((entry) => entry.id)).toEqual(['after-to', 'match'])
+    expect(service.listEntries({ ...filter, categoryId: null }).items.map((entry) => entry.id)).toEqual(['wrong-category', 'match'])
+    expect(service.listEntries({ ...filter, tag: null }).items.map((entry) => entry.id)).toEqual(['wrong-tag', 'match'])
   })
 
   test('關鍵字不分大小寫搜尋標題、內容、標籤與連結顯示名稱', () => {
@@ -180,34 +189,64 @@ describe('JournalService 查詢與匯出', () => {
     })
   })
 
-  test('依指定日期與既有篩選條件取得記事', () => {
+  test('刪除 cursor 對應的記事後拒絕沿用游標', () => {
     const service = serviceWithEntries([
-      storedEntry({ id: 'work', entryDate: '2026-08-04', categoryId: 'work', tags: ['會議'] }),
-      storedEntry({ id: 'life', entryDate: '2026-08-04', categoryId: 'life', tags: ['會議'] }),
-      storedEntry({ id: 'other-day', entryDate: '2026-08-03', categoryId: 'work', tags: ['會議'] }),
+      storedEntry({ id: 'cursor', entryDate: '2026-08-04' }),
+      storedEntry({ id: 'later', entryDate: '2026-08-03' }),
     ])
 
-    expect(service.getEntriesForDate('2026-08-04', { query: '', from: null, to: null, categoryId: 'work', tag: '會議' }))
-      .toEqual([expect.objectContaining({ id: 'work' })])
+    service.deleteEntry('cursor')
+
+    expect(() => service.listEntries({ ...defaultFilter, cursor: 'cursor' })).toThrow('查詢游標已失效，請重新載入。')
+  })
+
+  test('拒絕任意不存在的 cursor', () => {
+    const service = serviceWithEntries([storedEntry({ id: 'existing' })])
+
+    expect(() => service.listEntries({ ...defaultFilter, cursor: 'missing' })).toThrow('查詢游標已失效，請重新載入。')
+  })
+
+  test('篩選變更後拒絕不再符合條件的 cursor', () => {
+    const service = serviceWithEntries([
+      storedEntry({ id: 'work', categoryId: 'work' }),
+      storedEntry({ id: 'life', categoryId: 'life' }),
+    ])
+
+    expect(() => service.listEntries({ ...defaultFilter, categoryId: 'life', cursor: 'work' })).toThrow('查詢游標已失效，請重新載入。')
+  })
+
+  test('依指定日期與既有篩選條件取得記事', () => {
+    const service = serviceWithEntries([
+      storedEntry({ id: 'match', entryDate: '2026-08-15', title: 'needle', categoryId: 'work', tags: ['focus'] }),
+      storedEntry({ id: 'missing-query', entryDate: '2026-08-15', title: 'other', categoryId: 'work', tags: ['focus'] }),
+      storedEntry({ id: 'wrong-category', entryDate: '2026-08-15', title: 'needle', categoryId: 'life', tags: ['focus'] }),
+      storedEntry({ id: 'wrong-tag', entryDate: '2026-08-15', title: 'needle', categoryId: 'work', tags: ['other'] }),
+      storedEntry({ id: 'other-date', entryDate: '2026-08-16', title: 'needle', categoryId: 'work', tags: ['focus'] }),
+    ])
+
+    expect(service.getEntriesForDate('2026-08-15', { query: 'needle', from: '2026-08-15', to: '2026-08-15', categoryId: 'work', tag: 'focus' }))
+      .toEqual([expect.objectContaining({ id: 'match' })])
   })
 
   test('月曆只回傳指定月份且符合篩選的有記事日期', () => {
     const service = serviceWithEntries([
-      storedEntry({ id: 'first', entryDate: '2026-08-03', categoryId: 'work' }),
-      storedEntry({ id: 'second', entryDate: '2026-08-04', categoryId: 'work' }),
-      storedEntry({ id: 'third', entryDate: '2026-08-04', categoryId: 'work' }),
-      storedEntry({ id: 'other-category', entryDate: '2026-08-04', categoryId: 'life' }),
-      storedEntry({ id: 'other-month', entryDate: '2026-09-04', categoryId: 'work' }),
+      storedEntry({ id: 'match', entryDate: '2026-08-15', title: 'needle', categoryId: 'work', tags: ['focus'] }),
+      storedEntry({ id: 'missing-query', entryDate: '2026-08-16', title: 'other', categoryId: 'work', tags: ['focus'] }),
+      storedEntry({ id: 'before-from', entryDate: '2026-08-09', title: 'needle', categoryId: 'work', tags: ['focus'] }),
+      storedEntry({ id: 'after-to', entryDate: '2026-08-21', title: 'needle', categoryId: 'work', tags: ['focus'] }),
+      storedEntry({ id: 'wrong-category', entryDate: '2026-08-17', title: 'needle', categoryId: 'life', tags: ['focus'] }),
+      storedEntry({ id: 'wrong-tag', entryDate: '2026-08-18', title: 'needle', categoryId: 'work', tags: ['other'] }),
     ])
 
-    expect(service.getMonthlyEntryCounts(2026, 8, { query: '', from: null, to: null, categoryId: 'work', tag: null }))
-      .toEqual([{ date: '2026-08-03', count: 1 }, { date: '2026-08-04', count: 2 }])
+    expect(service.getMonthlyEntryCounts(2026, 8, { query: 'needle', from: '2026-08-10', to: '2026-08-20', categoryId: 'work', tag: 'focus' }))
+      .toEqual([{ date: '2026-08-15', count: 1 }])
   })
 
   test('拒絕不在 1 到 12 的月份', () => {
     const service = serviceWithEntries([])
 
     expect(() => service.getMonthlyEntryCounts(2026, 0, emptyQueryFilter)).toThrow('月份必須介於 1 到 12。')
+    expect(() => service.getMonthlyEntryCounts(2026, 1.5, emptyQueryFilter)).toThrow('月份必須介於 1 到 12。')
     expect(() => service.getMonthlyEntryCounts(2026, 13, emptyQueryFilter)).toThrow('月份必須介於 1 到 12。')
   })
 
@@ -224,14 +263,19 @@ describe('JournalService 查詢與匯出', () => {
   test('匯出包含 Excel 所需欄位、分類名稱、標籤與連結文字', () => {
     const service = serviceWithEntries([
       storedEntry({
-        id: '1', entryDate: '2026-08-04', title: '週會', content: '整理內容', categoryId: 'work', tags: ['會議', '規劃'],
+        id: 'match', entryDate: '2026-08-15', title: 'needle', content: '整理內容', categoryId: 'work', tags: ['focus', '規劃'],
         links: [{ label: '會議紀錄', url: 'https://example.com/meeting' }, { label: '文件', url: 'https://example.com/docs' }],
       }),
+      storedEntry({ id: 'missing-query', entryDate: '2026-08-16', title: 'other', categoryId: 'work', tags: ['focus'] }),
+      storedEntry({ id: 'before-from', entryDate: '2026-08-09', title: 'needle', categoryId: 'work', tags: ['focus'] }),
+      storedEntry({ id: 'after-to', entryDate: '2026-08-21', title: 'needle', categoryId: 'work', tags: ['focus'] }),
+      storedEntry({ id: 'wrong-category', entryDate: '2026-08-17', title: 'needle', categoryId: 'life', tags: ['focus'] }),
+      storedEntry({ id: 'wrong-tag', entryDate: '2026-08-18', title: 'needle', categoryId: 'work', tags: ['other'] }),
     ])
 
-    expect(service.exportEntries(emptyQueryFilter)).toEqual({
+    expect(service.exportEntries({ query: 'needle', from: '2026-08-10', to: '2026-08-20', categoryId: 'work', tag: 'focus' })).toEqual({
       headers: ['id', 'entryDate', 'title', 'content', 'categoryName', 'tags', 'links', 'createdAt', 'updatedAt'],
-      rows: [['1', '2026-08-04', '週會', '整理內容', '工作', '會議; 規劃', '會議紀錄 (https://example.com/meeting); 文件 (https://example.com/docs)', '2026-08-01T09:00:00+08:00', '2026-08-01T09:00:00+08:00']],
+      rows: [['match', '2026-08-15', 'needle', '整理內容', '工作', 'focus; 規劃', '會議紀錄 (https://example.com/meeting); 文件 (https://example.com/docs)', '2026-08-01T09:00:00+08:00', '2026-08-01T09:00:00+08:00']],
     })
   })
 })
