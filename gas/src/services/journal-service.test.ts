@@ -1,8 +1,8 @@
 // @vitest-environment node
 
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import type { Category, Entry, EntryFilter, EntryInput } from '../domain/journal'
-import { JournalService } from './journal-service'
+import { createJournalService, JournalService } from './journal-service'
 import { FakeJournalStore } from '../test/fake-journal-store'
 
 describe('JournalService.bootstrap', () => {
@@ -20,6 +20,20 @@ describe('JournalService.bootstrap', () => {
       categories: [{ id: 'work', name: '工作', isActive: true, createdAt: '2026-08-04T00:00:00+08:00', updatedAt: '2026-08-04T00:00:00+08:00' }],
       tagSuggestions: [],
     })
+  })
+})
+
+describe('createJournalService', () => {
+  test('以試算表時區格式化時間並允許替換 UUID 來源', () => {
+    const formatTimestamp = vi.fn(() => '2026-08-04T09:00:00+08:00')
+    const store = Object.assign(new FakeJournalStore(), { formatTimestamp })
+
+    expect(createJournalService(store, undefined, () => 'category-new').saveCategory({ name: '生活' })).toMatchObject({
+      id: 'category-new',
+      createdAt: '2026-08-04T09:00:00+08:00',
+      updatedAt: '2026-08-04T09:00:00+08:00',
+    })
+    expect(formatTimestamp).toHaveBeenCalledWith(expect.any(Date))
   })
 })
 

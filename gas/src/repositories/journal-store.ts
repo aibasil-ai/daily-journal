@@ -9,4 +9,5 @@ export interface JournalStore {
   saveEntry(entry: Entry): Entry
   deleteEntry(id: string): void
   getTimezone(): string
+  formatTimestamp?(date: Date): string
 }

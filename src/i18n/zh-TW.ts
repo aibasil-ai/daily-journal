@@ -9,4 +9,11 @@ export const zhTW = {
     categoryId: '請選擇啟用中的分類。',
     links: '每個連結都需要名稱與有效的 http 或 https 網址。',
   },
+  auth: {
+    incomplete: 'Google 登入或授權未完成。',
+    expired: '登入已過期或沒有 GAS 使用權限，請重新登入。',
+  },
+  api: {
+    invalidResponse: '服務回應格式錯誤，請稍後再試。',
+  },
 } as const
