@@ -7,6 +7,7 @@ declare namespace google.accounts.oauth2 {
 
   interface TokenResponse {
     access_token?: string
+    expires_in?: number
     error?: string
   }
 

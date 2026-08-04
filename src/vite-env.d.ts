@@ -1,16 +1,15 @@
 /// <reference types="vite/client" />
 
-declare const __BUILD_JOURNAL_CONFIG__: {
+interface JournalConfig {
   googleClientId: string
   gasScriptId: string
 }
 
 declare global {
+  const __BUILD_JOURNAL_CONFIG__: JournalConfig
+
   interface Window {
-    __JOURNAL_CONFIG__?: {
-      googleClientId?: string
-      gasScriptId?: string
-    }
+    __JOURNAL_CONFIG__?: Partial<JournalConfig>
   }
 }
 
