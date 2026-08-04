@@ -1,4 +1,4 @@
-import type { Category, Entry, EntryFilter, EntryInput } from '../domain/journal'
+import type { Category, CategoryInput, Entry, EntryFilter, EntryInput } from '../domain/journal'
 import { normalizeEntryInput, validateEntryInput } from '../domain/validation'
 import type { JournalStore } from '../repositories/journal-store'
 
@@ -123,7 +123,7 @@ export class JournalService {
     })
   }
 
-  saveCategory(input: Pick<Category, 'name'> & { id?: string }): Category {
+  saveCategory(input: CategoryInput): Category {
     return this.store.withWriteLock(() => {
       const name = input.name.trim()
       if (!name) throw new JournalServiceError('請輸入分類名稱。')

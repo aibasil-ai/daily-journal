@@ -49,6 +49,27 @@ describe('GoogleOAuth', () => {
     expect(requestAccessToken).toHaveBeenNthCalledWith(2, { prompt: 'consent' })
   })
 
+  test('要求同意畫面時略過仍有效的快取權杖', async () => {
+    let callback: ((response: google.accounts.oauth2.TokenResponse) => void) | undefined
+    const requestAccessToken = vi.fn(() => callback?.({ access_token: `token-${requestAccessToken.mock.calls.length}`, expires_in: 3600 }))
+    vi.stubGlobal('google', {
+      accounts: {
+        oauth2: {
+          initTokenClient: vi.fn((tokenConfig: google.accounts.oauth2.TokenClientConfig) => {
+            callback = tokenConfig.callback
+            return { requestAccessToken }
+          }),
+        },
+      },
+    })
+    const oauth = new GoogleOAuth(config)
+
+    await expect(oauth.getAccessToken()).resolves.toBe('token-1')
+    await expect(oauth.getAccessToken('consent')).resolves.toBe('token-2')
+
+    expect(requestAccessToken).toHaveBeenNthCalledWith(2, { prompt: 'consent' })
+  })
+
   test('Google 回傳錯誤時不保留權杖並顯示固定繁中訊息', async () => {
     let callback: ((response: google.accounts.oauth2.TokenResponse) => void) | undefined
     vi.stubGlobal('google', {

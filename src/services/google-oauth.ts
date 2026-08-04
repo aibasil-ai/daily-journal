@@ -11,7 +11,7 @@ export class GoogleOAuth {
   constructor(private readonly config: RuntimeConfig) {}
 
   getAccessToken(prompt: '' | 'consent' = ''): Promise<string> {
-    if (this.accessToken && Date.now() < this.expiresAt) return Promise.resolve(this.accessToken)
+    if (prompt === '' && this.accessToken && Date.now() < this.expiresAt) return Promise.resolve(this.accessToken)
 
     return new Promise((resolve, reject) => {
       this.tokenClient = google.accounts.oauth2.initTokenClient({

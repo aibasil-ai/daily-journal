@@ -27,6 +27,11 @@ export type EntryInput = Omit<Entry, 'id' | 'createdAt' | 'updatedAt'> & {
   id?: string
 }
 
+export type CategoryInput = {
+  id?: string
+  name: string
+}
+
 export type EntryFilter = {
   query: string
   from: string | null
@@ -44,7 +49,7 @@ export type ApiRequest =
   | { action: 'getMonthlyEntryCounts'; year: number; month: number; filter: Omit<EntryFilter, 'cursor' | 'limit'> }
   | { action: 'saveEntry'; entry: EntryInput }
   | { action: 'deleteEntry'; id: string }
-  | { action: 'saveCategory'; category: Pick<Category, 'id' | 'name'> & { id?: string } }
+  | { action: 'saveCategory'; category: CategoryInput }
   | { action: 'deactivateCategory'; id: string }
   | { action: 'exportEntries'; filter: Omit<EntryFilter, 'cursor' | 'limit'> }
 

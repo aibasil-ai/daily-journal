@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { RuntimeConfig } from '../config/runtime-config'
-import { AuthenticationError, ExecutionClient } from './execution-client'
+import { AuthenticationError, ExecutionClient, ExecutionClientError } from './execution-client'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -42,6 +42,30 @@ describe('ExecutionClient', () => {
 
     await expect(new ExecutionClient(config, { getAccessToken: vi.fn().mockResolvedValue('token') }).run({ action: 'bootstrap' }))
       .rejects.toThrow('尚未啟用 Apps Script API。')
+  })
+
+  test('網路請求失敗時不洩漏瀏覽器例外', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+
+    await expect(new ExecutionClient(config, { getAccessToken: vi.fn().mockResolvedValue('token') }).run({ action: 'bootstrap' }))
+      .rejects.toEqual(new ExecutionClientError('暫時無法連線至服務，請稍後再試。'))
+  })
+
+  test('非 JSON HTTP 回應時不洩漏回應內容', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('upstream gateway failure', { status: 500 })))
+
+    await expect(new ExecutionClient(config, { getAccessToken: vi.fn().mockResolvedValue('token') }).run({ action: 'bootstrap' }))
+      .rejects.toEqual(new ExecutionClientError('暫時無法連線至服務，請稍後再試。'))
+  })
+
+  test('JSON 解析失敗時不洩漏瀏覽器例外', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      status: 500,
+      json: vi.fn().mockRejectedValue(new SyntaxError('Unexpected token <')),
+    }))
+
+    await expect(new ExecutionClient(config, { getAccessToken: vi.fn().mockResolvedValue('token') }).run({ action: 'bootstrap' }))
+      .rejects.toEqual(new ExecutionClientError('暫時無法連線至服務，請稍後再試。'))
   })
 })
 

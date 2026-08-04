@@ -15,5 +15,6 @@ export const zhTW = {
   },
   api: {
     invalidResponse: '服務回應格式錯誤，請稍後再試。',
+    requestFailed: '暫時無法連線至服務，請稍後再試。',
   },
 } as const
