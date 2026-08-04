@@ -1,0 +1,36 @@
+{
+  "name": "daily-journal-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "build:gas": "node scripts/build-gas.mjs",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "lint": "eslint .",
+    "check": "npm run lint && npm run test:run && npm run build && npm run build:gas"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.0.0",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/user-event": "^14.0.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "esbuild": "^0.27.0",
+    "eslint": "^9.0.0",
+    "jsdom": "^26.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^8.0.0",
+    "vitest": "^4.0.0"
+  }
+}

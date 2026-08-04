@@ -2,12 +2,15 @@
 node_modules/
 dist/
 coverage/
+gas-dist/
 
 # Local configuration and credentials
 .env
 .env.*
 !.env.example
 app-config.js
+public/app-config.js
+.clasp.json
 
 # Local tooling
 .superpowers/
