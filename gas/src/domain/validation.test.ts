@@ -14,6 +14,14 @@ describe('validateEntryInput', () => {
     expect(validateLink('/relative-path')).toEqual(['links'])
     expect(validateLink('https://example.com/has space')).toEqual(['links'])
   })
+
+  test('只接受範圍為 0 到 65535 的數字連接埠', () => {
+    expect(validateLink('https://example.com:0')).toEqual([])
+    expect(validateLink('https://example.com:65535')).toEqual([])
+    expect(validateLink('https://example.com:99999')).toEqual(['links'])
+    expect(validateLink('https://example.com:http')).toEqual(['links'])
+    expect(validateLink('https://example.com:-1')).toEqual(['links'])
+  })
 })
 
 function validateLink(url: string): string[] {

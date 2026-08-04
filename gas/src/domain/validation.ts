@@ -42,6 +42,11 @@ function isHttpUrl(value: string): boolean {
   const match = /^https?:\/\/([^\s/?#]+)(?:[/?#][^\s]*)?$/i.exec(value)
   if (!match) return false
 
-  const host = match[1].replace(/^.*@/, '').replace(/:\d+$/, '')
-  return /^[a-z0-9.-]+$/i.test(host) || /^\[[a-f0-9:]+\]$/i.test(host)
+  const authority = match[1].replace(/^.*@/, '')
+  const hostAndPort = /^(\[[a-f0-9:]+\]|[a-z0-9.-]+)(?::(\d+))?$/i.exec(authority)
+  if (!hostAndPort) return false
+
+  const [, host, port] = hostAndPort
+  if (!(/^[a-z0-9.-]+$/i.test(host) || /^\[[a-f0-9:]+\]$/i.test(host))) return false
+  return port === undefined || Number(port) <= 65_535
 }
