@@ -12,6 +12,7 @@ export const zhTW = {
   auth: {
     incomplete: 'Google 登入或授權未完成。',
     expired: '登入已過期或沒有 GAS 使用權限，請重新登入。',
+    sdkUnavailable: 'Google 登入服務尚未載入。請確認網路連線後重新整理頁面，再重新登入。',
   },
   api: {
     invalidResponse: '服務回應格式錯誤，請稍後再試。',

@@ -85,6 +85,20 @@ describe('GoogleOAuth', () => {
 
     await expect(new GoogleOAuth(config).getAccessToken()).rejects.toThrow('Google 登入或授權未完成。')
   })
+
+  test('GIS SDK 未載入時提供可操作的固定繁中訊息', async () => {
+    await expect(new GoogleOAuth(config).getAccessToken()).rejects.toThrow(
+      'Google 登入服務尚未載入。請確認網路連線後重新整理頁面，再重新登入。',
+    )
+  })
+
+  test('GIS SDK 缺少 initTokenClient 時提供可操作的固定繁中訊息', async () => {
+    vi.stubGlobal('google', { accounts: { oauth2: {} } })
+
+    await expect(new GoogleOAuth(config).getAccessToken()).rejects.toThrow(
+      'Google 登入服務尚未載入。請確認網路連線後重新整理頁面，再重新登入。',
+    )
+  })
 })
 
 const config: RuntimeConfig = { googleClientId: 'client-id', gasScriptId: 'script-id' }

@@ -11,7 +11,7 @@ export type JournalBootstrap = {
 }
 
 export type JournalClient = {
-  signIn?: () => Promise<void>
+  signIn: () => Promise<void>
   run: (request: { action: 'bootstrap' }) => Promise<JournalBootstrap>
 }
 
@@ -39,7 +39,7 @@ export function useJournal(client: JournalClient) {
 
     setState({ ...signedOutState, status: 'loading' })
     try {
-      if (requestSignIn) await client.signIn?.()
+      if (requestSignIn) await client.signIn()
       const bootstrap = await client.run({ action: 'bootstrap' })
       setState({
         status: 'ready',

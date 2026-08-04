@@ -12,6 +12,9 @@ export class GoogleOAuth {
 
   getAccessToken(prompt: '' | 'consent' = ''): Promise<string> {
     if (prompt === '' && this.accessToken && Date.now() < this.expiresAt) return Promise.resolve(this.accessToken)
+    if (typeof google === 'undefined' || typeof google.accounts?.oauth2?.initTokenClient !== 'function') {
+      return Promise.reject(new Error(zhTW.auth.sdkUnavailable))
+    }
 
     return new Promise((resolve, reject) => {
       this.tokenClient = google.accounts.oauth2.initTokenClient({
