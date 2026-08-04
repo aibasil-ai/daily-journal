@@ -215,17 +215,25 @@ describe('JournalService 查詢與匯出', () => {
     expect(() => service.listEntries({ ...defaultFilter, categoryId: 'life', cursor: 'work' })).toThrow('查詢游標已失效，請重新載入。')
   })
 
-  test('依指定日期與既有篩選條件取得記事', () => {
+  test('依指定日期套用所有篩選條件，並分別限制日期範圍', () => {
     const service = serviceWithEntries([
       storedEntry({ id: 'match', entryDate: '2026-08-15', title: 'needle', categoryId: 'work', tags: ['focus'] }),
       storedEntry({ id: 'missing-query', entryDate: '2026-08-15', title: 'other', categoryId: 'work', tags: ['focus'] }),
       storedEntry({ id: 'wrong-category', entryDate: '2026-08-15', title: 'needle', categoryId: 'life', tags: ['focus'] }),
       storedEntry({ id: 'wrong-tag', entryDate: '2026-08-15', title: 'needle', categoryId: 'work', tags: ['other'] }),
-      storedEntry({ id: 'other-date', entryDate: '2026-08-16', title: 'needle', categoryId: 'work', tags: ['focus'] }),
+      storedEntry({ id: 'before-from', entryDate: '2026-08-09', title: 'needle', categoryId: 'work', tags: ['focus'] }),
+      storedEntry({ id: 'after-to', entryDate: '2026-08-21', title: 'needle', categoryId: 'work', tags: ['focus'] }),
     ])
+    const filter = { query: 'needle', from: '2026-08-10', to: '2026-08-20', categoryId: 'work', tag: 'focus' }
 
-    expect(service.getEntriesForDate('2026-08-15', { query: 'needle', from: '2026-08-15', to: '2026-08-15', categoryId: 'work', tag: 'focus' }))
-      .toEqual([expect.objectContaining({ id: 'match' })])
+    expect(service.getEntriesForDate('2026-08-15', filter).map((entry) => entry.id)).toEqual(['match'])
+    expect(service.getEntriesForDate('2026-08-15', { ...filter, query: '' }).map((entry) => entry.id)).toEqual(['missing-query', 'match'])
+    expect(service.getEntriesForDate('2026-08-15', { ...filter, categoryId: null }).map((entry) => entry.id)).toEqual(['wrong-category', 'match'])
+    expect(service.getEntriesForDate('2026-08-15', { ...filter, tag: null }).map((entry) => entry.id)).toEqual(['wrong-tag', 'match'])
+    expect(service.getEntriesForDate('2026-08-09', filter)).toEqual([])
+    expect(service.getEntriesForDate('2026-08-09', { ...filter, from: null }).map((entry) => entry.id)).toEqual(['before-from'])
+    expect(service.getEntriesForDate('2026-08-21', filter)).toEqual([])
+    expect(service.getEntriesForDate('2026-08-21', { ...filter, to: null }).map((entry) => entry.id)).toEqual(['after-to'])
   })
 
   test('月曆只回傳指定月份且符合篩選的有記事日期', () => {
