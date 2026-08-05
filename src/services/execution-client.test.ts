@@ -14,7 +14,7 @@ describe('ExecutionClient', () => {
     await expect(new ExecutionClient(config, { getAccessToken: vi.fn().mockResolvedValue('token') }).run({ action: 'bootstrap' })).resolves.toEqual([])
 
     expect(fetch).toHaveBeenCalledWith(
-      'https://script.googleapis.com/v1/scripts/script-id:run',
+      'https://script.googleapis.com/v1/scripts/deployment-id:run',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({ Authorization: 'Bearer token' }),
@@ -71,4 +71,4 @@ describe('ExecutionClient', () => {
   })
 })
 
-const config: RuntimeConfig = { googleClientId: 'client-id', gasScriptId: 'script-id' }
+const config: RuntimeConfig = { googleClientId: 'client-id', gasDeploymentId: 'deployment-id' }

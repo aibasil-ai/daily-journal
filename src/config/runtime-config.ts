@@ -2,7 +2,7 @@ import { zhTW } from '../i18n/zh-TW'
 
 export type RuntimeConfig = {
   googleClientId: string
-  gasScriptId: string
+  gasDeploymentId: string
 }
 
 export class ConfigError extends Error {
@@ -28,15 +28,15 @@ export function loadRuntimeConfig(): RuntimeConfig {
 function toRuntimeConfig(config: unknown): RuntimeConfig | undefined {
   if (!config || typeof config !== 'object') return undefined
 
-  const { googleClientId, gasScriptId } = config as Partial<RuntimeConfig>
-  if (typeof googleClientId !== 'string' || typeof gasScriptId !== 'string') return undefined
+  const { googleClientId, gasDeploymentId } = config as Partial<RuntimeConfig>
+  if (typeof googleClientId !== 'string' || typeof gasDeploymentId !== 'string') return undefined
 
   const normalizedGoogleClientId = googleClientId.trim()
-  const normalizedGasScriptId = gasScriptId.trim()
-  if (!normalizedGoogleClientId || !normalizedGasScriptId) return undefined
+  const normalizedGasDeploymentId = gasDeploymentId.trim()
+  if (!normalizedGoogleClientId || !normalizedGasDeploymentId) return undefined
 
   return {
     googleClientId: normalizedGoogleClientId,
-    gasScriptId: normalizedGasScriptId,
+    gasDeploymentId: normalizedGasDeploymentId,
   }
 }

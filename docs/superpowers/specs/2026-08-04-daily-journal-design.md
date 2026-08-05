@@ -62,7 +62,7 @@ Google Sheets
 前端只需要兩個公開設定：
 
 - `APP_GOOGLE_CLIENT_ID`：Google OAuth 用戶端 ID。
-- `APP_GAS_SCRIPT_ID`：GAS 專案 Script ID。
+- `APP_GAS_DEPLOYMENT_ID`：GAS API Executable Deployment ID。
 
 這些值不是機密資訊，但每位部署者都必須使用自己的設定。建置工具應讀取上述通用環境變數並產生瀏覽器可讀設定。
 

@@ -22,12 +22,12 @@ afterEach(() => {
 })
 
 test('缺少部署設定時顯示完整處理指引', async () => {
-  vi.stubGlobal('__BUILD_JOURNAL_CONFIG__', { googleClientId: '', gasScriptId: '' })
+  vi.stubGlobal('__BUILD_JOURNAL_CONFIG__', { googleClientId: '', gasDeploymentId: '' })
 
   render(<App />)
 
   expect(await screen.findByRole('heading', { name: '部署設定有誤' })).toBeInTheDocument()
-  expect(screen.getByText('找不到部署設定。請設定 APP_GOOGLE_CLIENT_ID 與 APP_GAS_SCRIPT_ID，或建立 public/app-config.js。')).toBeInTheDocument()
+  expect(screen.getByText('找不到部署設定。請設定 APP_GOOGLE_CLIENT_ID 與 APP_GAS_DEPLOYMENT_ID，或建立 public/app-config.js。')).toBeInTheDocument()
 })
 
 test('登入後載入啟用分類並進入首頁', async () => {
@@ -139,7 +139,7 @@ test('網路錯誤顯示可重新嘗試的指引', async () => {
 })
 
 test('GIS SDK 未載入時顯示重新登入與重新嘗試指引', async () => {
-  vi.stubGlobal('__BUILD_JOURNAL_CONFIG__', { googleClientId: 'client-id', gasScriptId: 'script-id' })
+  vi.stubGlobal('__BUILD_JOURNAL_CONFIG__', { googleClientId: 'client-id', gasDeploymentId: 'deployment-id' })
   const user = userEvent.setup()
   render(<App />)
 

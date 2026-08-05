@@ -103,4 +103,4 @@ describe('GoogleOAuth', () => {
   })
 })
 
-const config: RuntimeConfig = { googleClientId: 'client-id', gasScriptId: 'script-id' }
+const config: RuntimeConfig = { googleClientId: 'client-id', gasDeploymentId: 'deployment-id' }

@@ -1,6 +1,6 @@
 # 部署文件
 
-本文件從空白的 Google 資源開始設定每日記事。前端只需要公開的 `APP_GOOGLE_CLIENT_ID` 與 `APP_GAS_SCRIPT_ID`；試算表識別資訊僅存在 GAS 的 Script Properties，絕不可寫入前端、設定範例或 Git。
+本文件從空白的 Google 資源開始設定每日記事。前端只需要公開的 `APP_GOOGLE_CLIENT_ID` 與 `APP_GAS_DEPLOYMENT_ID`；試算表識別資訊僅存在 GAS 的 Script Properties，絕不可寫入前端、設定範例或 Git。
 
 ## 先決條件
 
@@ -105,7 +105,8 @@ clasp push
 1. 在 GAS 編輯器選擇「部署 > 新增部署」。
 2. 部署類型選擇 **API Executable**。
 3. 存取權設定為「僅我自己」，完成部署。
-4. 在本機專案開啟 `gas/appsscript.json`，確認其設定包含：
+4. 在部署詳情複製此 **API Executable Deployment ID**（通常以 `AKfycb` 開頭）。這不是 GAS Script ID；前端必須使用前者呼叫 Execution API。
+5. 在本機專案開啟 `gas/appsscript.json`，確認其設定包含：
 
 ```json
 {
@@ -123,7 +124,7 @@ clasp push
 
 ```dotenv
 APP_GOOGLE_CLIENT_ID=你的 Google OAuth 用戶端 ID
-APP_GAS_SCRIPT_ID=你的 GAS Script ID
+APP_GAS_DEPLOYMENT_ID=你的 GAS API Executable Deployment ID
 ```
 
 在 Vercel、Cloudflare Pages、Netlify 與 GitHub Pages Actions 的建置環境變數設定這兩個值。若一般靜態主機無法提供建置環境變數，改為：
@@ -201,6 +202,7 @@ Output directory: dist
 | `clasp` 無法辨識 | 在本機執行 `npm install --global @google/clasp`，完成後重開 PowerShell，再以 `clasp --version` 確認。也可改用 `npx --yes @google/clasp@latest <指令>`。 |
 | `User has not enabled the Apps Script API` | 使用同一個 Google 帳號開啟 `https://script.google.com/home/usersettings` 並啟用 Apps Script API 使用者存取權，等待 1 至 5 分鐘後重新執行 `clasp login` 與 `clasp push`。 |
 | 授權出現 `403: access_denied` 或「尚未完成 Google 驗證程序」 | 在同一 Cloud 專案的「Google Auth Platform > 目標對象 > 測試使用者」加入實際登入帳號。個人測試不需要發布為正式版。 |
+| `Requested entity was not found` | 前端的 `APP_GAS_DEPLOYMENT_ID` 必須是 API Executable 部署詳情中的 Deployment ID（通常以 `AKfycb` 開頭），不可填入 GAS Script ID。更新 Vercel 的 Production 環境變數後重新部署。 |
 | GAS 工具列顯示「沒有函式」 | 先確認 `npm run build:gas` 與 `clasp push` 都成功，重新整理 GAS 編輯器，並確認左側有推送後的 `Code.js`。不要手動修改預設 `myFunction`。 |
 | GAS access denied | 確認 GAS 已部署為 API Executable、存取權為「僅我自己」、`executionApi.access` 是 `MYSELF`，並以擁有 GAS 與試算表權限的同一 Google 帳號登入。 |
 | 找不到 `SPREADSHEET_ID` | 在 Apps Script「專案設定 > 指令碼屬性」新增 `SPREADSHEET_ID`，值填入實際 Google Sheets ID；回到編輯器選擇無參數的 `initializeJournal` 執行並完成授權。不要把此值加入任何前端設定。 |

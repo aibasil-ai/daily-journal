@@ -12,7 +12,7 @@
 
 ## 架構
 
-瀏覽器只持有 Google OAuth 用戶端 ID 與 GAS Script ID。取得 OAuth access token 後，前端呼叫 Apps Script Execution API 的 `executeAppRequest`。GAS 將 Google Sheets ID 保存在「專案設定 > 指令碼屬性」的 `SPREADSHEET_ID`，並以試算表時區讀寫 `entries`、`categories` 與 `settings` 工作表。部署者必須在 GAS 編輯器手動執行無參數的 `initializeJournal` 建立 schema；前端不會呼叫它。
+瀏覽器只持有 Google OAuth 用戶端 ID 與 GAS API Executable Deployment ID。取得 OAuth access token 後，前端呼叫 Apps Script Execution API 的 `executeAppRequest`。GAS 將 Google Sheets ID 保存在「專案設定 > 指令碼屬性」的 `SPREADSHEET_ID`，並以試算表時區讀寫 `entries`、`categories` 與 `settings` 工作表。部署者必須在 GAS 編輯器手動執行無參數的 `initializeJournal` 建立 schema；前端不會呼叫它。
 
 ## 先決條件
 
@@ -33,7 +33,7 @@ Copy-Item .env.example .env
 
 ```dotenv
 APP_GOOGLE_CLIENT_ID=你的 Google OAuth 用戶端 ID
-APP_GAS_SCRIPT_ID=你的 GAS Script ID
+APP_GAS_DEPLOYMENT_ID=你的 GAS API Executable Deployment ID
 ```
 
 啟動開發伺服器：
@@ -62,7 +62,7 @@ npm run check
 前端只有下列兩個公開設定值：
 
 - `APP_GOOGLE_CLIENT_ID`
-- `APP_GAS_SCRIPT_ID`
+- `APP_GAS_DEPLOYMENT_ID`
 
 可在靜態主機的建置環境變數設定它們，或將 `public/app-config.example.js` 複製成未追蹤的 `public/app-config.js` 後填入值，再執行建置。不要將本機 `.env`、`.clasp.json`、`public/app-config.js` 或任何資料庫識別資訊提交至 Git。
 

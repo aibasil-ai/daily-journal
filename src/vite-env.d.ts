@@ -2,7 +2,7 @@
 
 interface JournalConfig {
   googleClientId: string
-  gasScriptId: string
+  gasDeploymentId: string
 }
 
 declare global {

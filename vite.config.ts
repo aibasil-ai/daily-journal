@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
     define: {
       __BUILD_JOURNAL_CONFIG__: JSON.stringify({
         googleClientId: env.APP_GOOGLE_CLIENT_ID ?? '',
-        gasScriptId: env.APP_GAS_SCRIPT_ID ?? '',
+        gasDeploymentId: env.APP_GAS_DEPLOYMENT_ID ?? '',
       }),
     },
   }

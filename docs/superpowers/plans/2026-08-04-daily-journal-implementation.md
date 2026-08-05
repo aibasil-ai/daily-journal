@@ -12,7 +12,7 @@
 
 - 介面預設使用繁體中文；所有使用者可見文字集中於 `src/i18n/zh-TW.ts`。
 - 靜態網站必須可部署於 Vercel、Cloudflare Pages、Netlify、GitHub Pages 及一般靜態主機，不得依賴 Vercel 專屬 API 或函式。
-- 建置設定使用 `APP_GOOGLE_CLIENT_ID` 與 `APP_GAS_SCRIPT_ID`；靜態主機可用未追蹤的 `public/app-config.js` 覆寫。
+- 建置設定使用 `APP_GOOGLE_CLIENT_ID` 與 `APP_GAS_DEPLOYMENT_ID`；靜態主機可用未追蹤的 `public/app-config.js` 覆寫。
 - 前端不得直接存取 Google Sheets 或保存存取權杖；存取權杖只保存在記憶體。
 - GAS 的 `SPREADSHEET_ID` 只可儲存在 Script Properties，且所有日期和時間必須使用 Google Sheets 時區。
 - 每則記事只有一個啟用分類，分類與內文必填；標題選填；標籤及連結可有多筆。
@@ -194,12 +194,12 @@ export function App() {
 }
 ```
 
-`vite.config.ts` 必須以 `loadEnv(mode, process.cwd(), '')` 讀取 `APP_GOOGLE_CLIENT_ID`、`APP_GAS_SCRIPT_ID`，並注入 `__BUILD_JOURNAL_CONFIG__`。`public/app-config.example.js` 使用：
+`vite.config.ts` 必須以 `loadEnv(mode, process.cwd(), '')` 讀取 `APP_GOOGLE_CLIENT_ID`、`APP_GAS_DEPLOYMENT_ID`，並注入 `__BUILD_JOURNAL_CONFIG__`。`public/app-config.example.js` 使用：
 
 ```js
 window.__JOURNAL_CONFIG__ = {
   googleClientId: '請填入 Google OAuth Client ID',
-  gasScriptId: '請填入 GAS Script ID',
+  gasDeploymentId: '請填入 GAS API Executable Deployment ID',
 }
 ```
 
@@ -272,8 +272,8 @@ import { loadRuntimeConfig } from './runtime-config'
 import { validateEntryInput } from '../domain/validation'
 
 test('優先使用靜態 app-config 設定', () => {
-  window.__JOURNAL_CONFIG__ = { googleClientId: 'runtime-id', gasScriptId: 'runtime-script' }
-  expect(loadRuntimeConfig()).toEqual({ googleClientId: 'runtime-id', gasScriptId: 'runtime-script' })
+  window.__JOURNAL_CONFIG__ = { googleClientId: 'runtime-id', gasDeploymentId: 'runtime-deployment' }
+  expect(loadRuntimeConfig()).toEqual({ googleClientId: 'runtime-id', gasDeploymentId: 'runtime-deployment' })
 })
 
 test('拒絕空白內文與停用分類', () => {
@@ -320,7 +320,7 @@ export function validateEntryInput(input: EntryInput, activeCategoryIds: Set<str
 }
 ```
 
-`loadRuntimeConfig()` 先讀取非空的 `window.__JOURNAL_CONFIG__`，再讀取編譯期設定；缺少任一值時拋出：`找不到部署設定。請設定 APP_GOOGLE_CLIENT_ID 與 APP_GAS_SCRIPT_ID，或建立 public/app-config.js。`。
+`loadRuntimeConfig()` 先讀取非空的 `window.__JOURNAL_CONFIG__`，再讀取編譯期設定；缺少任一值時拋出：`找不到部署設定。請設定 APP_GOOGLE_CLIENT_ID 與 APP_GAS_DEPLOYMENT_ID，或建立 public/app-config.js。`。
 
 - [ ] **Step 4: 執行設定與驗證測試**
 
@@ -955,7 +955,7 @@ import { readFile } from 'node:fs/promises'
 test('環境變數範例只含公開設定鍵', async () => {
   const content = await readFile('.env.example', 'utf8')
   expect(content).toContain('APP_GOOGLE_CLIENT_ID=')
-  expect(content).toContain('APP_GAS_SCRIPT_ID=')
+  expect(content).toContain('APP_GAS_DEPLOYMENT_ID=')
   expect(content).not.toMatch(/SPREADSHEET_ID|CLIENT_SECRET|ACCESS_TOKEN/)
 })
 ```
@@ -978,9 +978,9 @@ Expected: FAIL，因設定檔內容與測試尚未完成。
 2. 建立標準 Google Cloud 專案，啟用 Google Apps Script API，並將 GAS 專案關聯至同一 Cloud 專案。
 3. 建立 OAuth 2.0 Web Client，在「授權 JavaScript 來源」加入 `http://localhost:5173` 與正式網域；不加入 Vercel Preview 網址。
 4. 複製 `.clasp.json.example` 為未追蹤的 `.clasp.json`，填入 GAS Script ID；使用 `clasp login`、`npm run build:gas`、`clasp push`。
-5. 在 GAS 編輯器以手動執行 `initializeJournal('你的 Sheet ID')` 完成授權與工作表初始化。
-6. 在 GAS 部署選擇 API Executable，存取權設定為「僅我自己」，並確認 `appsscript.json` 的 `executionApi.access` 為 `MYSELF`。
-7. 將 `APP_GOOGLE_CLIENT_ID`、`APP_GAS_SCRIPT_ID` 放入 Vercel、Cloudflare Pages、Netlify、GitHub Pages Actions 的建置環境變數，或建立未追蹤的 `public/app-config.js` 後執行 `npm run build`。
+5. 在 GAS 編輯器以手動執行無參數的 `initializeJournal()` 完成授權與工作表初始化。
+6. 在 GAS 部署選擇 API Executable，存取權設定為「僅我自己」，確認 `appsscript.json` 的 `executionApi.access` 為 `MYSELF`，並記下該部署的 Deployment ID。
+7. 將 `APP_GOOGLE_CLIENT_ID`、`APP_GAS_DEPLOYMENT_ID` 放入 Vercel、Cloudflare Pages、Netlify、GitHub Pages Actions 的建置環境變數，或建立未追蹤的 `public/app-config.js` 後執行 `npm run build`。
 8. 各平台的輸出目錄均為 `dist`；SPA 需設定未知路由回傳 `index.html`。
 
 文件必須列出「OAuth origin_mismatch」、「Apps Script API 未啟用」、「GAS access denied」、「找不到 SPREADSHEET_ID」、「Sheets 時區不正確」五個錯誤與對應修正方式。

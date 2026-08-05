@@ -35,7 +35,7 @@ export class ExecutionClient {
     const accessToken = await this.oauth.getAccessToken()
     let response: Response
     try {
-      response = await fetch(`https://script.googleapis.com/v1/scripts/${this.config.gasScriptId}:run`, {
+      response = await fetch(`https://script.googleapis.com/v1/scripts/${this.config.gasDeploymentId}:run`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,

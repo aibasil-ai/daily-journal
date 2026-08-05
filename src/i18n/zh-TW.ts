@@ -1,7 +1,7 @@
 export const zhTW = {
   appTitle: '每日記事',
   config: {
-    missingDeployment: '找不到部署設定。請設定 APP_GOOGLE_CLIENT_ID 與 APP_GAS_SCRIPT_ID，或建立 public/app-config.js。',
+    missingDeployment: '找不到部署設定。請設定 APP_GOOGLE_CLIENT_ID 與 APP_GAS_DEPLOYMENT_ID，或建立 public/app-config.js。',
   },
   validation: {
     entryDate: '請選擇記錄日期。',
