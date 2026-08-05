@@ -1,4 +1,4 @@
 {
-  "scriptId": "請填入 GAS Script ID",
+  "scriptId": "YOUR_GAS_SCRIPT_ID",
   "rootDir": "gas-dist"
 }

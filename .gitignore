@@ -11,6 +11,8 @@ gas-dist/
 app-config.js
 public/app-config.js
 .clasp.json
+.vercel/
+.netlify/
 
 # Local tooling
 .superpowers/
