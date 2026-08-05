@@ -1,13 +1,13 @@
 import { initializeJournal } from './setup'
 import { executeAppRequest } from './api/dispatcher'
 
-export { initializeJournal }
+export { initializeJournal, executeAppRequest }
 
 const gasGlobal = globalThis as typeof globalThis & {
-  initializeJournal?: typeof initializeJournal
-  executeAppRequest?: typeof executeAppRequest
+  __dailyJournalInitializeJournal?: typeof initializeJournal
+  __dailyJournalExecuteAppRequest?: typeof executeAppRequest
 }
 
-// GAS 編輯器需要全域函式；初始化無參數且只會冪等建立既有試算表的 schema。
-gasGlobal.initializeJournal = initializeJournal
-gasGlobal.executeAppRequest = executeAppRequest
+// 建置腳本會以頂層 GAS wrapper 呼叫這些安全命名的內部實作。
+gasGlobal.__dailyJournalInitializeJournal = initializeJournal
+gasGlobal.__dailyJournalExecuteAppRequest = executeAppRequest

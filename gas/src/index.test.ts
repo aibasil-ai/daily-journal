@@ -3,15 +3,17 @@
 import { afterEach, expect, test, vi } from 'vitest'
 
 afterEach(() => {
-  delete (globalThis as { executeAppRequest?: unknown }).executeAppRequest
-  delete (globalThis as { initializeJournal?: unknown }).initializeJournal
+  delete (globalThis as { __dailyJournalExecuteAppRequest?: unknown }).__dailyJournalExecuteAppRequest
+  delete (globalThis as { __dailyJournalInitializeJournal?: unknown }).__dailyJournalInitializeJournal
   vi.resetModules()
 })
 
-test('將部署初始化與前端 API 函式掛到 GAS 全域範圍', async () => {
+test('將 GAS wrapper 的內部實作掛到安全命名的全域範圍', async () => {
   await import('./index')
 
-  expect(globalThis.executeAppRequest).toEqual(expect.any(Function))
-  expect(globalThis.initializeJournal).toEqual(expect.any(Function))
-  expect(globalThis.initializeJournal).toHaveLength(0)
+  expect(globalThis.__dailyJournalExecuteAppRequest).toEqual(expect.any(Function))
+  expect(globalThis.__dailyJournalInitializeJournal).toEqual(expect.any(Function))
+  expect(globalThis.__dailyJournalInitializeJournal).toHaveLength(0)
+  expect(globalThis.initializeJournal).toBeUndefined()
+  expect(globalThis.executeAppRequest).toBeUndefined()
 })
