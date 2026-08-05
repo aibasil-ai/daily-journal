@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { loadRuntimeConfig } from './config/runtime-config'
 import { EntryForm } from './features/entries/entry-form'
+import { CalendarView } from './features/entries/calendar-view'
 import { FilterBar } from './features/entries/filter-bar'
 import { Timeline } from './features/entries/timeline'
 import { ConnectionScreen } from './features/journal/connection-screen'
 import { type JournalClient, useJournal } from './features/journal/use-journal'
+import { getInitialView, loadViewPreference, saveViewPreference, type JournalView } from './features/journal/view-preference'
 import type { Entry } from './domain/journal'
 import { zhTW } from './i18n/zh-TW'
 import { GoogleOAuth } from './services/google-oauth'
@@ -70,37 +72,68 @@ export function App({ client }: AppProps) {
 function JournalApplication({ client }: { client: JournalClient }) {
   const journal = useJournal(client)
   const [editingEntry, setEditingEntry] = useState<Entry | undefined>()
+  const [view, setView] = useState<JournalView>(() => getInitialView(typeof window === 'undefined' ? 1024 : window.innerWidth, loadViewPreference()))
+  const [month, setMonth] = useState(currentMonth)
+
+  useEffect(() => {
+    if (journal.status !== 'ready' || view !== 'calendar') return
+    void journal.loadMonthlyEntryCounts(month)
+  }, [journal.status, view, month, journal.filter.query, journal.filter.from, journal.filter.to, journal.filter.categoryId, journal.filter.tag])
+
+  function changeView(nextView: JournalView) {
+    setView(nextView)
+    saveViewPreference(nextView)
+  }
 
   if (journal.status === 'ready') {
     return (
       <div className="journal-application">
         <p>{zhTW.journal.ready}</p>
-        <EntryForm
-          key={editingEntry?.id ?? 'new'}
-          entry={editingEntry}
-          categories={journal.categories}
-          tagSuggestions={journal.tagSuggestions}
-          onSave={async (input) => {
-            await journal.saveEntry(input)
-            setEditingEntry(undefined)
-          }}
-          onCancel={editingEntry ? () => setEditingEntry(undefined) : undefined}
-        />
-        <FilterBar
-          categories={journal.categories}
-          tagSuggestions={journal.tagSuggestions}
-          filter={journal.filter}
-          onChange={journal.setFilter}
-        />
+        <div className="view-switcher" role="group" aria-label={zhTW.journal.viewMode}>
+          <button type="button" className={view === 'timeline' ? '' : 'button--secondary'} aria-pressed={view === 'timeline'} onClick={() => changeView('timeline')}>{zhTW.journal.timelineView}</button>
+          <button type="button" className={view === 'calendar' ? '' : 'button--secondary'} aria-pressed={view === 'calendar'} onClick={() => changeView('calendar')}>{zhTW.journal.calendarView}</button>
+        </div>
         {journal.error && <p className="journal-error" role="alert">{journal.error}</p>}
-        <Timeline
-          entries={journal.entries}
-          nextCursor={journal.nextCursor}
-          isLoadingMore={journal.isLoadingEntries}
-          onEdit={setEditingEntry}
-          onDelete={journal.deleteEntry}
-          onLoadMore={() => journal.loadEntries({ ...journal.filter, cursor: journal.nextCursor }, true)}
-        />
+        <div className="journal-layout">
+          <section id="entry-form">
+            <EntryForm
+              key={editingEntry?.id ?? 'new'}
+              entry={editingEntry}
+              categories={journal.categories}
+              tagSuggestions={journal.tagSuggestions}
+              onSave={async (input) => {
+                await journal.saveEntry(input)
+                setEditingEntry(undefined)
+              }}
+              onCancel={editingEntry ? () => setEditingEntry(undefined) : undefined}
+            />
+          </section>
+          <section className="journal-layout__content">
+            <FilterBar
+              categories={journal.categories}
+              tagSuggestions={journal.tagSuggestions}
+              filter={journal.filter}
+              onChange={journal.setFilter}
+            />
+            {view === 'calendar' && (
+              <CalendarView
+                month={month}
+                counts={journal.monthlyEntryCounts}
+                onMonthChange={setMonth}
+                onSelectDate={journal.getEntriesForDate}
+              />
+            )}
+            <Timeline
+              entries={journal.entries}
+              nextCursor={view === 'timeline' ? journal.nextCursor : null}
+              isLoadingMore={journal.isLoadingEntries}
+              onEdit={setEditingEntry}
+              onDelete={journal.deleteEntry}
+              onLoadMore={() => journal.loadEntries({ ...journal.filter, cursor: journal.nextCursor }, true)}
+            />
+          </section>
+        </div>
+        <button type="button" className="entry-form__mobile-add" onClick={() => document.getElementById('entry-form')?.scrollIntoView()}>{zhTW.entries.add}</button>
       </div>
     )
   }
@@ -113,4 +146,10 @@ function JournalApplication({ client }: { client: JournalClient }) {
       onRetry={journal.retry}
     />
   )
+}
+
+function currentMonth(): string {
+  const date = new Date()
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+  return localDate.toISOString().slice(0, 7)
 }

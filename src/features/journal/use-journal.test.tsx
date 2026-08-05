@@ -3,14 +3,19 @@
 import '../../test/dialog-setup'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { App } from '../../App'
 import type { Entry, EntryFilter, EntryInput, EntryListResult } from '../../domain/journal'
 import type { JournalClient } from './use-journal'
 import { AuthenticationError, ExecutionClientError } from '../../services/execution-client'
 
+beforeEach(() => {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 375 })
+})
+
 afterEach(() => {
   delete window.__JOURNAL_CONFIG__
+  window.localStorage.clear()
   vi.unstubAllGlobals()
 })
 
@@ -273,6 +278,72 @@ test('刪除成功後忽略較舊的列表回應', async () => {
 
   resolveFilteredList?.(entryPage([original]))
   await waitFor(() => expect(screen.queryByText('記事內容 delete-me')).not.toBeInTheDocument())
+})
+
+test('月曆檢視切換月份只載入數量，選日以目前篩選取得時間軸資料', async () => {
+  const run = vi.fn().mockImplementation(async (request: { action: string; filter?: EntryFilter; year?: number; month?: number; date?: string }) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+    if (request.action === 'listEntries') return entryPage()
+    if (request.action === 'getMonthlyEntryCounts') {
+      const date = `${request.year}-${String(request.month).padStart(2, '0')}-04`
+      return [{ date, count: 2 }]
+    }
+    if (request.action === 'getEntriesForDate') return [entry('selected', request.date ?? '2026-08-04')]
+    throw new Error('未預期的請求')
+  })
+  const user = userEvent.setup()
+
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 })
+  window.localStorage.setItem('daily-journal:view', 'calendar')
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
+  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  await waitFor(() => expect(run).toHaveBeenCalledWith(expect.objectContaining({ action: 'getMonthlyEntryCounts' })))
+
+  const monthlyRequest = run.mock.calls.map(([request]) => request).find((request) => request.action === 'getMonthlyEntryCounts') as { year: number; month: number }
+  const selectedDate = `${monthlyRequest.year}-${String(monthlyRequest.month).padStart(2, '0')}-04`
+  await user.type(screen.getByRole('searchbox', { name: '關鍵字' }), '規劃')
+  await waitFor(() => expect(run).toHaveBeenCalledWith({
+    action: 'getMonthlyEntryCounts',
+    year: monthlyRequest.year,
+    month: monthlyRequest.month,
+    filter: { query: '規劃', from: null, to: null, categoryId: null, tag: null },
+  }))
+
+  await user.click(await screen.findByRole('button', { name: `${selectedDate}，共 2 則記事` }))
+
+  await waitFor(() => expect(run).toHaveBeenCalledWith({
+    action: 'getEntriesForDate',
+    date: selectedDate,
+    filter: { query: '規劃', from: null, to: null, categoryId: null, tag: null },
+  }))
+  expect(await screen.findByText('記事內容 selected')).toBeInTheDocument()
+
+  const listRequestCount = run.mock.calls.filter(([request]) => request.action === 'listEntries').length
+  await user.click(screen.getByRole('button', { name: '下個月' }))
+  await waitFor(() => expect(run).toHaveBeenCalledWith(expect.objectContaining({ action: 'getMonthlyEntryCounts', month: monthlyRequest.month === 12 ? 1 : monthlyRequest.month + 1 })))
+  expect(run.mock.calls.filter(([request]) => request.action === 'listEntries')).toHaveLength(listRequestCount)
+})
+
+test('檢視切換按鈕更新 aria-pressed 並保存使用者偏好', async () => {
+  const user = userEvent.setup()
+  const run = vi.fn().mockImplementation(async (request: { action: string }) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+    if (request.action === 'listEntries') return entryPage()
+    if (request.action === 'getMonthlyEntryCounts') return []
+    throw new Error('未預期的請求')
+  })
+
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 })
+  window.localStorage.setItem('daily-journal:view', 'calendar')
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
+  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+
+  expect(await screen.findByRole('button', { name: '月曆' })).toHaveAttribute('aria-pressed', 'true')
+  await user.click(screen.getByRole('button', { name: '時間軸' }))
+
+  expect(screen.getByRole('button', { name: '時間軸' })).toHaveAttribute('aria-pressed', 'true')
+  expect(screen.getByRole('button', { name: '月曆' })).toHaveAttribute('aria-pressed', 'false')
+  expect(window.localStorage.getItem('daily-journal:view')).toBe('timeline')
 })
 
 function category(id: string, isActive = true) {

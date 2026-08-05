@@ -75,6 +75,8 @@ textarea {
 }
 
 .journal-application,
+.journal-layout,
+.journal-layout__content,
 .entry-form,
 .timeline,
 .timeline__group,
@@ -172,6 +174,63 @@ textarea {
   gap: 1rem;
 }
 
+.view-switcher,
+.calendar-view__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.calendar-view {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  background: #f8fafc;
+  border: 1px solid #d1d5db;
+  border-radius: 0.75rem;
+}
+
+.calendar-view__header {
+  justify-content: space-between;
+}
+
+.calendar-view__header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.calendar-view__weekdays,
+.calendar-view__days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.375rem;
+}
+
+.calendar-view__weekdays span {
+  text-align: center;
+  font-weight: 600;
+}
+
+.calendar-view__day,
+.calendar-view__empty {
+  width: 100%;
+  min-height: 3.25rem;
+}
+
+.calendar-view__day {
+  display: grid;
+  place-items: center;
+  padding: 0.25rem;
+}
+
+.calendar-view__day small {
+  font-size: 0.7rem;
+}
+
+.entry-form__mobile-add {
+  display: none;
+}
+
 .entry-card {
   background: #ffffff;
 }
@@ -211,9 +270,9 @@ dialog::backdrop {
   background: rgb(15 23 42 / 45%);
 }
 
-@media (max-width: 48rem) {
+@media (max-width: 767px) {
   main {
-    padding: 1rem;
+    padding: 1rem 1rem 5.5rem;
   }
 
   .filter-bar {
@@ -222,5 +281,32 @@ dialog::backdrop {
 
   .entry-card__header {
     display: grid;
+  }
+
+  .entry-form__mobile-add {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 1;
+    display: block;
+    box-shadow: 0 0.5rem 1.5rem rgb(15 23 42 / 25%);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .journal-layout {
+    grid-template-columns: minmax(16rem, 0.85fr) minmax(0, 1.15fr);
+    align-items: start;
+  }
+
+  .filter-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .journal-layout {
+    grid-template-columns: minmax(20rem, 0.8fr) minmax(0, 1.2fr);
+    align-items: start;
   }
 }

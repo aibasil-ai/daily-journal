@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ApiRequest, Category, Entry, EntryFilter, EntryInput, EntryListResult } from '../../domain/journal'
 import { zhTW } from '../../i18n/zh-TW'
+import type { MonthlyEntryCount } from '../entries/calendar-view'
 
 export type JournalStatus = 'checking-config' | 'signed-out' | 'loading' | 'ready' | 'error'
 
@@ -24,6 +25,8 @@ type JournalState = {
   filter: EntryFilter
   nextCursor: string | null
   isLoadingEntries: boolean
+  monthlyEntryCounts: MonthlyEntryCount[]
+  isLoadingMonthlyEntryCounts: boolean
   error: string | undefined
 }
 
@@ -36,6 +39,8 @@ const signedOutState: JournalState = {
   filter: defaultFilter(),
   nextCursor: null,
   isLoadingEntries: false,
+  monthlyEntryCounts: [],
+  isLoadingMonthlyEntryCounts: false,
   error: undefined,
 }
 
@@ -46,6 +51,7 @@ function defaultFilter(): EntryFilter {
 export function useJournal(client: JournalClient) {
   const [state, setState] = useState<JournalState>(signedOutState)
   const entryEpoch = useRef(0)
+  const monthlyCountEpoch = useRef(0)
 
   async function connect(requestSignIn: boolean) {
     if (state.status === 'loading') return
@@ -63,6 +69,8 @@ export function useJournal(client: JournalClient) {
         filter: defaultFilter(),
         nextCursor: null,
         isLoadingEntries: false,
+        monthlyEntryCounts: [],
+        isLoadingMonthlyEntryCounts: false,
         error: undefined,
       })
     } catch (error) {
@@ -90,6 +98,42 @@ export function useJournal(client: JournalClient) {
     } catch (error) {
       if (requestEpoch !== entryEpoch.current) return
       setState((current) => ({ ...current, isLoadingEntries: false, error: error instanceof Error ? error.message : zhTW.api.requestFailed }))
+    }
+  }
+
+  async function getEntriesForDate(date: string) {
+    const requestEpoch = ++entryEpoch.current
+    const filter = queryFilter(state.filter)
+    setState((current) => ({ ...current, isLoadingEntries: true, error: undefined }))
+    try {
+      const entries = await client.run<Entry[]>({ action: 'getEntriesForDate', date, filter })
+      if (requestEpoch !== entryEpoch.current) return
+      setState((current) => ({ ...current, entries, nextCursor: null, isLoadingEntries: false }))
+    } catch (error) {
+      if (requestEpoch !== entryEpoch.current) return
+      setState((current) => ({ ...current, isLoadingEntries: false, error: error instanceof Error ? error.message : zhTW.api.requestFailed }))
+    }
+  }
+
+  async function loadMonthlyEntryCounts(month: string) {
+    const matched = /^(\d{4})-(\d{2})$/.exec(month)
+    if (!matched) return
+
+    const requestEpoch = ++monthlyCountEpoch.current
+    const filter = queryFilter(state.filter)
+    setState((current) => ({ ...current, isLoadingMonthlyEntryCounts: true, error: undefined }))
+    try {
+      const monthlyEntryCounts = await client.run<MonthlyEntryCount[]>({
+        action: 'getMonthlyEntryCounts',
+        year: Number(matched[1]),
+        month: Number(matched[2]),
+        filter,
+      })
+      if (requestEpoch !== monthlyCountEpoch.current) return
+      setState((current) => ({ ...current, monthlyEntryCounts: Array.isArray(monthlyEntryCounts) ? monthlyEntryCounts : [], isLoadingMonthlyEntryCounts: false }))
+    } catch (error) {
+      if (requestEpoch !== monthlyCountEpoch.current) return
+      setState((current) => ({ ...current, isLoadingMonthlyEntryCounts: false, error: error instanceof Error ? error.message : zhTW.api.requestFailed }))
     }
   }
 
@@ -132,5 +176,17 @@ export function useJournal(client: JournalClient) {
     loadEntries,
     deleteEntry,
     setFilter,
+    getEntriesForDate,
+    loadMonthlyEntryCounts,
+  }
+}
+
+function queryFilter(filter: EntryFilter): Omit<EntryFilter, 'cursor' | 'limit'> {
+  return {
+    query: filter.query,
+    from: filter.from,
+    to: filter.to,
+    categoryId: filter.categoryId,
+    tag: filter.tag,
   }
 }

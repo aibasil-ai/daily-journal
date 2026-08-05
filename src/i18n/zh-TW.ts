@@ -29,6 +29,16 @@ export const zhTW = {
     retry: '重新嘗試',
     connecting: '連線中...',
     ready: '已連線至 Google Sheets。',
+    viewMode: '檢視模式',
+    timelineView: '時間軸',
+    calendarView: '月曆',
+  },
+  calendar: {
+    previousMonth: '上個月',
+    nextMonth: '下個月',
+    monthCalendar: (month: string) => `${month} 月曆`,
+    entryCount: (count: number) => `${count} 則記事`,
+    dateSummary: (date: string, count: number) => `${date}，共 ${count} 則記事`,
   },
   entries: {
     add: '新增記事',
