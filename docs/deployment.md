@@ -18,10 +18,14 @@
 
 ## 2. 建立標準 Google Cloud 專案並連結 GAS
 
-1. 在 Google Cloud Console 建立一個標準 Google Cloud 專案，記下專案名稱以便後續選取。
-2. 在「API 和服務 > 程式庫」啟用 **Google Apps Script API**。
-3. 建立或開啟這個應用程式的 GAS 專案。在 Apps Script 的「專案設定」選擇變更 Google Cloud Platform (GCP) 專案，將它關聯至同一個標準 Google Cloud 專案。
-4. 回到 Google Cloud Console，確認啟用 API 的專案與 GAS 關聯的專案相同。
+1. 在 Google Cloud Console 建立一個標準 Google Cloud 專案。
+2. 在「IAM 與管理 > 設定」複製此 Cloud 專案的**專案編號**。這是一串純數字，不是專案 ID，也不是 GAS Script ID。
+3. 在「API 和服務 > 程式庫」啟用 **Google Apps Script API**。
+4. 建立或開啟這個應用程式的 GAS 專案，左側點選齒輪「專案設定」。
+5. 在「Google Cloud Platform (GCP) 專案」區塊點選「變更專案」，貼入第 2 步的專案編號，然後按「設定專案」。
+6. 回到 Google Cloud Console，確認啟用 API 的專案與 GAS 關聯的專案相同。
+
+若 GAS 欄位顯示紅框或無法設定，請確認使用同一個 Google 帳號、你對目標 Cloud 專案具有擁有者或編輯者權限，且目標是自行建立的標準 Cloud 專案，不是其他 Apps Script 自動建立的預設專案。
 
 ## 3. 建立 OAuth 2.0 Web Client
 
@@ -38,7 +42,30 @@ https://你的正式網域
 
 4. 儲存後，複製 OAuth 用戶端 ID。此 ID 是前端的 `APP_GOOGLE_CLIENT_ID`；不要建立或使用前端密鑰。
 
+### 測試模式與測試使用者
+
+個人使用時，不需要立刻送 Google 驗證或發布 OAuth App。維持「測試中」即可，但必須將自己的 Google 帳號加入測試使用者：
+
+1. 在同一個 Cloud 專案開啟「Google Auth Platform > 目標對象」；舊版介面可從「API 和服務 > OAuth 同意畫面」進入。
+2. 在「測試使用者」點選「新增使用者」。
+3. 輸入實際用來登入 GAS 與 App 的 Google 帳號電子郵件並儲存。
+
+若授權畫面顯示「尚未完成 Google 驗證程序」及 `403: access_denied`，通常代表登入帳號未加入此清單。新增後等待 1 至 5 分鐘再試。
+
 ## 4. 以 clasp 推送 GAS
+
+以下指令都在自己的電腦、專案根目錄執行，例如 `C:\path\to\journal`。先確認 Node.js 與 npm 可用，然後安裝 clasp：
+
+```powershell
+node --version
+npm --version
+npm install --global @google/clasp
+clasp --version
+```
+
+若安裝成功後 PowerShell 仍顯示「`clasp` 無法辨識」，關閉並重新開啟 PowerShell 後再執行 `clasp --version`。也可不進行全域安裝，改在以下所有 `clasp` 指令前加上 `npx --yes @google/clasp@latest`。
+
+在首次 `clasp login` 前，使用同一個 Google 帳號開啟 `https://script.google.com/home/usersettings`，啟用 Google Apps Script API 的使用者存取權。這與第 2 節在 Cloud 專案啟用 API 是兩個都需要的設定；若公司或學校帳號無法啟用，請聯絡 Workspace 管理員。
 
 在專案根目錄建立只供本機使用的 clasp 設定：
 
@@ -60,14 +87,16 @@ npm run build:gas
 clasp push
 ```
 
-`gas-dist` 是 clasp 的推送目錄；不要直接修改其中產物。
+`gas-dist` 是 clasp 的推送目錄；不要直接修改其中產物。初次推送到只含 `myFunction` 的空白 GAS 專案時，clasp 詢問是否覆寫是正常的，可確認覆寫。若剛啟用 Apps Script API，等待 1 至 5 分鐘後再執行 `clasp push`。
 
 ## 5. 初始化空白試算表
 
 推送完成後，開啟 GAS 編輯器並完成下列步驟：
 
 1. 選擇「專案設定 > 指令碼屬性」，新增屬性名稱 `SPREADSHEET_ID`，值填入第 1 節私下記下的 `<Sheet ID>`，然後儲存。
-2. 回到編輯器，在函式下拉選單選擇 `initializeJournal`，不傳入任何參數後執行。
+2. 重新整理 GAS 編輯器。推送後左側應出現 `Code.js`；不要手動把程式貼到預設的 `myFunction` 檔案。
+3. 在頂端工具列「執行」右側的函式下拉選單，選擇 `initializeJournal`。此函式不需要、也不能填入任何參數。
+4. 點選三角形「執行」。首次執行會開啟 Google 授權流程；選擇擁有 GAS 與試算表存取權的帳號並允許必要權限。
 
 第一次執行會要求授權。`initializeJournal` 只會以既有的 `SPREADSHEET_ID` 冪等建立 `entries`、`categories` 與 `settings` 工作表，不會寫入或變更此屬性。它只供部署者在 GAS 編輯器手動初始化；前端與 UI 不得呼叫它。此值只能停留在 GAS；不得搬到 `.env`、`app-config.js` 或任何前端設定。
 
@@ -76,13 +105,15 @@ clasp push
 1. 在 GAS 編輯器選擇「部署 > 新增部署」。
 2. 部署類型選擇 **API Executable**。
 3. 存取權設定為「僅我自己」，完成部署。
-4. 開啟 `gas/appsscript.json`，確認其設定包含：
+4. 在本機專案開啟 `gas/appsscript.json`，確認其設定包含：
 
 ```json
 {
   "executionApi": { "access": "MYSELF" }
 }
 ```
+
+這個檔案位於本機專案的 `gas/appsscript.json`，修改後需重新執行 `npm run build:gas` 與 `clasp push`。若要在 GAS 網頁編輯器查看它，先到「專案設定」開啟「在編輯器中顯示 `appsscript.json` 資訊清單檔案」；建議仍以本機版本為準，避免網頁端改動被下次推送覆蓋。
 
 前端資料操作只會透過 Execution API 呼叫 `executeAppRequest`；這是前端唯一的 API 函式入口。`initializeJournal` 是僅供部署時使用的特權工具，因 GAS 編輯器需要全域函式才可手動執行。持有同一擁有者權杖的 Execution API 呼叫在技術上可以指定全域函式名稱，但本應用前端與 UI 不會呼叫它；即使被呼叫，它沒有參數、無法變更 `SPREADSHEET_ID`，且只會冪等確保 schema。登入的 Google 帳號必須是有權使用這個 GAS 與試算表的帳號。
 
@@ -167,6 +198,10 @@ Output directory: dist
 | --- | --- |
 | `OAuth origin_mismatch` | OAuth 用戶端的「授權 JavaScript 來源」必須與瀏覽器網址的協定、網域及連接埠完全相同。加入 `http://localhost:5173` 與正式網址；Vercel 僅加入 Production origin，不加入 Preview。 |
 | Apps Script API 未啟用 | 在與 GAS 關聯的同一個標準 Google Cloud 專案啟用 Google Apps Script API。若剛變更關聯或啟用 API，等待權限生效後重新登入並再試。 |
+| `clasp` 無法辨識 | 在本機執行 `npm install --global @google/clasp`，完成後重開 PowerShell，再以 `clasp --version` 確認。也可改用 `npx --yes @google/clasp@latest <指令>`。 |
+| `User has not enabled the Apps Script API` | 使用同一個 Google 帳號開啟 `https://script.google.com/home/usersettings` 並啟用 Apps Script API 使用者存取權，等待 1 至 5 分鐘後重新執行 `clasp login` 與 `clasp push`。 |
+| 授權出現 `403: access_denied` 或「尚未完成 Google 驗證程序」 | 在同一 Cloud 專案的「Google Auth Platform > 目標對象 > 測試使用者」加入實際登入帳號。個人測試不需要發布為正式版。 |
+| GAS 工具列顯示「沒有函式」 | 先確認 `npm run build:gas` 與 `clasp push` 都成功，重新整理 GAS 編輯器，並確認左側有推送後的 `Code.js`。不要手動修改預設 `myFunction`。 |
 | GAS access denied | 確認 GAS 已部署為 API Executable、存取權為「僅我自己」、`executionApi.access` 是 `MYSELF`，並以擁有 GAS 與試算表權限的同一 Google 帳號登入。 |
 | 找不到 `SPREADSHEET_ID` | 在 Apps Script「專案設定 > 指令碼屬性」新增 `SPREADSHEET_ID`，值填入實際 Google Sheets ID；回到編輯器選擇無參數的 `initializeJournal` 執行並完成授權。不要把此值加入任何前端設定。 |
 | Sheets 時區不正確 | 在試算表的「檔案 > 設定」修正時區，再重新確認記事日期與時間。初始化前就應完成此設定，避免跨日資料以錯誤時區建立。 |
