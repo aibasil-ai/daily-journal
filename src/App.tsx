@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { loadRuntimeConfig } from './config/runtime-config'
 import { EntryForm } from './features/entries/entry-form'
 import { CalendarView } from './features/entries/calendar-view'
+import { downloadCsv } from './features/entries/csv-download'
 import { FilterBar } from './features/entries/filter-bar'
 import { Timeline } from './features/entries/timeline'
+import { CategoryManager } from './features/categories/category-manager'
 import { ConnectionScreen } from './features/journal/connection-screen'
 import { type JournalClient, useJournal } from './features/journal/use-journal'
 import { getInitialView, loadViewPreference, saveViewPreference, type JournalView } from './features/journal/view-preference'
@@ -74,6 +76,8 @@ function JournalApplication({ client }: { client: JournalClient }) {
   const [editingEntry, setEditingEntry] = useState<Entry | undefined>()
   const [view, setView] = useState<JournalView>(() => getInitialView(typeof window === 'undefined' ? 1024 : window.innerWidth, loadViewPreference()))
   const [month, setMonth] = useState(currentMonth)
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | undefined>()
 
   useEffect(() => {
     if (journal.status !== 'ready' || view !== 'calendar') return
@@ -83,6 +87,21 @@ function JournalApplication({ client }: { client: JournalClient }) {
   function changeView(nextView: JournalView) {
     setView(nextView)
     saveViewPreference(nextView)
+  }
+
+  async function exportEntries(scope: 'filtered' | 'all') {
+    if (isExporting) return
+
+    setIsExporting(true)
+    setExportError(undefined)
+    try {
+      const result = await journal.exportEntries(scope)
+      downloadCsv(result.headers, result.rows)
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : zhTW.api.requestFailed)
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   if (journal.status === 'ready') {
@@ -107,6 +126,7 @@ function JournalApplication({ client }: { client: JournalClient }) {
               }}
               onCancel={editingEntry ? () => setEditingEntry(undefined) : undefined}
             />
+            <CategoryManager categories={journal.categories} onSave={journal.saveCategory} onDeactivate={journal.deactivateCategory} />
           </section>
           <section className="journal-layout__content">
             <FilterBar
@@ -115,6 +135,14 @@ function JournalApplication({ client }: { client: JournalClient }) {
               filter={journal.filter}
               onChange={journal.setFilter}
             />
+            <section className="csv-export" aria-labelledby="csv-export-title">
+              <h2 id="csv-export-title">{zhTW.exports.title}</h2>
+              {exportError && <p className="csv-export__error" role="alert">{exportError}</p>}
+              <div className="csv-export__actions">
+                <button type="button" onClick={() => exportEntries('filtered')} disabled={isExporting}>{zhTW.exports.filtered}</button>
+                <button type="button" className="button--secondary" onClick={() => exportEntries('all')} disabled={isExporting}>{zhTW.exports.all}</button>
+              </div>
+            </section>
             {view === 'calendar' && (
               <CalendarView
                 month={month}

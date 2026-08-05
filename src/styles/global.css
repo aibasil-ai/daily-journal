@@ -88,7 +88,9 @@ textarea {
 
 .entry-form,
 .filter-bar,
-.entry-card {
+.entry-card,
+.category-manager,
+.csv-export {
   padding: 1.25rem;
   background: #f8fafc;
   border: 1px solid #d1d5db;
@@ -97,6 +99,8 @@ textarea {
 
 .entry-form h2,
 .entry-form h3,
+.category-manager h2,
+.csv-export h2,
 .timeline h2,
 .entry-card h3,
 .entry-card p,
@@ -106,6 +110,7 @@ textarea {
 
 .entry-form label,
 .filter-bar label,
+.category-manager label,
 .link-fields label {
   display: grid;
   gap: 0.375rem;
@@ -114,7 +119,9 @@ textarea {
 
 .entry-form__actions,
 .entry-card__actions,
-.dialog-actions {
+.dialog-actions,
+.category-manager__actions,
+.csv-export__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
@@ -249,12 +256,51 @@ textarea {
 
 .form-errors,
 .dialog-error,
-.journal-error {
+.journal-error,
+.category-manager__error,
+.csv-export__error {
   color: #b91c1c;
 }
 
 .form-errors p {
   margin: 0.25rem 0;
+}
+
+.category-manager,
+.csv-export,
+.category-manager__form,
+.category-manager__rename,
+.category-manager__list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.category-manager__list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.category-manager__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+}
+
+.category-manager__actions {
+  margin-left: auto;
+}
+
+.category-manager__inactive {
+  padding: 0.25rem 0.5rem;
+  color: #4b5563;
+  background: #e5e7eb;
+  border-radius: 999px;
 }
 
 dialog {

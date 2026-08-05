@@ -440,10 +440,105 @@ test('檢視切換按鈕更新 aria-pressed 並保存使用者偏好', async () 
   expect(window.localStorage.getItem('daily-journal:view')).toBe('timeline')
 })
 
-function category(id: string, isActive = true) {
+test('新增與停用分類後同步管理清單及可選分類', async () => {
+  const run = vi.fn().mockImplementation(async (request: { action: string; category?: { id?: string; name: string }; id?: string }) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work', true)], tagSuggestions: [] }
+    if (request.action === 'listEntries') return entryPage()
+    if (request.action === 'saveCategory') return category('life', true, request.category?.name ?? '生活')
+    if (request.action === 'deactivateCategory') return category(request.id ?? 'work', false)
+    throw new Error('未預期的請求')
+  })
+  const user = userEvent.setup()
+
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
+  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+
+  await user.type(await screen.findByLabelText('新增分類名稱'), '生活')
+  await user.click(screen.getByRole('button', { name: '新增分類' }))
+  await waitFor(() => expect(screen.getAllByRole('option', { name: '生活' })).toHaveLength(2))
+
+  await user.click(screen.getByRole('button', { name: '停用 work' }))
+  await user.click(screen.getByRole('button', { name: '確認停用' }))
+
+  expect(await screen.findByText('已停用')).toBeInTheDocument()
+  expect(screen.queryAllByRole('option', { name: 'work' })).toHaveLength(0)
+  expect(run).toHaveBeenCalledWith({ action: 'saveCategory', category: { name: '生活' } })
+  expect(run).toHaveBeenCalledWith({ action: 'deactivateCategory', id: 'work' })
+  expect(run).toHaveBeenCalledWith({
+    action: 'listEntries',
+    filter: { query: '', from: null, to: null, categoryId: null, tag: null, cursor: null, limit: 20 },
+  })
+})
+
+test('以目前篩選條件或全部記事匯出 CSV', async () => {
+  const createObjectURL = vi.fn(() => 'blob:csv')
+  const revokeObjectURL = vi.fn()
+  vi.stubGlobal('URL', { createObjectURL, revokeObjectURL })
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  const run = vi.fn().mockImplementation(async (request: { action: string }) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+    if (request.action === 'listEntries') return entryPage()
+    if (request.action === 'exportEntries') return { headers: ['標題'], rows: [['記事']] }
+    throw new Error('未預期的請求')
+  })
+  const user = userEvent.setup()
+
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
+  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  await user.type(await screen.findByRole('searchbox', { name: '關鍵字' }), '週會')
+
+  await user.click(screen.getByRole('button', { name: '匯出目前篩選結果' }))
+  await user.click(screen.getByRole('button', { name: '匯出全部記事' }))
+
+  await waitFor(() => expect(run).toHaveBeenCalledWith({
+    action: 'exportEntries',
+    filter: { query: '週會', from: null, to: null, categoryId: null, tag: null },
+  }))
+  expect(run).toHaveBeenCalledWith({
+    action: 'exportEntries',
+    filter: { query: '', from: null, to: null, categoryId: null, tag: null },
+  })
+  expect(createObjectURL).toHaveBeenCalledTimes(2)
+  expect(revokeObjectURL).toHaveBeenCalledTimes(2)
+})
+
+test('匯出進行中停用兩個按鈕，失敗時顯示後端文案', async () => {
+  const exportResult = deferred<{ headers: string[]; rows: string[][] }>()
+  const run = vi.fn().mockImplementation(async (request: { action: string }) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+    if (request.action === 'listEntries') return entryPage()
+    if (request.action === 'exportEntries') return exportResult.promise
+    throw new Error('未預期的請求')
+  })
+  const user = userEvent.setup()
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
+  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  const filteredButton = await screen.findByRole('button', { name: '匯出目前篩選結果' })
+  await user.click(filteredButton)
+
+  expect(filteredButton).toBeDisabled()
+  expect(screen.getByRole('button', { name: '匯出全部記事' })).toBeDisabled()
+  expect(run.mock.calls.filter(([request]) => request.action === 'exportEntries')).toHaveLength(1)
+
+  exportResult.resolve({ headers: ['標題'], rows: [['記事']] })
+  await waitFor(() => expect(filteredButton).not.toBeDisabled())
+
+  run.mockImplementation(async (request: { action: string }) => {
+    if (request.action === 'exportEntries') throw new Error('匯出資料失敗')
+    if (request.action === 'listEntries') return entryPage()
+    return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+  })
+  await user.click(filteredButton)
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('匯出資料失敗')
+})
+
+function category(id: string, isActive = true, name = id) {
   return {
     id,
-    name: id,
+    name,
     isActive,
     createdAt: '2026-08-04T00:00:00+08:00',
     updatedAt: '2026-08-04T00:00:00+08:00',

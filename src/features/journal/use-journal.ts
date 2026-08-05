@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ApiRequest, Category, Entry, EntryFilter, EntryInput, EntryListResult } from '../../domain/journal'
+import type { CsvExport } from '../entries/csv-download'
 import { zhTW } from '../../i18n/zh-TW'
 import type { MonthlyEntryCount } from '../entries/calendar-view'
 
@@ -65,7 +66,7 @@ export function useJournal(client: JournalClient) {
       setState({
         status: 'ready',
         bootstrap,
-        categories: bootstrap.categories.filter((category) => category.isActive),
+        categories: bootstrap.categories,
         tagSuggestions: bootstrap.tagSuggestions,
         entries: [],
         filter: defaultFilter(),
@@ -167,6 +168,31 @@ export function useJournal(client: JournalClient) {
     }))
   }
 
+  async function saveCategory(name: string, id?: string) {
+    const saved = await client.run<Category>({ action: 'saveCategory', category: { name, ...(id ? { id } : {}) } })
+    setState((current) => ({
+      ...current,
+      categories: current.categories.some((category) => category.id === saved.id)
+        ? current.categories.map((category) => category.id === saved.id ? saved : category)
+        : [...current.categories, saved],
+    }))
+  }
+
+  async function deactivateCategory(id: string) {
+    const saved = await client.run<Category>({ action: 'deactivateCategory', id })
+    const nextFilter = state.filter.categoryId === saved.id ? { ...state.filter, categoryId: null, cursor: null } : state.filter
+    setState((current) => ({
+      ...current,
+      categories: current.categories.map((category) => category.id === saved.id ? saved : category),
+      filter: nextFilter,
+    }))
+    if (nextFilter !== state.filter) await loadEntries(nextFilter)
+  }
+
+  function exportEntries(scope: 'filtered' | 'all') {
+    return client.run<CsvExport>({ action: 'exportEntries', filter: scope === 'filtered' ? queryFilter(state.filter) : queryFilter(defaultFilter()) })
+  }
+
   function setFilter(filter: EntryFilter) {
     const initialFilter = { ...filter, cursor: null }
     setState((current) => ({ ...current, filter: initialFilter }))
@@ -186,6 +212,9 @@ export function useJournal(client: JournalClient) {
     saveEntry,
     loadEntries,
     deleteEntry,
+    saveCategory,
+    deactivateCategory,
+    exportEntries,
     setFilter,
     getEntriesForDate,
     loadMonthlyEntryCounts,
