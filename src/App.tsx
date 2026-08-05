@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { loadRuntimeConfig } from './config/runtime-config'
 import { EntryForm } from './features/entries/entry-form'
 import { CalendarView } from './features/entries/calendar-view'
@@ -7,7 +7,7 @@ import { FilterBar } from './features/entries/filter-bar'
 import { Timeline } from './features/entries/timeline'
 import { CategoryManager } from './features/categories/category-manager'
 import { ConnectionScreen } from './features/journal/connection-screen'
-import { type JournalClient, useJournal } from './features/journal/use-journal'
+import { SessionEndedError, type JournalClient, useJournal } from './features/journal/use-journal'
 import { getInitialView, loadViewPreference, saveViewPreference, type JournalView } from './features/journal/view-preference'
 import type { Entry } from './domain/journal'
 import { monthInTimeZone } from './domain/time-zone'
@@ -40,7 +40,8 @@ export function App({ client }: AppProps) {
       setConfiguration({
         status: 'ready',
         client: {
-          signIn: () => oauth.getAccessToken('consent').then(() => undefined),
+          signIn: () => oauth.signIn(),
+          signOut: () => oauth.clearAccessToken(),
           run: (request) => executionClient.run(request),
         },
       })
@@ -79,6 +80,7 @@ function JournalApplication({ client }: { client: JournalClient }) {
   const [month, setMonth] = useState<string | undefined>()
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | undefined>()
+  const exportSessionEpoch = useRef(0)
   const currentJournalMonth = month ?? currentMonth(journal.bootstrap?.timezone)
 
   useEffect(() => {
@@ -94,16 +96,28 @@ function JournalApplication({ client }: { client: JournalClient }) {
   async function exportEntries(scope: 'filtered' | 'all') {
     if (isExporting) return
 
+    const requestSession = exportSessionEpoch.current
     setIsExporting(true)
     setExportError(undefined)
     try {
       const result = await journal.exportEntries(scope)
+      if (requestSession !== exportSessionEpoch.current) return
       downloadCsv(result.headers, result.rows)
     } catch (error) {
+      if (requestSession !== exportSessionEpoch.current || error instanceof SessionEndedError) return
       setExportError(error instanceof Error ? error.message : zhTW.api.requestFailed)
     } finally {
-      setIsExporting(false)
+      if (requestSession === exportSessionEpoch.current) setIsExporting(false)
     }
+  }
+
+  function signOut() {
+    exportSessionEpoch.current += 1
+    setEditingEntry(undefined)
+    setMonth(undefined)
+    setIsExporting(false)
+    setExportError(undefined)
+    journal.signOut()
   }
 
   if (journal.status === 'ready') {
@@ -111,7 +125,10 @@ function JournalApplication({ client }: { client: JournalClient }) {
 
     return (
       <div className="journal-application">
-        <p>{zhTW.journal.ready}</p>
+        <div className="journal-application__header">
+          <p>{zhTW.journal.ready}</p>
+          <button type="button" className="button--secondary" onClick={signOut}>{zhTW.journal.signOut}</button>
+        </div>
         <div className="view-switcher" role="group" aria-label={zhTW.journal.viewMode}>
           <button type="button" className={view === 'timeline' ? '' : 'button--secondary'} aria-pressed={view === 'timeline'} onClick={() => changeView('timeline')}>{zhTW.journal.timelineView}</button>
           <button type="button" className={view === 'calendar' ? '' : 'button--secondary'} aria-pressed={view === 'calendar'} onClick={() => changeView('calendar')}>{zhTW.journal.calendarView}</button>

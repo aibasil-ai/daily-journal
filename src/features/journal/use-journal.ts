@@ -14,8 +14,11 @@ export type JournalBootstrap = {
 
 export type JournalClient = {
   signIn: () => Promise<void>
+  signOut: () => void
   run: <T>(request: ApiRequest) => Promise<T>
 }
+
+export class SessionEndedError extends Error {}
 
 type JournalState = {
   status: JournalStatus
@@ -53,6 +56,7 @@ function defaultFilter(): EntryFilter {
 
 export function useJournal(client: JournalClient) {
   const [state, setState] = useState<JournalState>(signedOutState)
+  const sessionEpoch = useRef(0)
   const entryEpoch = useRef(0)
   const monthlyCountEpoch = useRef(0)
   const filterRef = useRef(defaultFilter())
@@ -60,10 +64,15 @@ export function useJournal(client: JournalClient) {
   async function connect(requestSignIn: boolean) {
     if (state.status === 'loading') return
 
+    const requestSession = sessionEpoch.current
     setState({ ...signedOutState, status: 'loading' })
     try {
-      if (requestSignIn) await client.signIn()
+      if (requestSignIn) {
+        await client.signIn()
+        if (requestSession !== sessionEpoch.current) return
+      }
       const bootstrap = await client.run<JournalBootstrap>({ action: 'bootstrap' })
+      if (requestSession !== sessionEpoch.current) return
       filterRef.current = defaultFilter()
       setState({
         status: 'ready',
@@ -80,6 +89,7 @@ export function useJournal(client: JournalClient) {
         error: undefined,
       })
     } catch (error) {
+      if (requestSession !== sessionEpoch.current) return
       setState({
         ...signedOutState,
         status: 'error',
@@ -89,11 +99,12 @@ export function useJournal(client: JournalClient) {
   }
 
   async function loadEntries(filter: EntryFilter, append = false) {
+    const requestSession = sessionEpoch.current
     const requestEpoch = ++entryEpoch.current
     setState((current) => ({ ...current, isLoadingEntries: true, error: undefined }))
     try {
       const page = await client.run<EntryListResult>({ action: 'listEntries', filter })
-      if (requestEpoch !== entryEpoch.current) return
+      if (requestSession !== sessionEpoch.current || requestEpoch !== entryEpoch.current) return
       setState((current) => ({
         ...current,
         entries: append ? [...current.entries, ...page.items] : page.items,
@@ -102,21 +113,22 @@ export function useJournal(client: JournalClient) {
         isLoadingEntries: false,
       }))
     } catch (error) {
-      if (requestEpoch !== entryEpoch.current) return
+      if (requestSession !== sessionEpoch.current || requestEpoch !== entryEpoch.current) return
       setState((current) => ({ ...current, isLoadingEntries: false, error: error instanceof Error ? error.message : zhTW.api.requestFailed }))
     }
   }
 
   async function getEntriesForDate(date: string) {
+    const requestSession = sessionEpoch.current
     const requestEpoch = ++entryEpoch.current
     const filter = queryFilter(state.filter)
     setState((current) => ({ ...current, isLoadingEntries: true, error: undefined }))
     try {
       const entries = await client.run<Entry[]>({ action: 'getEntriesForDate', date, filter })
-      if (requestEpoch !== entryEpoch.current) return
+      if (requestSession !== sessionEpoch.current || requestEpoch !== entryEpoch.current) return
       setState((current) => ({ ...current, entries, nextCursor: null, isLoadingEntries: false }))
     } catch (error) {
-      if (requestEpoch !== entryEpoch.current) return
+      if (requestSession !== sessionEpoch.current || requestEpoch !== entryEpoch.current) return
       setState((current) => ({ ...current, isLoadingEntries: false, error: error instanceof Error ? error.message : zhTW.api.requestFailed }))
     }
   }
@@ -125,6 +137,7 @@ export function useJournal(client: JournalClient) {
     const matched = /^(\d{4})-(\d{2})$/.exec(month)
     if (!matched) return
 
+    const requestSession = sessionEpoch.current
     const requestEpoch = ++monthlyCountEpoch.current
     const filter = queryFilter(state.filter)
     setState((current) => ({ ...current, isLoadingMonthlyEntryCounts: true, error: undefined }))
@@ -135,16 +148,18 @@ export function useJournal(client: JournalClient) {
         month: Number(matched[2]),
         filter,
       })
-      if (requestEpoch !== monthlyCountEpoch.current) return
+      if (requestSession !== sessionEpoch.current || requestEpoch !== monthlyCountEpoch.current) return
       setState((current) => ({ ...current, monthlyEntryCounts: Array.isArray(monthlyEntryCounts) ? monthlyEntryCounts : [], isLoadingMonthlyEntryCounts: false }))
     } catch (error) {
-      if (requestEpoch !== monthlyCountEpoch.current) return
+      if (requestSession !== sessionEpoch.current || requestEpoch !== monthlyCountEpoch.current) return
       setState((current) => ({ ...current, isLoadingMonthlyEntryCounts: false, error: error instanceof Error ? error.message : zhTW.api.requestFailed }))
     }
   }
 
   async function saveEntry(input: EntryInput) {
+    const requestSession = sessionEpoch.current
     const saved = await client.run<Entry>({ action: 'saveEntry', entry: input })
+    if (requestSession !== sessionEpoch.current) return
     entryEpoch.current += 1
     monthlyCountEpoch.current += 1
     setState((current) => ({
@@ -156,7 +171,9 @@ export function useJournal(client: JournalClient) {
   }
 
   async function deleteEntry(id: string) {
+    const requestSession = sessionEpoch.current
     await client.run<void>({ action: 'deleteEntry', id })
+    if (requestSession !== sessionEpoch.current) return
     entryEpoch.current += 1
     monthlyCountEpoch.current += 1
     setState((current) => ({
@@ -168,7 +185,9 @@ export function useJournal(client: JournalClient) {
   }
 
   async function saveCategory(name: string, id?: string) {
+    const requestSession = sessionEpoch.current
     const saved = await client.run<Category>({ action: 'saveCategory', category: { name, ...(id ? { id } : {}) } })
+    if (requestSession !== sessionEpoch.current) return
     setState((current) => ({
       ...current,
       categories: current.categories.some((category) => category.id === saved.id)
@@ -178,7 +197,9 @@ export function useJournal(client: JournalClient) {
   }
 
   async function deactivateCategory(id: string) {
+    const requestSession = sessionEpoch.current
     const saved = await client.run<Category>({ action: 'deactivateCategory', id })
+    if (requestSession !== sessionEpoch.current) return
     const currentFilter = filterRef.current
     const nextFilter = currentFilter.categoryId === saved.id ? { ...currentFilter, categoryId: null, cursor: null } : currentFilter
     filterRef.current = nextFilter
@@ -190,8 +211,25 @@ export function useJournal(client: JournalClient) {
     if (nextFilter !== currentFilter) await loadEntries(nextFilter)
   }
 
-  function exportEntries(scope: 'filtered' | 'all') {
-    return client.run<CsvExport>({ action: 'exportEntries', filter: scope === 'filtered' ? queryFilter(state.filter) : queryFilter(defaultFilter()) })
+  async function exportEntries(scope: 'filtered' | 'all'): Promise<CsvExport> {
+    const requestSession = sessionEpoch.current
+    try {
+      const result = await client.run<CsvExport>({ action: 'exportEntries', filter: scope === 'filtered' ? queryFilter(state.filter) : queryFilter(defaultFilter()) })
+      if (requestSession !== sessionEpoch.current) throw new SessionEndedError()
+      return result
+    } catch (error) {
+      if (requestSession !== sessionEpoch.current) throw new SessionEndedError()
+      throw error
+    }
+  }
+
+  function signOut(): void {
+    sessionEpoch.current += 1
+    entryEpoch.current += 1
+    monthlyCountEpoch.current += 1
+    filterRef.current = defaultFilter()
+    client.signOut()
+    setState(signedOutState)
   }
 
   function setFilter(filter: EntryFilter) {
@@ -210,6 +248,7 @@ export function useJournal(client: JournalClient) {
   return {
     ...state,
     signIn: () => connect(true),
+    signOut,
     retry: () => connect(false),
     saveEntry,
     loadEntries,

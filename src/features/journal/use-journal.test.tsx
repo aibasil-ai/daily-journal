@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { App } from '../../App'
 import type { ApiRequest, Entry, EntryFilter, EntryInput, EntryListResult } from '../../domain/journal'
-import type { JournalClient } from './use-journal'
+import { SessionEndedError, type JournalClient, useJournal } from './use-journal'
 import { AuthenticationError, ExecutionClientError } from '../../services/execution-client'
 import { JournalService } from '../../../gas/src/services/journal-service'
 import { FakeJournalStore } from '../../../gas/src/test/fake-journal-store'
@@ -30,12 +30,54 @@ test('缺少部署設定時顯示完整處理指引', async () => {
   expect(screen.getByText('找不到部署設定。請設定 APP_GOOGLE_CLIENT_ID 與 APP_GAS_DEPLOYMENT_ID，或建立 public/app-config.js。')).toBeInTheDocument()
 })
 
+test('實際 App 無提示授權需要互動時改用同意畫面並載入 bootstrap', async () => {
+  let callback: ((response: google.accounts.oauth2.TokenResponse) => void) | undefined
+  let bootstrapInit: RequestInit | undefined
+  const requestAccessToken = vi.fn(() => {
+    callback?.(requestAccessToken.mock.calls.length === 1
+      ? { error: 'interaction_required' }
+      : { access_token: 'access-token', expires_in: 3600 })
+  })
+  const initTokenClient = vi.fn((tokenConfig: google.accounts.oauth2.TokenClientConfig) => {
+    callback = tokenConfig.callback
+    return { requestAccessToken }
+  })
+  const fetch = vi.fn(async (_url: string, init?: RequestInit) => {
+    const requestBody = JSON.parse(String(init?.body))
+    const request = requestBody.parameters[0] as { action: string }
+    if (request.action === 'bootstrap') bootstrapInit = init
+    const data = request.action === 'bootstrap'
+      ? { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+      : entryPage()
+    return new Response(JSON.stringify({ response: { result: { ok: true, data } } }))
+  })
+  vi.stubGlobal('__BUILD_JOURNAL_CONFIG__', { googleClientId: 'client-id', gasDeploymentId: 'deployment-id' })
+  vi.stubGlobal('google', { accounts: { oauth2: { initTokenClient } } })
+  vi.stubGlobal('fetch', fetch)
+  const user = userEvent.setup()
+
+  render(<App />)
+
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
+
+  expect(await screen.findByText('已連線至 Google Sheets。')).toBeInTheDocument()
+  expect(requestAccessToken).toHaveBeenNthCalledWith(1, { prompt: '' })
+  expect(requestAccessToken).toHaveBeenNthCalledWith(2, { prompt: 'consent' })
+  expect(requestAccessToken).toHaveBeenCalledTimes(2)
+  expect(bootstrapInit?.headers).toEqual(expect.objectContaining({ Authorization: 'Bearer access-token' }))
+  expect(JSON.parse(String(bootstrapInit?.body))).toEqual({
+    function: 'executeAppRequest',
+    parameters: [{ action: 'bootstrap' }],
+  })
+})
+
 test('登入後載入啟用分類並進入首頁', async () => {
   const calls: string[] = []
   const client = {
     signIn: vi.fn().mockImplementation(async () => {
       calls.push('signIn')
     }),
+    signOut: vi.fn(),
     run: vi.fn().mockImplementation(async (request: { action: string }) => {
       calls.push('run')
       if (request.action === 'listEntries') return entryPage()
@@ -49,12 +91,79 @@ test('登入後載入啟用分類並進入首頁', async () => {
   const user = userEvent.setup()
   render(<App client={client} />)
 
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
 
   expect(await screen.findByText('已連線至 Google Sheets。')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: '每日記事' })).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: '使用 Google 帳號登入' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: '繼續使用 Google' })).not.toBeInTheDocument()
   expect(calls).toEqual(['signIn', 'run', 'run'])
+})
+
+test('登入後顯示登出按鈕，按下後回到連線畫面', async () => {
+  const client: JournalClient = {
+    signIn: vi.fn().mockResolvedValue(undefined),
+    signOut: vi.fn(),
+    run: vi.fn().mockImplementation(async (request: { action: string }) => {
+      if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+      if (request.action === 'listEntries') return entryPage()
+      throw new Error('未預期的請求')
+    }),
+  }
+  const user = userEvent.setup()
+  render(<App client={client} />)
+
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
+  await screen.findByText('已連線至 Google Sheets。')
+
+  await user.click(screen.getByRole('button', { name: '登出' }))
+
+  expect(client.signOut).toHaveBeenCalledOnce()
+  expect(screen.getByRole('button', { name: '繼續使用 Google' })).toBeInTheDocument()
+  expect(screen.queryByText('已連線至 Google Sheets。')).not.toBeInTheDocument()
+})
+
+test('App 登出後重新登入不復原選取月份、編輯中記事或匯出錯誤', async () => {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 })
+  window.localStorage.setItem('daily-journal:view', 'calendar')
+  const editableEntry = entry('editable', '2026-08-05', { title: '原始標題' })
+  const client: JournalClient = {
+    signIn: vi.fn().mockResolvedValue(undefined),
+    signOut: vi.fn(),
+    run: vi.fn().mockImplementation(async (request: { action: string }) => {
+      if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+      if (request.action === 'listEntries') return entryPage([editableEntry])
+      if (request.action === 'getMonthlyEntryCounts') return []
+      if (request.action === 'exportEntries') throw new Error('匯出資料失敗')
+      throw new Error('未預期的請求')
+    }),
+  }
+  const user = userEvent.setup()
+  render(<App client={client} />)
+
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
+  const initialMonth = (await screen.findByRole('heading', { name: /^\d{4}-\d{2} 月曆$/ })).textContent
+  await user.click(screen.getByRole('button', { name: '下個月' }))
+  expect(screen.getByRole('heading', { name: /^\d{4}-\d{2} 月曆$/ }).textContent).not.toBe(initialMonth)
+
+  const entryCard = (await screen.findByText('記事內容 editable')).closest('article')!
+  await user.click(within(entryCard).getByRole('button', { name: '編輯記事' }))
+  await user.clear(screen.getByLabelText('標題（選填）'))
+  await user.type(screen.getByLabelText('標題（選填）'), '尚未儲存的編輯')
+  expect(screen.getByRole('heading', { name: '編輯記事' })).toBeInTheDocument()
+  expect(screen.getByLabelText('標題（選填）')).toHaveValue('尚未儲存的編輯')
+
+  await user.click(screen.getByRole('button', { name: '匯出全部記事' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('匯出資料失敗')
+
+  await user.click(screen.getByRole('button', { name: '登出' }))
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
+
+  expect(await screen.findByRole('heading', { name: initialMonth! })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: '新增記事' })).toBeInTheDocument()
+  expect(screen.getByLabelText('標題（選填）')).toHaveValue('')
+  expect(screen.queryByRole('button', { name: '取消編輯' })).not.toBeInTheDocument()
+  expect(screen.queryByText('匯出資料失敗')).not.toBeInTheDocument()
+  expect(client.signIn).toHaveBeenCalledTimes(2)
 })
 
 test('登入授權完成前不呼叫 bootstrap', async () => {
@@ -63,6 +172,7 @@ test('登入授權完成前不呼叫 bootstrap', async () => {
     signIn: vi.fn().mockImplementation(() => new Promise<void>((resolve) => {
       resolveSignIn = resolve
     })),
+    signOut: vi.fn(),
     run: vi.fn().mockImplementation(async (request: { action: string }) => (
       request.action === 'listEntries'
         ? entryPage()
@@ -72,7 +182,7 @@ test('登入授權完成前不呼叫 bootstrap', async () => {
   const user = userEvent.setup()
   render(<App client={client} />)
 
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
 
   expect(client.signIn).toHaveBeenCalledOnce()
   expect(client.run).not.toHaveBeenCalled()
@@ -85,21 +195,135 @@ test('登入授權完成前不呼叫 bootstrap', async () => {
 test('JournalClient 在 TypeScript 層要求 signIn', () => {
   // @ts-expect-error JournalClient must reject a client that cannot authorize bootstrap.
   const missingSignIn: JournalClient = {
+    signOut: vi.fn(),
     run: async <T,>() => ({ timezone: 'Asia/Taipei', categories: [], tagSuggestions: [] }) as T,
   }
 
   expect(missingSignIn).toBeDefined()
 })
 
+test('JournalClient 在 TypeScript 層要求 signOut', () => {
+  // @ts-expect-error JournalClient must clear authorization state when a session ends.
+  const missingSignOut: JournalClient = {
+    signIn: async () => {},
+    run: async <T,>() => ({ timezone: 'Asia/Taipei', categories: [], tagSuggestions: [] }) as T,
+  }
+
+  expect(missingSignOut).toBeDefined()
+})
+
+test('登出時立即清除已載入的記事並切回未登入狀態', async () => {
+  const client: JournalClient = {
+    signIn: vi.fn().mockResolvedValue(undefined),
+    signOut: vi.fn(),
+    run: vi.fn().mockImplementation(async (request: { action: string }) => {
+      if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+      if (request.action === 'listEntries') return entryPage([entry('loaded', '2026-08-05')])
+      throw new Error('未預期的請求')
+    }),
+  }
+  const user = userEvent.setup()
+  render(<JournalTestHarness client={client} />)
+
+  await user.click(screen.getByRole('button', { name: '登入' }))
+  expect(await screen.findByText('記事內容 loaded')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: '登出' }))
+
+  expect(client.signOut).toHaveBeenCalledOnce()
+  expect(screen.getByText('狀態：signed-out')).toBeInTheDocument()
+  expect(screen.queryByText('記事內容 loaded')).not.toBeInTheDocument()
+})
+
+test('登出後忽略尚未完成的列表回應', async () => {
+  const pendingList = deferred<EntryListResult>()
+  const client: JournalClient = {
+    signIn: vi.fn().mockResolvedValue(undefined),
+    signOut: vi.fn(),
+    run: vi.fn().mockImplementation(async (request: { action: string }) => {
+      if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+      if (request.action === 'listEntries') return pendingList.promise
+      throw new Error('未預期的請求')
+    }),
+  }
+  const user = userEvent.setup()
+  render(<JournalTestHarness client={client} />)
+
+  await user.click(screen.getByRole('button', { name: '登入' }))
+  await screen.findByText('狀態：ready')
+  await waitFor(() => expect(client.run).toHaveBeenCalledWith(expect.objectContaining({ action: 'listEntries' })))
+
+  await user.click(screen.getByRole('button', { name: '登出' }))
+  await act(async () => pendingList.resolve(entryPage([entry('stale', '2026-08-05')])))
+
+  expect(screen.getByText('狀態：signed-out')).toBeInTheDocument()
+  expect(screen.queryByText('記事內容 stale')).not.toBeInTheDocument()
+})
+
+test('登出後以 SessionEndedError 隔離尚未完成的匯出回應', async () => {
+  const pendingExport = deferred<{ headers: string[]; rows: string[][] }>()
+  const exportErrors = vi.fn()
+  const client: JournalClient = {
+    signIn: vi.fn().mockResolvedValue(undefined),
+    signOut: vi.fn(),
+    run: vi.fn().mockImplementation(async (request: { action: string }) => {
+      if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+      if (request.action === 'listEntries') return entryPage()
+      if (request.action === 'exportEntries') return pendingExport.promise
+      throw new Error('未預期的請求')
+    }),
+  }
+  const user = userEvent.setup()
+  render(<JournalTestHarness client={client} onExportError={exportErrors} />)
+
+  await user.click(screen.getByRole('button', { name: '登入' }))
+  await screen.findByText('狀態：ready')
+  await user.click(screen.getByRole('button', { name: '匯出' }))
+  await waitFor(() => expect(client.run).toHaveBeenCalledWith(expect.objectContaining({ action: 'exportEntries' })))
+
+  await user.click(screen.getByRole('button', { name: '登出' }))
+  await act(async () => pendingExport.resolve({ headers: ['標題'], rows: [['過期記事']] }))
+
+  await waitFor(() => expect(exportErrors).toHaveBeenCalledWith(expect.any(SessionEndedError)))
+})
+
+test('登出後以 SessionEndedError 隔離尚未完成的匯出拒絕', async () => {
+  const pendingExport = deferred<{ headers: string[]; rows: string[][] }>()
+  const exportErrors = vi.fn()
+  const client: JournalClient = {
+    signIn: vi.fn().mockResolvedValue(undefined),
+    signOut: vi.fn(),
+    run: vi.fn().mockImplementation(async (request: { action: string }) => {
+      if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+      if (request.action === 'listEntries') return entryPage()
+      if (request.action === 'exportEntries') return pendingExport.promise
+      throw new Error('未預期的請求')
+    }),
+  }
+  const user = userEvent.setup()
+  render(<JournalTestHarness client={client} onExportError={exportErrors} />)
+
+  await user.click(screen.getByRole('button', { name: '登入' }))
+  await screen.findByText('狀態：ready')
+  await user.click(screen.getByRole('button', { name: '匯出' }))
+  await waitFor(() => expect(client.run).toHaveBeenCalledWith(expect.objectContaining({ action: 'exportEntries' })))
+
+  await user.click(screen.getByRole('button', { name: '登出' }))
+  await act(async () => pendingExport.reject(new Error('過期匯出失敗')))
+
+  await waitFor(() => expect(exportErrors).toHaveBeenCalledWith(expect.any(SessionEndedError)))
+})
+
 test('登入取消時顯示重新登入指引', async () => {
   const client = {
     signIn: vi.fn().mockRejectedValue(new Error('Google 登入或授權未完成。')),
+    signOut: vi.fn(),
     run: vi.fn(),
   }
   const user = userEvent.setup()
   render(<App client={client} />)
 
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
 
   expect(await screen.findByText('Google 登入或授權未完成。')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: '重新登入' })).toBeInTheDocument()
@@ -108,11 +332,11 @@ test('登入取消時顯示重新登入指引', async () => {
 })
 
 test('GAS 權限錯誤顯示重新登入指引', async () => {
-  const client = { signIn: vi.fn().mockResolvedValue(undefined), run: vi.fn().mockRejectedValue(new AuthenticationError()) }
+  const client = { signIn: vi.fn().mockResolvedValue(undefined), signOut: vi.fn(), run: vi.fn().mockRejectedValue(new AuthenticationError()) }
   const user = userEvent.setup()
   render(<App client={client} />)
 
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
 
   expect(await screen.findByText('登入已過期或沒有 GAS 使用權限，請重新登入。')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: '連線至每日記事' })).toBeInTheDocument()
@@ -121,14 +345,14 @@ test('GAS 權限錯誤顯示重新登入指引', async () => {
 })
 
 test('網路錯誤顯示可重新嘗試的指引', async () => {
-  const client = { signIn: vi.fn().mockResolvedValue(undefined), run: vi.fn()
+  const client = { signIn: vi.fn().mockResolvedValue(undefined), signOut: vi.fn(), run: vi.fn()
     .mockRejectedValueOnce(new ExecutionClientError())
     .mockResolvedValueOnce({ timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] })
     .mockResolvedValueOnce(entryPage()) }
   const user = userEvent.setup()
   render(<App client={client} />)
 
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
 
   expect(await screen.findByText('暫時無法連線至服務，請稍後再試。')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: '重新嘗試' })).toBeInTheDocument()
@@ -143,7 +367,7 @@ test('GIS SDK 未載入時顯示重新登入與重新嘗試指引', async () => 
   const user = userEvent.setup()
   render(<App />)
 
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
 
   expect(await screen.findByText('Google 登入服務尚未載入。請確認網路連線後重新整理頁面，再重新登入。')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: '重新登入' })).toBeInTheDocument()
@@ -154,6 +378,7 @@ test('連線中停用登入按鈕並顯示連線狀態', async () => {
   let resolveBootstrap: ((value: { timezone: string; categories: ReturnType<typeof category>[]; tagSuggestions: string[] }) => void) | undefined
   const client = {
     signIn: vi.fn().mockResolvedValue(undefined),
+    signOut: vi.fn(),
     run: vi.fn().mockImplementation(() => new Promise((resolve) => {
       resolveBootstrap = resolve
     })),
@@ -161,7 +386,7 @@ test('連線中停用登入按鈕並顯示連線狀態', async () => {
   const user = userEvent.setup()
   render(<App client={client} />)
 
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
 
   expect(screen.getByRole('button', { name: '連線中...' })).toBeDisabled()
   resolveBootstrap?.({ timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] })
@@ -185,8 +410,8 @@ test('連線後載入、儲存、追加與刪除時間軸記事', async () => {
   })
   const user = userEvent.setup()
 
-  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), signOut: vi.fn(), run }} />)
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
 
   expect(await screen.findByText('記事內容 first')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: '載入更多' }))
@@ -215,8 +440,8 @@ test('套用篩選時只採用最新請求的項目並重設游標', async () =>
   })
   const user = userEvent.setup()
 
-  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), signOut: vi.fn(), run }} />)
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
   await screen.findByRole('searchbox', { name: '關鍵字' })
 
   await user.type(screen.getByRole('searchbox', { name: '關鍵字' }), '週會')
@@ -245,8 +470,8 @@ test('儲存成功後忽略較舊的列表回應', async () => {
   })
   const user = userEvent.setup()
 
-  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), signOut: vi.fn(), run }} />)
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
   await waitFor(() => expect(run).toHaveBeenCalledWith(expect.objectContaining({ action: 'listEntries' })))
 
   await user.type(screen.getByLabelText('記事內容'), '新記事')
@@ -273,8 +498,8 @@ test('儲存後重新載入目前篩選，排除不符合條件的新記事', as
   })
   const user = userEvent.setup()
 
-  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), signOut: vi.fn(), run }} />)
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
   await user.type(await screen.findByRole('searchbox', { name: '關鍵字' }), '僅保留')
   expect(await screen.findByText('僅保留的歷史記事')).toBeInTheDocument()
 
@@ -306,8 +531,8 @@ test('變更記事日期後以後端排序重新排列目前清單', async () =>
   })
   const user = userEvent.setup()
 
-  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), signOut: vi.fn(), run }} />)
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
   const olderCard = (await screen.findByRole('heading', { name: '待調整日期' })).closest('article')!
   await user.click(within(olderCard).getByRole('button', { name: '編輯記事' }))
   fireEvent.change(screen.getByLabelText('記錄日期'), { target: { value: '2026-08-05' } })
@@ -332,8 +557,8 @@ test('變更記事日期而不再符合篩選時從清單移除', async () => {
   })
   const user = userEvent.setup()
 
-  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), signOut: vi.fn(), run }} />)
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
   fireEvent.change(await screen.findByLabelText('起始日期'), { target: { value: '2026-08-04' } })
   const card = (await screen.findByRole('heading', { name: '篩選中的記事' })).closest('article')!
   await user.click(within(card).getByRole('button', { name: '編輯記事' }))
@@ -357,8 +582,8 @@ test('刪除成功後忽略較舊的列表回應', async () => {
   })
   const user = userEvent.setup()
 
-  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), signOut: vi.fn(), run }} />)
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
   expect(await screen.findByText('記事內容 delete-me')).toBeInTheDocument()
 
   await user.selectOptions(screen.getByLabelText('分類篩選'), 'work')
@@ -385,8 +610,8 @@ test('月曆檢視切換月份只載入數量，選日以目前篩選取得時�
 
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 })
   window.localStorage.setItem('daily-journal:view', 'calendar')
-  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), signOut: vi.fn(), run }} />)
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
   await waitFor(() => expect(run).toHaveBeenCalledWith(expect.objectContaining({ action: 'getMonthlyEntryCounts' })))
 
   const monthlyRequest = run.mock.calls.map(([request]) => request).find((request) => request.action === 'getMonthlyEntryCounts') as { year: number; month: number }
@@ -444,8 +669,8 @@ test('新增、變更日期與刪除記事後重新取得月曆數量並忽略�
 
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 })
   window.localStorage.setItem('daily-journal:view', 'calendar')
-  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), signOut: vi.fn(), run }} />)
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
   await waitFor(() => expect(monthlyRequestCount).toBe(1))
 
   const originalDate = `${requestedMonth}-10`
@@ -497,8 +722,8 @@ test('選日結果不被較舊的清單回應覆寫', async () => {
 
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 })
   window.localStorage.setItem('daily-journal:view', 'calendar')
-  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), signOut: vi.fn(), run }} />)
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
   await waitFor(() => expect(run).toHaveBeenCalledWith(expect.objectContaining({ action: 'listEntries' })))
   await user.click(await screen.findByRole('button', { name: `${selectedDate}，共 1 則記事` }))
 
@@ -526,8 +751,8 @@ test('檢視切換按鈕更新 aria-pressed 並保存使用者偏好', async () 
 
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 })
   window.localStorage.setItem('daily-journal:view', 'calendar')
-  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), signOut: vi.fn(), run }} />)
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
 
   expect(await screen.findByRole('button', { name: '月曆' })).toHaveAttribute('aria-pressed', 'true')
   await user.click(screen.getByRole('button', { name: '時間軸' }))
@@ -547,8 +772,8 @@ test('新增與停用分類後同步管理清單及可選分類', async () => {
   })
   const user = userEvent.setup()
 
-  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), signOut: vi.fn(), run }} />)
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
 
   await user.type(await screen.findByLabelText('新增分類名稱'), '生活')
   await user.click(screen.getByRole('button', { name: '新增分類' }))
@@ -571,6 +796,7 @@ test('重新登入後 bootstrap 保留已停用分類於管理清單但不提供
   const service = new JournalService(new FakeJournalStore({ categories: [category('work'), category('old')] }), () => '2026-08-04T00:00:00+08:00', () => 'uuid')
   const client: JournalClient = {
     signIn: vi.fn().mockResolvedValue(undefined),
+    signOut: vi.fn(),
     run: async <T,>(request: ApiRequest) => {
       if (request.action === 'bootstrap') return service.bootstrap() as T
       if (request.action === 'listEntries') return entryPage() as T
@@ -580,13 +806,13 @@ test('重新登入後 bootstrap 保留已停用分類於管理清單但不提供
   const user = userEvent.setup()
   const { unmount } = render(<App client={client} />)
 
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
   expect(screen.queryByText('已停用')).not.toBeInTheDocument()
   service.deactivateCategory('old')
   unmount()
 
   render(<App client={client} />)
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
 
   expect(await screen.findByText('已停用')).toBeInTheDocument()
   expect(screen.getByText('old')).toBeInTheDocument()
@@ -606,8 +832,8 @@ test('以目前篩選條件或全部記事匯出 CSV', async () => {
   })
   const user = userEvent.setup()
 
-  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), signOut: vi.fn(), run }} />)
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
   await user.type(await screen.findByRole('searchbox', { name: '關鍵字' }), '週會')
 
   await user.click(screen.getByRole('button', { name: '匯出目前篩選結果' }))
@@ -636,8 +862,8 @@ test('匯出進行中停用兩個按鈕，失敗時顯示後端文案', async ()
   const user = userEvent.setup()
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
 
-  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
-  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), signOut: vi.fn(), run }} />)
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
   const filteredButton = await screen.findByRole('button', { name: '匯出目前篩選結果' })
   await user.click(filteredButton)
 
@@ -656,6 +882,70 @@ test('匯出進行中停用兩個按鈕，失敗時顯示後端文案', async ()
   await user.click(filteredButton)
 
   expect(await screen.findByRole('alert')).toHaveTextContent('匯出資料失敗')
+})
+
+test('正式 App 登出後不下載過期的成功匯出', async () => {
+  const pendingExport = deferred<{ headers: string[]; rows: string[][] }>()
+  const createObjectURL = vi.fn(() => 'blob:csv')
+  const downloadClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  downloadClick.mockClear()
+  vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() })
+  const client: JournalClient = {
+    signIn: vi.fn().mockResolvedValue(undefined),
+    signOut: vi.fn(),
+    run: vi.fn().mockImplementation(async (request: { action: string }) => {
+      if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+      if (request.action === 'listEntries') return entryPage()
+      if (request.action === 'exportEntries') return pendingExport.promise
+      throw new Error('未預期的請求')
+    }),
+  }
+  const user = userEvent.setup()
+  render(<App client={client} />)
+
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
+  await user.click(await screen.findByRole('button', { name: '匯出全部記事' }))
+  await waitFor(() => expect(client.run).toHaveBeenCalledWith(expect.objectContaining({ action: 'exportEntries' })))
+
+  await user.click(screen.getByRole('button', { name: '登出' }))
+  await act(async () => pendingExport.resolve({ headers: ['標題'], rows: [['過期記事']] }))
+
+  expect(screen.getByRole('button', { name: '繼續使用 Google' })).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  expect(createObjectURL).not.toHaveBeenCalled()
+  expect(downloadClick).not.toHaveBeenCalled()
+})
+
+test('正式 App 登出後不顯示過期的匯出失敗', async () => {
+  const pendingExport = deferred<{ headers: string[]; rows: string[][] }>()
+  const createObjectURL = vi.fn(() => 'blob:csv')
+  const downloadClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  downloadClick.mockClear()
+  vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() })
+  const client: JournalClient = {
+    signIn: vi.fn().mockResolvedValue(undefined),
+    signOut: vi.fn(),
+    run: vi.fn().mockImplementation(async (request: { action: string }) => {
+      if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+      if (request.action === 'listEntries') return entryPage()
+      if (request.action === 'exportEntries') return pendingExport.promise
+      throw new Error('未預期的請求')
+    }),
+  }
+  const user = userEvent.setup()
+  render(<App client={client} />)
+
+  await user.click(await screen.findByRole('button', { name: '繼續使用 Google' }))
+  await user.click(await screen.findByRole('button', { name: '匯出全部記事' }))
+  await waitFor(() => expect(client.run).toHaveBeenCalledWith(expect.objectContaining({ action: 'exportEntries' })))
+
+  await user.click(screen.getByRole('button', { name: '登出' }))
+  await act(async () => pendingExport.reject(new Error('過期匯出失敗')))
+
+  expect(screen.getByRole('button', { name: '繼續使用 Google' })).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  expect(createObjectURL).not.toHaveBeenCalled()
+  expect(downloadClick).not.toHaveBeenCalled()
 })
 
 function category(id: string, isActive = true, name = id) {
@@ -689,8 +979,31 @@ function entryPage(items: Entry[] = [], nextCursor: string | null = null): Entry
 
 function deferred<T>() {
   let resolve: (value: T) => void = () => {}
-  const promise = new Promise<T>((next) => {
+  let reject: (reason?: unknown) => void = () => {}
+  const promise = new Promise<T>((next, fail) => {
     resolve = next
+    reject = fail
   })
-  return { promise, resolve }
+  return { promise, resolve, reject }
+}
+
+function JournalTestHarness({ client, onExportError }: { client: JournalClient; onExportError?: (error: unknown) => void }) {
+  const journal = useJournal(client)
+
+  return (
+    <>
+      <p>狀態：{journal.status}</p>
+      {journal.entries.map((currentEntry) => <p key={currentEntry.id}>{currentEntry.content}</p>)}
+      <button type="button" onClick={() => void journal.signIn()}>登入</button>
+      <button type="button" onClick={journal.signOut}>登出</button>
+      <button
+        type="button"
+        onClick={() => {
+          void journal.exportEntries('all').catch(onExportError)
+        }}
+      >
+        匯出
+      </button>
+    </>
+  )
 }
