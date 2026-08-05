@@ -171,11 +171,15 @@ test('連線中停用登入按鈕並顯示連線狀態', async () => {
 test('連線後載入、儲存、追加與刪除時間軸記事', async () => {
   const first = entry('first', '2026-08-04')
   const second = entry('second', '2026-08-03')
+  let saved: Entry | undefined
   const run = vi.fn().mockImplementation(async (request: { action: string; filter?: EntryFilter; entry?: EntryInput; id?: string }) => {
     if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: ['會議'] }
-    if (request.action === 'listEntries' && request.filter?.cursor === null) return entryPage([first], 'page-2')
+    if (request.action === 'listEntries' && request.filter?.cursor === null) return entryPage(saved ? [saved, first] : [first], saved ? null : 'page-2')
     if (request.action === 'listEntries' && request.filter?.cursor === 'page-2') return entryPage([second])
-    if (request.action === 'saveEntry') return entry('saved', request.entry?.entryDate ?? '2026-08-04', { ...request.entry, id: 'saved' })
+    if (request.action === 'saveEntry') {
+      saved = entry('saved', request.entry?.entryDate ?? '2026-08-04', { ...request.entry, id: 'saved' })
+      return saved
+    }
     if (request.action === 'deleteEntry') return undefined
     throw new Error('未預期的請求')
   })
@@ -230,12 +234,12 @@ test('套用篩選時只採用最新請求的項目並重設游標', async () =>
 })
 
 test('儲存成功後忽略較舊的列表回應', async () => {
-  let resolveList: ((value: EntryListResult) => void) | undefined
+  const initialList = deferred<EntryListResult>()
+  const refreshedList = deferred<EntryListResult>()
+  let listCallCount = 0
   const run = vi.fn().mockImplementation(async (request: { action: string; entry?: EntryInput }) => {
     if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
-    if (request.action === 'listEntries') return new Promise((resolve) => {
-      resolveList = resolve
-    })
+    if (request.action === 'listEntries') return listCallCount++ === 0 ? initialList.promise : refreshedList.promise
     if (request.action === 'saveEntry') return entry('saved', request.entry?.entryDate ?? '2026-08-04', { ...request.entry, id: 'saved' })
     throw new Error('未預期的請求')
   })
@@ -248,11 +252,95 @@ test('儲存成功後忽略較舊的列表回應', async () => {
   await user.type(screen.getByLabelText('記事內容'), '新記事')
   await user.selectOptions(screen.getByLabelText('分類'), 'work')
   await user.click(screen.getByRole('button', { name: '儲存記事' }))
-  expect(await screen.findByRole('heading', { name: '新記事' })).toBeInTheDocument()
 
-  resolveList?.(entryPage([entry('old-list', '2026-08-03')]))
+  await act(async () => {
+    initialList.resolve(entryPage([entry('old-list', '2026-08-03')]))
+    refreshedList.resolve(entryPage([entry('saved', '2026-08-04', { title: '', content: '新記事' })]))
+  })
+
+  expect(await screen.findByRole('heading', { name: '新記事' })).toBeInTheDocument()
   await waitFor(() => expect(screen.queryByText('記事內容 old-list')).not.toBeInTheDocument())
   expect(screen.getByRole('heading', { name: '新記事' })).toBeInTheDocument()
+})
+
+test('儲存後重新載入目前篩選，排除不符合條件的新記事', async () => {
+  const matching = entry('matching', '2026-08-04', { title: '符合篩選的標題', content: '僅保留的歷史記事' })
+  const run = vi.fn().mockImplementation(async (request: { action: string; filter?: EntryFilter; entry?: EntryInput }) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+    if (request.action === 'listEntries') return entryPage(request.filter?.query === '僅保留' ? [matching] : [matching])
+    if (request.action === 'saveEntry') return entry('saved', request.entry?.entryDate ?? '2026-08-04', { ...request.entry, id: 'saved' })
+    throw new Error('未預期的請求')
+  })
+  const user = userEvent.setup()
+
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
+  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  await user.type(await screen.findByRole('searchbox', { name: '關鍵字' }), '僅保留')
+  expect(await screen.findByText('僅保留的歷史記事')).toBeInTheDocument()
+
+  await user.type(screen.getByLabelText('記事內容'), '排除的新記事')
+  await user.selectOptions(screen.getByLabelText('分類'), 'work')
+  await user.click(screen.getByRole('button', { name: '儲存記事' }))
+
+  await waitFor(() => expect(run).toHaveBeenCalledWith({
+    action: 'listEntries',
+    filter: { query: '僅保留', from: null, to: null, categoryId: null, tag: null, cursor: null, limit: 20 },
+  }))
+  expect(screen.queryByRole('heading', { name: '排除的新記事' })).not.toBeInTheDocument()
+  expect(screen.getByText('僅保留的歷史記事')).toBeInTheDocument()
+})
+
+test('變更記事日期後以後端排序重新排列目前清單', async () => {
+  const older = entry('older', '2026-08-03', { title: '待調整日期' })
+  const newer = entry('newer', '2026-08-04', { title: '原本較新' })
+  const reordered = entry('older', '2026-08-05', { title: '待調整日期' })
+  let saved = false
+  const run = vi.fn().mockImplementation(async (request: { action: string; entry?: EntryInput }) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+    if (request.action === 'listEntries') return entryPage(saved ? [reordered, newer] : [newer, older])
+    if (request.action === 'saveEntry') {
+      saved = true
+      return reordered
+    }
+    throw new Error('未預期的請求')
+  })
+  const user = userEvent.setup()
+
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
+  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  const olderCard = (await screen.findByRole('heading', { name: '待調整日期' })).closest('article')!
+  await user.click(within(olderCard).getByRole('button', { name: '編輯記事' }))
+  fireEvent.change(screen.getByLabelText('記錄日期'), { target: { value: '2026-08-05' } })
+  await user.click(screen.getByRole('button', { name: '儲存記事' }))
+
+  await waitFor(() => expect(screen.getAllByRole('heading', { level: 3 })
+    .filter((heading) => heading.closest('article'))
+    .map((heading) => heading.textContent)).toEqual(['待調整日期', '原本較新']))
+})
+
+test('變更記事日期而不再符合篩選時從清單移除', async () => {
+  const current = entry('filtered', '2026-08-04', { title: '篩選中的記事' })
+  let saved = false
+  const run = vi.fn().mockImplementation(async (request: { action: string; filter?: EntryFilter }) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+    if (request.action === 'listEntries') return entryPage(saved && request.filter?.from === '2026-08-04' ? [] : [current])
+    if (request.action === 'saveEntry') {
+      saved = true
+      return entry('filtered', '2026-08-03', { title: '篩選中的記事' })
+    }
+    throw new Error('未預期的請求')
+  })
+  const user = userEvent.setup()
+
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
+  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  fireEvent.change(await screen.findByLabelText('起始日期'), { target: { value: '2026-08-04' } })
+  const card = (await screen.findByRole('heading', { name: '篩選中的記事' })).closest('article')!
+  await user.click(within(card).getByRole('button', { name: '編輯記事' }))
+  fireEvent.change(screen.getByLabelText('記錄日期'), { target: { value: '2026-08-03' } })
+  await user.click(screen.getByRole('button', { name: '儲存記事' }))
+
+  await waitFor(() => expect(screen.queryByRole('heading', { name: '篩選中的記事' })).not.toBeInTheDocument())
 })
 
 test('刪除成功後忽略較舊的列表回應', async () => {
@@ -330,9 +418,10 @@ test('新增、變更日期與刪除記事後重新取得月曆數量並忽略�
   const staleCounts = deferred<{ date: string; count: number }[]>()
   let requestedMonth = ''
   let monthlyRequestCount = 0
+  let saved: Entry | undefined
   const run = vi.fn().mockImplementation(async (request: { action: string; entry?: EntryInput; year?: number; month?: number }) => {
     if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
-    if (request.action === 'listEntries') return entryPage()
+    if (request.action === 'listEntries') return entryPage(saved ? [saved] : [])
     if (request.action === 'getMonthlyEntryCounts') {
       requestedMonth = `${request.year}-${String(request.month).padStart(2, '0')}`
       monthlyRequestCount += 1
@@ -341,8 +430,14 @@ test('新增、變更日期與刪除記事後重新取得月曆數量並忽略�
       if (monthlyRequestCount === 3) return [{ date: `${requestedMonth}-11`, count: 1 }]
       return []
     }
-    if (request.action === 'saveEntry') return entry('saved', request.entry?.entryDate ?? `${requestedMonth}-10`, { ...request.entry, id: 'saved' })
-    if (request.action === 'deleteEntry') return undefined
+    if (request.action === 'saveEntry') {
+      saved = entry('saved', request.entry?.entryDate ?? `${requestedMonth}-10`, { ...request.entry, id: 'saved' })
+      return saved
+    }
+    if (request.action === 'deleteEntry') {
+      saved = undefined
+      return undefined
+    }
     throw new Error('未預期的請求')
   })
   const user = userEvent.setup()

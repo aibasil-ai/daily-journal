@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { AppsScriptJournalStore } from './repositories/apps-script-journal-store'
 import { CATEGORY_HEADERS, ENTRY_HEADERS, initializeJournal } from './setup'
+import { JournalSetupError } from './domain/errors'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -28,9 +29,11 @@ describe('initializeJournal', () => {
   test('缺少或空白 Script Properties 時顯示部署者設定指引', () => {
     installAppsScriptGlobals(new Map([['SPREADSHEET_ID', '  ']]), new Map(), () => {})
 
-    expect(() => initializeJournal()).toThrow(
-      '找不到 SPREADSHEET_ID。請在 Apps Script「專案設定」>「指令碼屬性」新增 SPREADSHEET_ID，填入 Google Sheets ID 後再執行 initializeJournal。',
-    )
+    const error = captureError(() => initializeJournal())
+    expect(error).toBeInstanceOf(JournalSetupError)
+    expect(error).toMatchObject({
+      message: '找不到 SPREADSHEET_ID。請在 Apps Script「專案設定」>「指令碼屬性」新增 SPREADSHEET_ID，填入 Google Sheets ID 後再執行 initializeJournal。',
+    })
   })
 })
 
@@ -99,7 +102,9 @@ describe('AppsScriptJournalStore', () => {
       formatDate: () => '',
     })
 
-    expect(() => store.ensureSchema()).toThrow('工作表「entries」欄位不符合預期。')
+    const error = captureError(() => store.ensureSchema())
+    expect(error).toBeInstanceOf(JournalSetupError)
+    expect(error).toMatchObject({ message: '工作表「entries」欄位不符合預期。' })
     expect(releases).toBe(1)
   })
 
@@ -129,6 +134,34 @@ describe('AppsScriptJournalStore', () => {
     expect(store.getEntry('entry-1')).toBeUndefined()
     expect(lockTimeouts).toEqual([10_000])
     expect(releases).toBe(1)
+  })
+
+  test('將使用者公式文字以純文字格式寫入並可完整讀回', () => {
+    const properties = new Map([['SPREADSHEET_ID', 'spreadsheet-id']])
+    const entries = createFormulaAwareSheet(ENTRY_HEADERS)
+    const categories = createFormulaAwareSheet(CATEGORY_HEADERS)
+    const settings = createFormulaAwareSheet(['key', 'value'])
+    const sheets = new Map([['entries', entries], ['categories', categories], ['settings', settings]])
+    const store = new AppsScriptJournalStore({
+      getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }),
+      getScriptProperties: () => ({ getProperty: (key) => properties.get(key) ?? null }),
+      openById: () => ({ getSheetByName: (name) => sheets.get(name) ?? null, insertSheet: () => { throw new Error('不應建立工作表。') }, getSpreadsheetTimeZone: () => 'Asia/Taipei' }),
+      formatDate: () => '',
+    })
+
+    store.saveCategory({ id: 'work', name: '=分類公式', isActive: true, createdAt: '2026-08-04T09:00:00+08:00', updatedAt: '2026-08-04T09:00:00+08:00' })
+    store.saveEntry({
+      id: 'entry-1', entryDate: '2026-08-04', title: '+標題公式', content: '@內文公式', categoryId: 'work',
+      tags: ['-標籤公式'], links: [{ label: '=連結名稱公式', url: '@https://example.com' }],
+      createdAt: '2026-08-04T09:00:00+08:00', updatedAt: '2026-08-04T09:00:00+08:00',
+    })
+
+    expect(store.listCategories()[0].name).toBe('=分類公式')
+    expect(store.getEntry('entry-1')).toMatchObject({
+      title: '+標題公式', content: '@內文公式', tags: ['-標籤公式'], links: [{ label: '=連結名稱公式', url: '@https://example.com' }],
+    })
+    expect(categories.wasWrittenAsPlainText()).toBe(true)
+    expect(entries.wasWrittenAsPlainText()).toBe(true)
   })
 
   test('交易內寫入拋出錯誤時仍釋放 ScriptLock', () => {
@@ -189,22 +222,78 @@ function createSheet(headers: string[] = [], rows: unknown[][] = []) {
       return (data[0] ?? []).map(String)
     },
     getLastRow: () => data.length,
-    getRange: (row: number, column: number, numRows: number, numColumns: number) => ({
-      getValues: () => Array.from({ length: numRows }, (_unused, rowOffset) => Array.from(
-        { length: numColumns },
-        (_otherUnused, columnOffset) => data[row - 1 + rowOffset]?.[column - 1 + columnOffset] ?? '',
-      )),
-      setValues: (values: unknown[][]) => {
-        values.forEach((valuesRow, rowOffset) => {
-          const target = data[row - 1 + rowOffset] ?? []
-          data[row - 1 + rowOffset] = target
-          valuesRow.forEach((value, columnOffset) => { target[column - 1 + columnOffset] = value })
-        })
-      },
-    }),
+    getRange: (row: number, column: number, numRows: number, numColumns: number) => {
+      const range = {
+        getValues: () => Array.from({ length: numRows }, (_unused, rowOffset) => Array.from(
+          { length: numColumns },
+          (_otherUnused, columnOffset) => data[row - 1 + rowOffset]?.[column - 1 + columnOffset] ?? '',
+        )),
+        setNumberFormat: () => range,
+        setValues: (values: unknown[][]) => {
+          values.forEach((valuesRow, rowOffset) => {
+            const target = data[row - 1 + rowOffset] ?? []
+            data[row - 1 + rowOffset] = target
+            valuesRow.forEach((value, columnOffset) => { target[column - 1 + columnOffset] = value })
+          })
+        },
+      }
+      return range
+    },
     deleteRow: (row: number) => { data.splice(row - 1, 1) },
   }
   return sheet
+}
+
+function captureError(operation: () => void): Error {
+  try {
+    operation()
+  } catch (error) {
+    if (error instanceof Error) return error
+    throw error
+  }
+  throw new Error('預期操作拋出錯誤。')
+}
+
+function createFormulaAwareSheet(headers: string[]) {
+  const data: unknown[][] = [headers]
+  const textCells = new Set<string>()
+  let wrotePlainText = false
+
+  return {
+    getLastRow: () => data.length,
+    getRange: (row: number, column: number, numRows: number, numColumns: number) => {
+      const key = (rowOffset: number, columnOffset: number) => `${row + rowOffset}:${column + columnOffset}`
+      const range = {
+        getValues: () => Array.from({ length: numRows }, (_unused, rowOffset) => Array.from(
+          { length: numColumns },
+          (_otherUnused, columnOffset) => data[row - 1 + rowOffset]?.[column - 1 + columnOffset] ?? '',
+        )),
+        setNumberFormat: (format: string) => {
+          if (format === '@') {
+            wrotePlainText = true
+            for (let rowOffset = 0; rowOffset < numRows; rowOffset += 1) {
+              for (let columnOffset = 0; columnOffset < numColumns; columnOffset += 1) textCells.add(key(rowOffset, columnOffset))
+            }
+          }
+          return range
+        },
+        setValues: (values: unknown[][]) => {
+          values.forEach((valuesRow, rowOffset) => {
+            const target = data[row - 1 + rowOffset] ?? []
+            data[row - 1 + rowOffset] = target
+            valuesRow.forEach((value, columnOffset) => {
+              target[column - 1 + columnOffset] = typeof value === 'string' && /^[=+\-@]/.test(value) && !textCells.has(key(rowOffset, columnOffset))
+                ? '已被試算表計算'
+                : value
+            })
+          })
+        },
+      }
+      return range
+    },
+    deleteRow: (row: number) => { data.splice(row - 1, 1) },
+    wasWrittenAsPlainText: () => wrotePlainText,
+  }
 }
 
 function installAppsScriptGlobals(

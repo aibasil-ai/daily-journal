@@ -14,7 +14,7 @@ test('依記錄日期分組並僅在有游標時顯示載入更多', async () =>
   const onLoadMore = vi.fn()
   const user = userEvent.setup()
   const { rerender } = render(
-    <Timeline entries={[entry('first', '2026-08-04'), entry('second', '2026-08-03')]} nextCursor="cursor-2" onEdit={vi.fn()} onDelete={vi.fn()} onLoadMore={onLoadMore} />,
+    <Timeline entries={[entry('first', '2026-08-04'), entry('second', '2026-08-03')]} categoryNameById={new Map([['work', '工作']])} nextCursor="cursor-2" onEdit={vi.fn()} onDelete={vi.fn()} onLoadMore={onLoadMore} />,
   )
 
   expect(screen.getByRole('heading', { name: '2026-08-04' })).toBeInTheDocument()
@@ -22,18 +22,24 @@ test('依記錄日期分組並僅在有游標時顯示載入更多', async () =>
   await user.click(screen.getByRole('button', { name: '載入更多' }))
   expect(onLoadMore).toHaveBeenCalledOnce()
 
-  rerender(<Timeline entries={[]} nextCursor={null} onEdit={vi.fn()} onDelete={vi.fn()} onLoadMore={vi.fn()} />)
+  rerender(<Timeline entries={[]} categoryNameById={new Map()} nextCursor={null} onEdit={vi.fn()} onDelete={vi.fn()} onLoadMore={vi.fn()} />)
   expect(screen.queryByRole('button', { name: '載入更多' })).not.toBeInTheDocument()
 })
 
 test('標題留空時以記事內容前八十字顯示摘要，外部連結安全開啟', () => {
   const content = '這是一段用來驗證摘要行為的記事內容，會超過八十個字元，以確保卡片顯示正確截斷的標題。'.repeat(2)
 
-  render(<EntryCard entry={entry('empty-title', '2026-08-04', { title: '', content, links: [{ label: '參考資料', url: 'https://example.com' }] })} onEdit={vi.fn()} onDelete={vi.fn()} />)
+  render(<EntryCard entry={entry('empty-title', '2026-08-04', { title: '', content, links: [{ label: '參考資料', url: 'https://example.com' }] })} categoryName="工作" onEdit={vi.fn()} onDelete={vi.fn()} />)
 
   expect(screen.getByRole('heading', { name: content.slice(0, 80) })).toBeInTheDocument()
   expect(screen.getByRole('link', { name: '參考資料' })).toHaveAttribute('target', '_blank')
   expect(screen.getByRole('link', { name: '參考資料' })).toHaveAttribute('rel', 'noreferrer noopener')
+})
+
+test('歷史記事透過明確分類名稱顯示停用分類', () => {
+  render(<EntryCard {...{ entry: entry('inactive-category', '2026-08-04', { categoryId: 'old' }), categoryName: '舊分類', onEdit: vi.fn(), onDelete: vi.fn() }} />)
+
+  expect(screen.getByText('分類：舊分類')).toBeInTheDocument()
 })
 
 test('不產生 data、javascript、ftp 協定的可點擊連結', () => {
@@ -43,7 +49,7 @@ test('不產生 data、javascript、ftp 協定的可點擊連結', () => {
       { label: '腳本網址', url: 'javascript:alert(1)' },
       { label: 'FTP 網址', url: 'ftp://example.com' },
     ],
-  })} onEdit={vi.fn()} onDelete={vi.fn()} />)
+  })} categoryName="工作" onEdit={vi.fn()} onDelete={vi.fn()} />)
 
   expect(screen.getByText('資料網址')).toBeInTheDocument()
   expect(screen.getByText('腳本網址')).toBeInTheDocument()
@@ -57,7 +63,7 @@ test('刪除前要求再次確認，失敗後保留記事並顯示錯誤', async
   const onDelete = vi.fn().mockRejectedValue(new Error('刪除失敗'))
   const user = userEvent.setup()
 
-  render(<EntryCard entry={entry('delete', '2026-08-04')} onEdit={vi.fn()} onDelete={onDelete} />)
+  render(<EntryCard entry={entry('delete', '2026-08-04')} categoryName="工作" onEdit={vi.fn()} onDelete={onDelete} />)
 
   await user.click(screen.getByRole('button', { name: '刪除記事' }))
   expect(screen.getByRole('dialog', { name: '刪除記事確認' })).toBeInTheDocument()
@@ -83,6 +89,19 @@ test('任一篩選欄位變動時重設游標並傳出完整複合篩選', async
   expect(onChange).toHaveBeenLastCalledWith({ ...filter, query: '週會', from: '2026-08-01', categoryId: 'work', cursor: null })
   await user.selectOptions(screen.getByLabelText('標籤篩選'), '會議')
   expect(onChange).toHaveBeenLastCalledWith({ ...filter, query: '週會', from: '2026-08-01', categoryId: 'work', tag: '會議', cursor: null })
+})
+
+test('分類篩選器保留停用分類並標示狀態', () => {
+  render(
+    <FilterBar
+      categories={[category('work'), { ...category('old'), name: '舊分類', isActive: false }]}
+      tagSuggestions={[]}
+      filter={{ query: '', from: null, to: null, categoryId: null, tag: null, cursor: null, limit: 20 }}
+      onChange={vi.fn()}
+    />,
+  )
+
+  expect(screen.getByRole('option', { name: '舊分類（已停用）' })).toHaveValue('old')
 })
 
 function FilterBarHarness({ initialFilter, onChange }: { initialFilter: EntryFilter; onChange: (filter: EntryFilter) => void }) {

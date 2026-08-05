@@ -4,11 +4,12 @@ import { zhTW } from '../../i18n/zh-TW'
 
 type EntryCardProps = {
   entry: Entry
+  categoryName: string
   onEdit: (entry: Entry) => void
   onDelete: (id: string) => Promise<void>
 }
 
-export function EntryCard({ entry, onEdit, onDelete }: EntryCardProps) {
+export function EntryCard({ entry, categoryName, onEdit, onDelete }: EntryCardProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const confirmButtonRef = useRef<HTMLButtonElement>(null)
   const [deleteError, setDeleteError] = useState<string | undefined>()
@@ -47,7 +48,8 @@ export function EntryCard({ entry, onEdit, onDelete }: EntryCardProps) {
         </div>
       </header>
       <p>{entry.content}</p>
-      {entry.tags.length > 0 && <p className="entry-card__tags">標籤：{entry.tags.join('、')}</p>}
+      <p className="entry-card__category">{zhTW.entries.categoryName(categoryName)}</p>
+      {entry.tags.length > 0 && <p className="entry-card__tags">{zhTW.entries.tagsPrefix}{entry.tags.join('、')}</p>}
       {entry.links.length > 0 && (
         <ul className="entry-card__links" aria-label={zhTW.entries.links}>
           {entry.links.map((link) => <li key={`${link.label}-${link.url}`}>{isSafeHttpUrl(link.url) ? <a href={link.url} target="_blank" rel="noreferrer noopener">{link.label}</a> : link.label}</li>)}

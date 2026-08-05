@@ -4,9 +4,13 @@ export type CsvExport = {
 }
 
 export function createCsvBlob(headers: string[], rows: string[][]): Blob {
-  const escape = (value: string) => `"${(/^[=+\-@]/.test(value) ? `'${value}` : value).replaceAll('"', '""')}"`
+  const escape = (value: string) => `"${(startsWithFormula(value) ? `'${value}` : value).replaceAll('"', '""')}"`
   const csv = [headers, ...rows].map((row) => row.map(escape).join(',')).join('\r\n') + '\r\n'
   return new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' })
+}
+
+function startsWithFormula(value: string): boolean {
+  return /^[\s\u0000-\u001f\u007f-\u009f]*[=+\-@]/u.test(value)
 }
 
 export function downloadCsv(headers: string[], rows: string[][], date = new Date()) {

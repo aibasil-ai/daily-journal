@@ -39,6 +39,8 @@ export const zhTW = {
     monthCalendar: (month: string) => `${month} 月曆`,
     entryCount: (count: number) => `${count} 則記事`,
     dateSummary: (date: string, count: number) => `${date}，共 ${count} 則記事`,
+    weekdays: ['一', '二', '三', '四', '五', '六', '日'],
+    invalidMonth: '月份格式必須為 YYYY-MM。',
   },
   categories: {
     title: '分類管理',
@@ -101,5 +103,10 @@ export const zhTW = {
     cancel: '取消',
     confirmDelete: '確認刪除',
     deleting: '刪除中...',
+    removeTagButton: '移除',
+    tagsPrefix: '標籤：',
+    categoryName: (name: string) => `分類：${name}`,
+    inactiveCategoryOption: (name: string) => `${name}（已停用）`,
+    unknownCategory: '未知分類',
   },
 } as const

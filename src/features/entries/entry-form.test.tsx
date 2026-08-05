@@ -68,6 +68,19 @@ test('標籤以逗號新增、去重並可移除', async () => {
   expect(screen.queryByRole('button', { name: '移除標籤 會議' })).not.toBeInTheDocument()
 })
 
+test('依試算表時區預設記錄日期', () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date('2026-08-01T00:30:00.000Z'))
+
+  try {
+    render(<EntryForm {...{ categories: [category('work')], onSave: vi.fn().mockResolvedValue(undefined), tagSuggestions: [], timezone: 'America/Los_Angeles' }} />)
+
+    expect(screen.getByLabelText('記錄日期')).toHaveValue('2026-07-31')
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
 function category(id: string): Category {
   return {
     id,

@@ -2,6 +2,7 @@
 
 import { describe, expect, test, vi } from 'vitest'
 import { JournalServiceError } from '../services/journal-service'
+import { JournalSetupError } from '../domain/errors'
 import { executeAppRequest } from './dispatcher'
 
 describe('executeAppRequest', () => {
@@ -47,6 +48,16 @@ describe('executeAppRequest', () => {
       ok: false,
       code: 'REQUEST_ERROR',
       message: '請先完成初始化。',
+    })
+  })
+
+  test('將預期的部署與工作表設定錯誤轉為可操作回應', () => {
+    const service = journalService({ bootstrap: () => { throw new JournalSetupError('找不到 SPREADSHEET_ID。請在 Apps Script「專案設定」>「指令碼屬性」新增 SPREADSHEET_ID，填入 Google Sheets ID 後再執行 initializeJournal。') } })
+
+    expect(executeAppRequest({ action: 'bootstrap' }, service)).toEqual({
+      ok: false,
+      code: 'REQUEST_ERROR',
+      message: '找不到 SPREADSHEET_ID。請在 Apps Script「專案設定」>「指令碼屬性」新增 SPREADSHEET_ID，填入 Google Sheets ID 後再執行 initializeJournal。',
     })
   })
 

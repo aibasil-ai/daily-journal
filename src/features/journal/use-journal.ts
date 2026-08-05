@@ -55,6 +55,7 @@ export function useJournal(client: JournalClient) {
   const [state, setState] = useState<JournalState>(signedOutState)
   const entryEpoch = useRef(0)
   const monthlyCountEpoch = useRef(0)
+  const filterRef = useRef(defaultFilter())
 
   async function connect(requestSignIn: boolean) {
     if (state.status === 'loading') return
@@ -63,6 +64,7 @@ export function useJournal(client: JournalClient) {
     try {
       if (requestSignIn) await client.signIn()
       const bootstrap = await client.run<JournalBootstrap>({ action: 'bootstrap' })
+      filterRef.current = defaultFilter()
       setState({
         status: 'ready',
         bootstrap,
@@ -147,13 +149,10 @@ export function useJournal(client: JournalClient) {
     monthlyCountEpoch.current += 1
     setState((current) => ({
       ...current,
-      entries: input.id
-        ? current.entries.map((entry) => entry.id === saved.id ? saved : entry)
-        : [saved, ...current.entries],
       tagSuggestions: [...new Set([...current.tagSuggestions, ...saved.tags])],
-      isLoadingEntries: false,
       monthlyEntryCountsRevision: current.monthlyEntryCountsRevision + 1,
     }))
+    await loadEntries({ ...filterRef.current, cursor: null })
   }
 
   async function deleteEntry(id: string) {
@@ -180,13 +179,15 @@ export function useJournal(client: JournalClient) {
 
   async function deactivateCategory(id: string) {
     const saved = await client.run<Category>({ action: 'deactivateCategory', id })
-    const nextFilter = state.filter.categoryId === saved.id ? { ...state.filter, categoryId: null, cursor: null } : state.filter
+    const currentFilter = filterRef.current
+    const nextFilter = currentFilter.categoryId === saved.id ? { ...currentFilter, categoryId: null, cursor: null } : currentFilter
+    filterRef.current = nextFilter
     setState((current) => ({
       ...current,
       categories: current.categories.map((category) => category.id === saved.id ? saved : category),
       filter: nextFilter,
     }))
-    if (nextFilter !== state.filter) await loadEntries(nextFilter)
+    if (nextFilter !== currentFilter) await loadEntries(nextFilter)
   }
 
   function exportEntries(scope: 'filtered' | 'all') {
@@ -195,6 +196,7 @@ export function useJournal(client: JournalClient) {
 
   function setFilter(filter: EntryFilter) {
     const initialFilter = { ...filter, cursor: null }
+    filterRef.current = initialFilter
     setState((current) => ({ ...current, filter: initialFilter }))
     void loadEntries(initialFilter)
   }

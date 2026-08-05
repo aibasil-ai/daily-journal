@@ -21,6 +21,17 @@ test.each([
   expect(text).toBe(`"${expected}"\r\n"${expected}"\r\n`)
 })
 
+test.each([
+  ['tab', '\t=SUM(A1)'],
+  ['CR/LF', '\r\n-SUM(A1)'],
+  ['Unicode 空白', '\u00a0@SUM(A1)'],
+  ['控制字元', '\u0000+SUM(A1)'],
+])('CSV 對前導%s後的公式字元加上純文字前綴', async (_label, value) => {
+  const text = await readCsv(createCsvBlob([value], [[value]]))
+
+  expect(text).toBe(`"'${value}"\r\n"'${value}"\r\n`)
+})
+
 test('CSV 將正常負數視為文字，並保留非公式開頭的說明文案', async () => {
   const text = await readCsv(createCsvBlob(['金額', '說明'], [['-42', '負數為 -42']]))
 

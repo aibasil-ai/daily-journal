@@ -31,7 +31,7 @@ export function FilterBar({ categories, tagSuggestions, filter, onChange }: Filt
         {zhTW.entries.categoryFilter}
         <select value={filter.categoryId ?? ''} onChange={(event) => updateFilter({ categoryId: event.target.value || null })}>
           <option value="">{zhTW.entries.allCategories}</option>
-          {categories.filter((category) => category.isActive).map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+          {categories.map((category) => <option key={category.id} value={category.id}>{category.isActive ? category.name : zhTW.entries.inactiveCategoryOption(category.name)}</option>)}
         </select>
       </label>
       <label>

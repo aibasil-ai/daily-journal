@@ -1,4 +1,5 @@
 import type { Category, Entry } from '../domain/journal'
+import { JournalSetupError } from '../domain/errors'
 import type { JournalStore } from './journal-store'
 
 type ScriptLock = {
@@ -8,6 +9,7 @@ type ScriptLock = {
 
 type SheetRange = {
   getValues(): unknown[][]
+  setNumberFormat(format: string): SheetRange
   setValues(values: unknown[][]): void
 }
 
@@ -145,13 +147,14 @@ export class AppsScriptJournalStore implements JournalStore {
 
     const actualHeaders = sheet.getRange(1, 1, 1, headers.length).getValues()[0].map(String)
     if (actualHeaders.join('\u0000') !== headers.join('\u0000')) {
-      throw new Error(`工作表「${name}」欄位不符合預期。`)
+      throw new JournalSetupError(`工作表「${name}」欄位不符合預期。`)
     }
   }
 
   private saveRow(sheet: Sheet, headers: string[], id: string, values: unknown[]): void {
     const row = this.findRow(sheet, id) ?? sheet.getLastRow() + 1
-    sheet.getRange(row, 1, 1, headers.length).setValues([values])
+    // 先設為純文字格式，避免 Sheets 將使用者輸入當成公式計算。
+    sheet.getRange(row, 1, 1, headers.length).setNumberFormat('@').setValues([values])
   }
 
   private findRow(sheet: Sheet, id: string): number | undefined {
@@ -205,13 +208,13 @@ export class AppsScriptJournalStore implements JournalStore {
 
   private getRequiredSheet(name: string): Sheet {
     const sheet = this.getSpreadsheet().getSheetByName(name)
-    if (!sheet) throw new Error(`找不到工作表「${name}」，請先執行 initializeJournal。`)
+    if (!sheet) throw new JournalSetupError(`找不到工作表「${name}」，請先執行 initializeJournal。`)
     return sheet
   }
 
   private getSpreadsheet(): Spreadsheet {
     const spreadsheetId = this.api.getScriptProperties().getProperty('SPREADSHEET_ID')?.trim()
-    if (!spreadsheetId) throw new Error(MISSING_SPREADSHEET_ID_ERROR)
+    if (!spreadsheetId) throw new JournalSetupError(MISSING_SPREADSHEET_ID_ERROR)
     return this.api.openById(spreadsheetId)
   }
 

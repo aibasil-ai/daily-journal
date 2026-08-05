@@ -1,6 +1,7 @@
 import { useState, type FormEvent, type KeyboardEvent } from 'react'
 import type { Category, Entry, EntryInput, JournalLink } from '../../domain/journal'
 import { normalizeEntryInput, validateEntryInput, type ValidationIssue } from '../../domain/validation'
+import { dateInTimeZone } from '../../domain/time-zone'
 import { zhTW } from '../../i18n/zh-TW'
 
 type EntryFormProps = {
@@ -9,12 +10,13 @@ type EntryFormProps = {
   tagSuggestions: string[]
   entry?: Entry
   onCancel?: () => void
+  timezone?: string
 }
 
 type FormValues = Omit<EntryInput, 'id'>
 
-export function EntryForm({ categories, onSave, tagSuggestions, entry, onCancel }: EntryFormProps) {
-  const [values, setValues] = useState<FormValues>(() => entryValues(entry))
+export function EntryForm({ categories, onSave, tagSuggestions, entry, onCancel, timezone }: EntryFormProps) {
+  const [values, setValues] = useState<FormValues>(() => entryValues(entry, timezone))
   const [tagDraft, setTagDraft] = useState('')
   const [issues, setIssues] = useState<ValidationIssue[]>([])
   const [isSaving, setIsSaving] = useState(false)
@@ -58,7 +60,7 @@ export function EntryForm({ categories, onSave, tagSuggestions, entry, onCancel 
     try {
       await onSave(input)
       if (!entry) {
-        setValues(entryValues(undefined))
+        setValues(entryValues(undefined, timezone))
         setTagDraft('')
       }
     } catch (error) {
@@ -123,7 +125,7 @@ export function EntryForm({ categories, onSave, tagSuggestions, entry, onCancel 
             {values.tags.map((tag) => (
               <li key={tag}>
                 {tag}
-                <button type="button" className="tag-list__remove" onClick={() => setValues((current) => ({ ...current, tags: current.tags.filter((item) => item !== tag) }))} aria-label={zhTW.entries.removeTag(tag)}>移除</button>
+                <button type="button" className="tag-list__remove" onClick={() => setValues((current) => ({ ...current, tags: current.tags.filter((item) => item !== tag) }))} aria-label={zhTW.entries.removeTag(tag)}>{zhTW.entries.removeTagButton}</button>
               </li>
             ))}
           </ul>
@@ -178,7 +180,7 @@ function LinkFields({ index, link, onChange, onRemove }: { index: number; link: 
   )
 }
 
-function entryValues(entry: Entry | undefined): FormValues {
+function entryValues(entry: Entry | undefined, timezone: string | undefined): FormValues {
   return entry ? {
     entryDate: entry.entryDate,
     title: entry.title,
@@ -187,17 +189,11 @@ function entryValues(entry: Entry | undefined): FormValues {
     tags: entry.tags,
     links: entry.links,
   } : {
-    entryDate: today(),
+    entryDate: dateInTimeZone(timezone),
     title: '',
     content: '',
     categoryId: '',
     tags: [],
     links: [],
   }
-}
-
-function today(): string {
-  const date = new Date()
-  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
-  return offsetDate.toISOString().slice(0, 10)
 }

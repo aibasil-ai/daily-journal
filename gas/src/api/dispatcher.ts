@@ -1,4 +1,5 @@
 import type { ApiRequest, ApiResponse } from '../domain/journal'
+import { JournalSetupError } from '../domain/errors'
 import { AppsScriptJournalStore } from '../repositories/apps-script-journal-store'
 import { createJournalService, JournalService, JournalServiceError } from '../services/journal-service'
 
@@ -29,7 +30,7 @@ export function executeAppRequest(
       default: return { ok: false, code: 'INVALID_ACTION', message: apiMessages.invalidAction }
     }
   } catch (error) {
-    if (error instanceof JournalServiceError) {
+    if (error instanceof JournalServiceError || error instanceof JournalSetupError) {
       return { ok: false, code: 'REQUEST_ERROR', message: error.message }
     }
 

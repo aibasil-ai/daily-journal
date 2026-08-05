@@ -12,8 +12,6 @@ type CalendarViewProps = {
   onSelectDate: (date: string) => void
 }
 
-const weekdays = ['一', '二', '三', '四', '五', '六', '日']
-
 export function CalendarView({ month, counts, onMonthChange, onSelectDate }: CalendarViewProps) {
   const { year, monthNumber } = parseMonth(month)
   const countByDate = new Map(counts.map(({ date, count }) => [date, count]))
@@ -28,7 +26,7 @@ export function CalendarView({ month, counts, onMonthChange, onSelectDate }: Cal
         <button type="button" className="button--secondary" onClick={() => onMonthChange(addMonths(month, 1))}>{zhTW.calendar.nextMonth}</button>
       </div>
       <div className="calendar-view__weekdays" aria-hidden="true">
-        {weekdays.map((weekday) => <span key={weekday}>{weekday}</span>)}
+        {zhTW.calendar.weekdays.map((weekday) => <span key={weekday}>{weekday}</span>)}
       </div>
       <div className="calendar-view__days">
         {Array.from({ length: firstWeekday }, (_, index) => <span className="calendar-view__empty" key={`empty-${index}`} />)}
@@ -50,11 +48,11 @@ export function CalendarView({ month, counts, onMonthChange, onSelectDate }: Cal
 
 function parseMonth(month: string): { year: number; monthNumber: number } {
   const matched = /^(\d{4})-(\d{2})$/.exec(month)
-  if (!matched) throw new Error('月份格式必須為 YYYY-MM。')
+  if (!matched) throw new Error(zhTW.calendar.invalidMonth)
 
   const year = Number(matched[1])
   const monthNumber = Number(matched[2])
-  if (monthNumber < 1 || monthNumber > 12) throw new Error('月份格式必須為 YYYY-MM。')
+  if (monthNumber < 1 || monthNumber > 12) throw new Error(zhTW.calendar.invalidMonth)
   return { year, monthNumber }
 }
 

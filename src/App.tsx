@@ -10,6 +10,7 @@ import { ConnectionScreen } from './features/journal/connection-screen'
 import { type JournalClient, useJournal } from './features/journal/use-journal'
 import { getInitialView, loadViewPreference, saveViewPreference, type JournalView } from './features/journal/view-preference'
 import type { Entry } from './domain/journal'
+import { monthInTimeZone } from './domain/time-zone'
 import { zhTW } from './i18n/zh-TW'
 import { GoogleOAuth } from './services/google-oauth'
 import { ExecutionClient } from './services/execution-client'
@@ -75,14 +76,15 @@ function JournalApplication({ client }: { client: JournalClient }) {
   const journal = useJournal(client)
   const [editingEntry, setEditingEntry] = useState<Entry | undefined>()
   const [view, setView] = useState<JournalView>(() => getInitialView(typeof window === 'undefined' ? 1024 : window.innerWidth, loadViewPreference()))
-  const [month, setMonth] = useState(currentMonth)
+  const [month, setMonth] = useState<string | undefined>()
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | undefined>()
+  const currentJournalMonth = month ?? currentMonth(journal.bootstrap?.timezone)
 
   useEffect(() => {
     if (journal.status !== 'ready' || view !== 'calendar') return
-    void journal.loadMonthlyEntryCounts(month)
-  }, [journal.status, view, month, journal.filter.query, journal.filter.from, journal.filter.to, journal.filter.categoryId, journal.filter.tag, journal.monthlyEntryCountsRevision])
+    void journal.loadMonthlyEntryCounts(currentJournalMonth)
+  }, [journal.status, view, currentJournalMonth, journal.filter.query, journal.filter.from, journal.filter.to, journal.filter.categoryId, journal.filter.tag, journal.monthlyEntryCountsRevision])
 
   function changeView(nextView: JournalView) {
     setView(nextView)
@@ -105,6 +107,8 @@ function JournalApplication({ client }: { client: JournalClient }) {
   }
 
   if (journal.status === 'ready') {
+    const categoryNameById = new Map(journal.categories.map((category) => [category.id, category.name]))
+
     return (
       <div className="journal-application">
         <p>{zhTW.journal.ready}</p>
@@ -119,6 +123,7 @@ function JournalApplication({ client }: { client: JournalClient }) {
               key={editingEntry?.id ?? 'new'}
               entry={editingEntry}
               categories={journal.categories}
+              timezone={journal.bootstrap?.timezone}
               tagSuggestions={journal.tagSuggestions}
               onSave={async (input) => {
                 await journal.saveEntry(input)
@@ -145,7 +150,7 @@ function JournalApplication({ client }: { client: JournalClient }) {
             </section>
             {view === 'calendar' && (
               <CalendarView
-                month={month}
+                month={currentJournalMonth}
                 counts={journal.monthlyEntryCounts}
                 onMonthChange={setMonth}
                 onSelectDate={journal.getEntriesForDate}
@@ -153,6 +158,7 @@ function JournalApplication({ client }: { client: JournalClient }) {
             )}
             <Timeline
               entries={journal.entries}
+              categoryNameById={categoryNameById}
               nextCursor={view === 'timeline' ? journal.nextCursor : null}
               isLoadingMore={journal.isLoadingEntries}
               onEdit={setEditingEntry}
@@ -176,8 +182,6 @@ function JournalApplication({ client }: { client: JournalClient }) {
   )
 }
 
-function currentMonth(): string {
-  const date = new Date()
-  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
-  return localDate.toISOString().slice(0, 7)
+export function currentMonth(timezone: string | undefined, date = new Date()): string {
+  return monthInTimeZone(timezone, date)
 }
