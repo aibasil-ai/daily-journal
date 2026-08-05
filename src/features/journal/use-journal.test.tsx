@@ -5,9 +5,11 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { App } from '../../App'
-import type { Entry, EntryFilter, EntryInput, EntryListResult } from '../../domain/journal'
+import type { ApiRequest, Entry, EntryFilter, EntryInput, EntryListResult } from '../../domain/journal'
 import type { JournalClient } from './use-journal'
 import { AuthenticationError, ExecutionClientError } from '../../services/execution-client'
+import { JournalService } from '../../../gas/src/services/journal-service'
+import { FakeJournalStore } from '../../../gas/src/test/fake-journal-store'
 
 beforeEach(() => {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: 375 })
@@ -468,6 +470,32 @@ test('新增與停用分類後同步管理清單及可選分類', async () => {
     action: 'listEntries',
     filter: { query: '', from: null, to: null, categoryId: null, tag: null, cursor: null, limit: 20 },
   })
+})
+
+test('重新登入後 bootstrap 保留已停用分類於管理清單但不提供選用', async () => {
+  const service = new JournalService(new FakeJournalStore({ categories: [category('work'), category('old')] }), () => '2026-08-04T00:00:00+08:00', () => 'uuid')
+  const client: JournalClient = {
+    signIn: vi.fn().mockResolvedValue(undefined),
+    run: async <T,>(request: ApiRequest) => {
+      if (request.action === 'bootstrap') return service.bootstrap() as T
+      if (request.action === 'listEntries') return entryPage() as T
+      throw new Error('未預期的請求')
+    },
+  }
+  const user = userEvent.setup()
+  const { unmount } = render(<App client={client} />)
+
+  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  expect(screen.queryByText('已停用')).not.toBeInTheDocument()
+  service.deactivateCategory('old')
+  unmount()
+
+  render(<App client={client} />)
+  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+
+  expect(await screen.findByText('已停用')).toBeInTheDocument()
+  expect(screen.getByText('old')).toBeInTheDocument()
+  expect(screen.queryAllByRole('option', { name: 'old' })).toHaveLength(0)
 })
 
 test('以目前篩選條件或全部記事匯出 CSV', async () => {

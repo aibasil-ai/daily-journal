@@ -41,7 +41,7 @@ export class JournalService {
   bootstrap(): BootstrapData {
     return {
       timezone: this.store.getTimezone(),
-      categories: this.store.listCategories().filter((category) => category.isActive),
+      categories: this.store.listCategories(),
       tagSuggestions: this.listTagSuggestions(),
     }
   }

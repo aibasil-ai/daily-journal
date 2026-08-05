@@ -4,7 +4,7 @@ export type CsvExport = {
 }
 
 export function createCsvBlob(headers: string[], rows: string[][]): Blob {
-  const escape = (value: string) => `"${value.replaceAll('"', '""')}"`
+  const escape = (value: string) => `"${(/^[=+\-@]/.test(value) ? `'${value}` : value).replaceAll('"', '""')}"`
   const csv = [headers, ...rows].map((row) => row.map(escape).join(',')).join('\r\n') + '\r\n'
   return new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' })
 }

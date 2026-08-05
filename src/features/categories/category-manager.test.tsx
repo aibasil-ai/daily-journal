@@ -37,7 +37,7 @@ test('停用分類前顯示歷史記事仍會保留的說明', async () => {
   expect(screen.getByRole('button', { name: '確認停用' })).toHaveFocus()
 })
 
-test('關閉停用對話框後焦點回到觸發按鈕', async () => {
+test('取消停用後焦點回到觸發按鈕', async () => {
   const user = userEvent.setup()
 
   render(<CategoryManager categories={[category('work', '工作'), category('life', '生活')]} onSave={vi.fn()} onDeactivate={vi.fn()} />)
@@ -47,6 +47,20 @@ test('關閉停用對話框後焦點回到觸發按鈕', async () => {
   await user.click(screen.getByRole('button', { name: '取消' }))
 
   expect(deactivateButton).toHaveFocus()
+})
+
+test('成功停用並卸載觸發按鈕後焦點移至分類管理標題', async () => {
+  const user = userEvent.setup()
+  const onDeactivate = vi.fn(async () => {
+    rerender(<CategoryManager categories={[category('work', '工作', false)]} onSave={vi.fn()} onDeactivate={onDeactivate} />)
+  })
+  const { rerender } = render(<CategoryManager categories={[category('work', '工作')]} onSave={vi.fn()} onDeactivate={onDeactivate} />)
+
+  await user.click(screen.getByRole('button', { name: '停用 工作' }))
+  await user.click(screen.getByRole('button', { name: '確認停用' }))
+
+  expect(screen.queryByRole('button', { name: '停用 工作' })).not.toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: '分類管理' })).toHaveFocus()
 })
 
 test('停用的分類在清單中標示已停用且不可再操作', () => {

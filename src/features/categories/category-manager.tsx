@@ -11,7 +11,9 @@ type CategoryManagerProps = {
 export function CategoryManager({ categories, onSave, onDeactivate }: CategoryManagerProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const confirmButtonRef = useRef<HTMLButtonElement>(null)
+  const titleRef = useRef<HTMLHeadingElement>(null)
   const deactivateButtonRefs = useRef(new Map<string, HTMLButtonElement>())
+  const restoreTriggerFocus = useRef(true)
   const [newName, setNewName] = useState('')
   const [editingId, setEditingId] = useState<string | undefined>()
   const [editingName, setEditingName] = useState('')
@@ -48,14 +50,22 @@ export function CategoryManager({ categories, onSave, onDeactivate }: CategoryMa
   function openDeactivateDialog(category: Category) {
     setDeactivatingCategory(category)
     setError(undefined)
+    restoreTriggerFocus.current = true
     dialogRef.current?.showModal()
     confirmButtonRef.current?.focus()
   }
 
-  function closeDeactivateDialog() {
+  function closeDeactivateDialog(restoreFocus = true) {
+    restoreTriggerFocus.current = restoreFocus
     dialogRef.current?.close()
+    if (!restoreFocus) titleRef.current?.focus()
+  }
+
+  function handleDialogClose() {
+    if (restoreTriggerFocus.current && deactivatingCategory) {
+      deactivateButtonRefs.current.get(deactivatingCategory.id)?.focus()
+    }
     setDeactivatingCategory(undefined)
-    if (deactivatingCategory) deactivateButtonRefs.current.get(deactivatingCategory.id)?.focus()
   }
 
   async function confirmDeactivation() {
@@ -65,7 +75,7 @@ export function CategoryManager({ categories, onSave, onDeactivate }: CategoryMa
     setError(undefined)
     try {
       await onDeactivate(deactivatingCategory.id)
-      closeDeactivateDialog()
+      closeDeactivateDialog(false)
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : zhTW.api.requestFailed)
     } finally {
@@ -75,7 +85,7 @@ export function CategoryManager({ categories, onSave, onDeactivate }: CategoryMa
 
   return (
     <section className="category-manager" aria-labelledby="category-manager-title">
-      <h2 id="category-manager-title">{zhTW.categories.title}</h2>
+      <h2 ref={titleRef} id="category-manager-title" tabIndex={-1}>{zhTW.categories.title}</h2>
       {error && <p className="category-manager__error" role="alert">{error}</p>}
       <form className="category-manager__form" onSubmit={saveCategory}>
         <label>
@@ -114,12 +124,12 @@ export function CategoryManager({ categories, onSave, onDeactivate }: CategoryMa
           </li>
         ))}
       </ul>
-      <dialog ref={dialogRef} aria-labelledby="deactivate-category-title" onClose={() => setDeactivatingCategory(undefined)}>
+      <dialog ref={dialogRef} aria-labelledby="deactivate-category-title" onClose={handleDialogClose}>
         <h2 id="deactivate-category-title">{zhTW.categories.deactivateTitle}</h2>
         <p>{zhTW.categories.deactivateDescription}</p>
         {error && <p className="dialog-error" role="alert">{error}</p>}
         <div className="dialog-actions">
-          <button type="button" className="button--secondary" onClick={closeDeactivateDialog} disabled={isDeactivating}>{zhTW.categories.cancel}</button>
+          <button type="button" className="button--secondary" onClick={() => closeDeactivateDialog()} disabled={isDeactivating}>{zhTW.categories.cancel}</button>
           <button ref={confirmButtonRef} type="button" className="button--danger" onClick={confirmDeactivation} disabled={isDeactivating}>{isDeactivating ? zhTW.categories.deactivating : zhTW.categories.confirmDeactivate}</button>
         </div>
       </dialog>

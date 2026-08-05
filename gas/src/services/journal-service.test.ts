@@ -6,7 +6,7 @@ import { createJournalService, JournalService } from './journal-service'
 import { FakeJournalStore } from '../test/fake-journal-store'
 
 describe('JournalService.bootstrap', () => {
-  test('回傳試算表時區及啟用中的分類', () => {
+  test('回傳試算表時區及完整分類清單，包含停用分類', () => {
     const store = new FakeJournalStore({
       timezone: 'Asia/Taipei',
       categories: [
@@ -17,7 +17,10 @@ describe('JournalService.bootstrap', () => {
 
     expect(new JournalService(store, () => '2026-08-04T00:00:00+08:00', () => 'uuid').bootstrap()).toEqual({
       timezone: 'Asia/Taipei',
-      categories: [{ id: 'work', name: '工作', isActive: true, createdAt: '2026-08-04T00:00:00+08:00', updatedAt: '2026-08-04T00:00:00+08:00' }],
+      categories: [
+        { id: 'work', name: '工作', isActive: true, createdAt: '2026-08-04T00:00:00+08:00', updatedAt: '2026-08-04T00:00:00+08:00' },
+        { id: 'old', name: '舊分類', isActive: false, createdAt: '2026-08-04T00:00:00+08:00', updatedAt: '2026-08-04T00:00:00+08:00' },
+      ],
       tagSuggestions: [],
     })
   })
