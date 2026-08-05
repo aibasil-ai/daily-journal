@@ -78,7 +78,7 @@ function JournalApplication({ client }: { client: JournalClient }) {
   useEffect(() => {
     if (journal.status !== 'ready' || view !== 'calendar') return
     void journal.loadMonthlyEntryCounts(month)
-  }, [journal.status, view, month, journal.filter.query, journal.filter.from, journal.filter.to, journal.filter.categoryId, journal.filter.tag])
+  }, [journal.status, view, month, journal.filter.query, journal.filter.from, journal.filter.to, journal.filter.categoryId, journal.filter.tag, journal.monthlyEntryCountsRevision])
 
   function changeView(nextView: JournalView) {
     setView(nextView)

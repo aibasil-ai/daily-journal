@@ -27,6 +27,7 @@ type JournalState = {
   isLoadingEntries: boolean
   monthlyEntryCounts: MonthlyEntryCount[]
   isLoadingMonthlyEntryCounts: boolean
+  monthlyEntryCountsRevision: number
   error: string | undefined
 }
 
@@ -41,6 +42,7 @@ const signedOutState: JournalState = {
   isLoadingEntries: false,
   monthlyEntryCounts: [],
   isLoadingMonthlyEntryCounts: false,
+  monthlyEntryCountsRevision: 0,
   error: undefined,
 }
 
@@ -71,6 +73,7 @@ export function useJournal(client: JournalClient) {
         isLoadingEntries: false,
         monthlyEntryCounts: [],
         isLoadingMonthlyEntryCounts: false,
+        monthlyEntryCountsRevision: 0,
         error: undefined,
       })
     } catch (error) {
@@ -140,6 +143,7 @@ export function useJournal(client: JournalClient) {
   async function saveEntry(input: EntryInput) {
     const saved = await client.run<Entry>({ action: 'saveEntry', entry: input })
     entryEpoch.current += 1
+    monthlyCountEpoch.current += 1
     setState((current) => ({
       ...current,
       entries: input.id
@@ -147,13 +151,20 @@ export function useJournal(client: JournalClient) {
         : [saved, ...current.entries],
       tagSuggestions: [...new Set([...current.tagSuggestions, ...saved.tags])],
       isLoadingEntries: false,
+      monthlyEntryCountsRevision: current.monthlyEntryCountsRevision + 1,
     }))
   }
 
   async function deleteEntry(id: string) {
     await client.run<void>({ action: 'deleteEntry', id })
     entryEpoch.current += 1
-    setState((current) => ({ ...current, entries: current.entries.filter((entry) => entry.id !== id), isLoadingEntries: false }))
+    monthlyCountEpoch.current += 1
+    setState((current) => ({
+      ...current,
+      entries: current.entries.filter((entry) => entry.id !== id),
+      isLoadingEntries: false,
+      monthlyEntryCountsRevision: current.monthlyEntryCountsRevision + 1,
+    }))
   }
 
   function setFilter(filter: EntryFilter) {

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import '../../test/dialog-setup'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { App } from '../../App'
@@ -324,6 +324,100 @@ test('月曆檢視切換月份只載入數量，選日以目前篩選取得時�
   expect(run.mock.calls.filter(([request]) => request.action === 'listEntries')).toHaveLength(listRequestCount)
 })
 
+test('新增、變更日期與刪除記事後重新取得月曆數量並忽略舊回應', async () => {
+  const staleCounts = deferred<{ date: string; count: number }[]>()
+  let requestedMonth = ''
+  let monthlyRequestCount = 0
+  const run = vi.fn().mockImplementation(async (request: { action: string; entry?: EntryInput; year?: number; month?: number }) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+    if (request.action === 'listEntries') return entryPage()
+    if (request.action === 'getMonthlyEntryCounts') {
+      requestedMonth = `${request.year}-${String(request.month).padStart(2, '0')}`
+      monthlyRequestCount += 1
+      if (monthlyRequestCount === 1) return staleCounts.promise
+      if (monthlyRequestCount === 2) return [{ date: `${requestedMonth}-10`, count: 1 }]
+      if (monthlyRequestCount === 3) return [{ date: `${requestedMonth}-11`, count: 1 }]
+      return []
+    }
+    if (request.action === 'saveEntry') return entry('saved', request.entry?.entryDate ?? `${requestedMonth}-10`, { ...request.entry, id: 'saved' })
+    if (request.action === 'deleteEntry') return undefined
+    throw new Error('未預期的請求')
+  })
+  const user = userEvent.setup()
+
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 })
+  window.localStorage.setItem('daily-journal:view', 'calendar')
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
+  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  await waitFor(() => expect(monthlyRequestCount).toBe(1))
+
+  const originalDate = `${requestedMonth}-10`
+  const movedDate = `${requestedMonth}-11`
+  fireEvent.change(screen.getByLabelText('記錄日期'), { target: { value: originalDate } })
+  await user.type(screen.getByLabelText('記事內容'), '待同步記事')
+  await user.selectOptions(screen.getByLabelText('分類'), 'work')
+  await user.click(screen.getByRole('button', { name: '儲存記事' }))
+
+  await waitFor(() => expect(monthlyRequestCount).toBe(2))
+  expect(await screen.findByRole('button', { name: `${originalDate}，共 1 則記事` })).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: '編輯記事' }))
+  fireEvent.change(screen.getByLabelText('記錄日期'), { target: { value: movedDate } })
+  await user.click(screen.getByRole('button', { name: '儲存記事' }))
+
+  await waitFor(() => expect(monthlyRequestCount).toBe(3))
+  expect(await screen.findByRole('button', { name: `${originalDate}，共 0 則記事` })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: `${movedDate}，共 1 則記事` })).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: '刪除記事' }))
+  await user.click(screen.getByRole('button', { name: '確認刪除' }))
+
+  await waitFor(() => expect(monthlyRequestCount).toBe(4))
+  expect(await screen.findByRole('button', { name: `${movedDate}，共 0 則記事` })).toBeInTheDocument()
+
+  await act(async () => {
+    staleCounts.resolve([{ date: originalDate, count: 99 }])
+  })
+
+  expect(screen.getByRole('button', { name: `${originalDate}，共 0 則記事` })).toBeInTheDocument()
+})
+
+test('選日結果不被較舊的清單回應覆寫', async () => {
+  const listResponse = deferred<EntryListResult>()
+  const selectedResponse = deferred<Entry[]>()
+  let selectedDate = ''
+  const run = vi.fn().mockImplementation(async (request: { action: string; year?: number; month?: number; date?: string }) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
+    if (request.action === 'listEntries') return listResponse.promise
+    if (request.action === 'getMonthlyEntryCounts') {
+      selectedDate = `${request.year}-${String(request.month).padStart(2, '0')}-04`
+      return [{ date: selectedDate, count: 1 }]
+    }
+    if (request.action === 'getEntriesForDate') return selectedResponse.promise
+    throw new Error('未預期的請求')
+  })
+  const user = userEvent.setup()
+
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 })
+  window.localStorage.setItem('daily-journal:view', 'calendar')
+  render(<App client={{ signIn: vi.fn().mockResolvedValue(undefined), run }} />)
+  await user.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+  await waitFor(() => expect(run).toHaveBeenCalledWith(expect.objectContaining({ action: 'listEntries' })))
+  await user.click(await screen.findByRole('button', { name: `${selectedDate}，共 1 則記事` }))
+
+  await act(async () => {
+    selectedResponse.resolve([entry('selected-date', selectedDate)])
+  })
+  expect(await screen.findByText('記事內容 selected-date')).toBeInTheDocument()
+
+  await act(async () => {
+    listResponse.resolve(entryPage([entry('old-list', selectedDate)]))
+  })
+
+  expect(screen.getByText('記事內容 selected-date')).toBeInTheDocument()
+  expect(screen.queryByText('記事內容 old-list')).not.toBeInTheDocument()
+})
+
 test('檢視切換按鈕更新 aria-pressed 並保存使用者偏好', async () => {
   const user = userEvent.setup()
   const run = vi.fn().mockImplementation(async (request: { action: string }) => {
@@ -373,4 +467,12 @@ function entry(id: string, entryDate: string, overrides: Partial<Entry> = {}): E
 
 function entryPage(items: Entry[] = [], nextCursor: string | null = null): EntryListResult {
   return { items, nextCursor }
+}
+
+function deferred<T>() {
+  let resolve: (value: T) => void = () => {}
+  const promise = new Promise<T>((next) => {
+    resolve = next
+  })
+  return { promise, resolve }
 }
