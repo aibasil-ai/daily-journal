@@ -2,9 +2,6 @@ import { CATEGORY_HEADERS, ENTRY_HEADERS, SETTINGS_HEADERS, AppsScriptJournalSto
 
 export { CATEGORY_HEADERS, ENTRY_HEADERS, SETTINGS_HEADERS }
 
-export function initializeJournal(spreadsheetId: string): void {
-  const normalizedSpreadsheetId = spreadsheetId.trim()
-  if (!normalizedSpreadsheetId) throw new Error('請提供 Google Sheets ID。')
-
-  new AppsScriptJournalStore().initialize(normalizedSpreadsheetId)
+export function initializeJournal(): void {
+  new AppsScriptJournalStore().ensureSchema()
 }

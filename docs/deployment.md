@@ -64,13 +64,12 @@ clasp push
 
 ## 5. 初始化空白試算表
 
-推送完成後，開啟 GAS 編輯器，使用你自己的 `<Sheet ID>` 手動執行：
+推送完成後，開啟 GAS 編輯器並完成下列步驟：
 
-```ts
-initializeJournal('你的 Sheet ID')
-```
+1. 選擇「專案設定 > 指令碼屬性」，新增屬性名稱 `SPREADSHEET_ID`，值填入第 1 節私下記下的 `<Sheet ID>`，然後儲存。
+2. 回到編輯器，在函式下拉選單選擇 `initializeJournal`，不傳入任何參數後執行。
 
-第一次執行會要求授權。完成後會在 Script Properties 保存試算表識別資訊，並建立 `entries`、`categories` 與 `settings` 工作表。`initializeJournal` 只供部署者在 GAS 編輯器手動初始化；前端與 UI 不得呼叫它。此值只能停留在 GAS；不得搬到 `.env`、`app-config.js` 或任何前端設定。
+第一次執行會要求授權。`initializeJournal` 只會以既有的 `SPREADSHEET_ID` 冪等建立 `entries`、`categories` 與 `settings` 工作表，不會寫入或變更此屬性。它只供部署者在 GAS 編輯器手動初始化；前端與 UI 不得呼叫它。此值只能停留在 GAS；不得搬到 `.env`、`app-config.js` 或任何前端設定。
 
 ## 6. 部署 Apps Script Execution API
 
@@ -85,7 +84,7 @@ initializeJournal('你的 Sheet ID')
 }
 ```
 
-前端資料操作只會透過 Execution API 呼叫 `executeAppRequest`；這是前端唯一的 API 函式入口。`initializeJournal` 雖可從 GAS 編輯器手動執行，但不得由前端或 UI 透過 Execution API 呼叫。登入的 Google 帳號必須是有權使用這個 GAS 與試算表的帳號。
+前端資料操作只會透過 Execution API 呼叫 `executeAppRequest`；這是前端唯一的 API 函式入口。`initializeJournal` 是僅供部署時使用的特權工具，因 GAS 編輯器需要全域函式才可手動執行。持有同一擁有者權杖的 Execution API 呼叫在技術上可以指定全域函式名稱，但本應用前端與 UI 不會呼叫它；即使被呼叫，它沒有參數、無法變更 `SPREADSHEET_ID`，且只會冪等確保 schema。登入的 Google 帳號必須是有權使用這個 GAS 與試算表的帳號。
 
 ## 7. 設定前端並建置
 
@@ -169,5 +168,5 @@ Output directory: dist
 | `OAuth origin_mismatch` | OAuth 用戶端的「授權 JavaScript 來源」必須與瀏覽器網址的協定、網域及連接埠完全相同。加入 `http://localhost:5173` 與正式網址；Vercel 僅加入 Production origin，不加入 Preview。 |
 | Apps Script API 未啟用 | 在與 GAS 關聯的同一個標準 Google Cloud 專案啟用 Google Apps Script API。若剛變更關聯或啟用 API，等待權限生效後重新登入並再試。 |
 | GAS access denied | 確認 GAS 已部署為 API Executable、存取權為「僅我自己」、`executionApi.access` 是 `MYSELF`，並以擁有 GAS 與試算表權限的同一 Google 帳號登入。 |
-| 找不到 `SPREADSHEET_ID` | 尚未成功初始化。回到 GAS 編輯器，以實際試算表 ID 手動執行 `initializeJournal('你的 Sheet ID')` 並完成授權。不要把此值加入任何前端設定。 |
+| 找不到 `SPREADSHEET_ID` | 在 Apps Script「專案設定 > 指令碼屬性」新增 `SPREADSHEET_ID`，值填入實際 Google Sheets ID；回到編輯器選擇無參數的 `initializeJournal` 執行並完成授權。不要把此值加入任何前端設定。 |
 | Sheets 時區不正確 | 在試算表的「檔案 > 設定」修正時區，再重新確認記事日期與時間。初始化前就應完成此設定，避免跨日資料以錯誤時區建立。 |

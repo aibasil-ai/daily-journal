@@ -13,7 +13,7 @@
 ## 前置條件
 
 - [ ] 依 [部署文件](deployment.md) 完成 Google Sheets、Google Cloud、OAuth、clasp 與 API Executable 設定。
-- [ ] 已對空白 Google Sheets 手動執行 `initializeJournal('你的 Sheet ID')`，並確認 `entries`、`categories`、`settings` 三個工作表已建立。
+- [ ] 已在 GAS「專案設定 > 指令碼屬性」新增 `SPREADSHEET_ID` 並填入空白 Google Sheets ID；從函式下拉選單手動執行無參數的 `initializeJournal`，確認 `entries`、`categories`、`settings` 三個工作表已建立。
 - [ ] 正式網站只使用 `APP_GOOGLE_CLIENT_ID` 與 `APP_GAS_SCRIPT_ID`；本機設定檔及任何識別資訊均未提交。
 
 ## 響應式三斷點

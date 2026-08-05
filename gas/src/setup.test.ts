@@ -1,12 +1,36 @@
 // @vitest-environment node
 
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { AppsScriptJournalStore } from './repositories/apps-script-journal-store'
 import { CATEGORY_HEADERS, ENTRY_HEADERS, initializeJournal } from './setup'
 
+afterEach(() => vi.unstubAllGlobals())
+
 describe('initializeJournal', () => {
-  test('拒絕空白的 Google Sheets ID', () => {
-    expect(() => initializeJournal('  ')).toThrow('請提供 Google Sheets ID。')
+  test('以 Script Properties 的既有 ID 冪等初始化且不改寫屬性', () => {
+    const properties = new Map([['SPREADSHEET_ID', 'spreadsheet-id']])
+    const sheets = new Map<string, ReturnType<typeof createSheet>>()
+    let propertyWrites = 0
+
+    installAppsScriptGlobals(properties, sheets, () => { propertyWrites += 1 })
+
+    expect(initializeJournal).toHaveLength(0)
+    initializeJournal()
+    initializeJournal()
+
+    expect(properties.get('SPREADSHEET_ID')).toBe('spreadsheet-id')
+    expect(propertyWrites).toBe(0)
+    expect(sheets.get('entries')?.headers).toEqual(ENTRY_HEADERS)
+    expect(sheets.get('categories')?.headers).toEqual(CATEGORY_HEADERS)
+    expect(sheets.get('settings')?.headers).toEqual(['key', 'value'])
+  })
+
+  test('缺少或空白 Script Properties 時顯示部署者設定指引', () => {
+    installAppsScriptGlobals(new Map([['SPREADSHEET_ID', '  ']]), new Map(), () => {})
+
+    expect(() => initializeJournal()).toThrow(
+      '找不到 SPREADSHEET_ID。請在 Apps Script「專案設定」>「指令碼屬性」新增 SPREADSHEET_ID，填入 Google Sheets ID 後再執行 initializeJournal。',
+    )
   })
 })
 
@@ -18,7 +42,7 @@ describe('工作表欄位', () => {
 })
 
 describe('AppsScriptJournalStore', () => {
-  test('初始化儲存 Sheets ID，建立工作表，並以試算表時區格式化時間', () => {
+  test('以既有 Sheets ID 建立工作表，且不改寫 Script Properties', () => {
     const properties = new Map<string, string>()
     const lock = { waitLock: (timeoutInMillis: number) => lockTimeouts.push(timeoutInMillis), releaseLock: () => { releases += 1 } }
     const lockTimeouts: number[] = []
@@ -45,7 +69,8 @@ describe('AppsScriptJournalStore', () => {
       formatDate: (_date, timezone, format) => `${timezone} ${format}`,
     })
 
-    store.initialize('spreadsheet-id')
+    properties.set('SPREADSHEET_ID', 'spreadsheet-id')
+    store.ensureSchema()
 
     expect(properties.get('SPREADSHEET_ID')).toBe('spreadsheet-id')
     expect(sheets.get('entries')?.headers).toEqual(ENTRY_HEADERS)
@@ -180,4 +205,37 @@ function createSheet(headers: string[] = [], rows: unknown[][] = []) {
     deleteRow: (row: number) => { data.splice(row - 1, 1) },
   }
   return sheet
+}
+
+function installAppsScriptGlobals(
+  properties: Map<string, string>,
+  sheets: Map<string, ReturnType<typeof createSheet>>,
+  onSetProperty: () => void,
+) {
+  vi.stubGlobal('LockService', {
+    getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }),
+  })
+  vi.stubGlobal('PropertiesService', {
+    getScriptProperties: () => ({
+      getProperty: (key: string) => properties.get(key) ?? null,
+      setProperty: () => onSetProperty(),
+    }),
+  })
+  vi.stubGlobal('SpreadsheetApp', {
+    openById: (id: string) => {
+      expect(id).toBe('spreadsheet-id')
+      return {
+        getSheetByName: (name: string) => sheets.get(name) ?? null,
+        insertSheet: (name: string) => {
+          const sheet = createSheet()
+          sheets.set(name, sheet)
+          return sheet
+        },
+        getSpreadsheetTimeZone: () => 'Asia/Taipei',
+      }
+    },
+  })
+  vi.stubGlobal('Utilities', {
+    formatDate: (_date: Date, timezone: string, format: string) => `${timezone} ${format}`,
+  })
 }

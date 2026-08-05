@@ -30,7 +30,6 @@ declare const LockService: {
 declare const PropertiesService: {
   getScriptProperties(): {
     getProperty(key: string): string | null
-    setProperty(key: string, value: string): void
   }
 }
 
@@ -46,7 +45,6 @@ export type AppsScriptJournalStoreApi = {
   getScriptLock(): ScriptLock
   getScriptProperties(): {
     getProperty(key: string): string | null
-    setProperty(key: string, value: string): void
   }
   openById(id: string): Spreadsheet
   formatDate(date: Date, timeZone: string, format: string): string
@@ -62,16 +60,10 @@ const appsScriptApi: AppsScriptJournalStoreApi = {
 export const ENTRY_HEADERS = ['id', 'entryDate', 'title', 'content', 'categoryId', 'tags', 'links', 'createdAt', 'updatedAt']
 export const CATEGORY_HEADERS = ['id', 'name', 'isActive', 'createdAt', 'updatedAt']
 export const SETTINGS_HEADERS = ['key', 'value']
+export const MISSING_SPREADSHEET_ID_ERROR = '找不到 SPREADSHEET_ID。請在 Apps Script「專案設定」>「指令碼屬性」新增 SPREADSHEET_ID，填入 Google Sheets ID 後再執行 initializeJournal。'
 
 export class AppsScriptJournalStore implements JournalStore {
   constructor(private readonly api: AppsScriptJournalStoreApi = appsScriptApi) {}
-
-  initialize(spreadsheetId: string): void {
-    this.withScriptLock(() => {
-      this.api.getScriptProperties().setProperty('SPREADSHEET_ID', spreadsheetId)
-      this.ensureSchemaUnlocked()
-    })
-  }
 
   ensureSchema(): void {
     this.withScriptLock(() => this.ensureSchemaUnlocked())
@@ -218,8 +210,8 @@ export class AppsScriptJournalStore implements JournalStore {
   }
 
   private getSpreadsheet(): Spreadsheet {
-    const spreadsheetId = this.api.getScriptProperties().getProperty('SPREADSHEET_ID')
-    if (!spreadsheetId) throw new Error('找不到 SPREADSHEET_ID，請先執行 initializeJournal。')
+    const spreadsheetId = this.api.getScriptProperties().getProperty('SPREADSHEET_ID')?.trim()
+    if (!spreadsheetId) throw new Error(MISSING_SPREADSHEET_ID_ERROR)
     return this.api.openById(spreadsheetId)
   }
 

@@ -12,7 +12,7 @@
 
 ## 架構
 
-瀏覽器只持有 Google OAuth 用戶端 ID 與 GAS Script ID。取得 OAuth access token 後，前端呼叫 Apps Script Execution API 的 `executeAppRequest`。GAS 將 Google Sheets ID 保存在 Script Properties，並以試算表時區讀寫 `entries`、`categories` 與 `settings` 工作表。
+瀏覽器只持有 Google OAuth 用戶端 ID 與 GAS Script ID。取得 OAuth access token 後，前端呼叫 Apps Script Execution API 的 `executeAppRequest`。GAS 將 Google Sheets ID 保存在「專案設定 > 指令碼屬性」的 `SPREADSHEET_ID`，並以試算表時區讀寫 `entries`、`categories` 與 `settings` 工作表。部署者必須在 GAS 編輯器手動執行無參數的 `initializeJournal` 建立 schema；前端不會呼叫它。
 
 ## 先決條件
 
