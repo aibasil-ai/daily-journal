@@ -1,4 +1,4 @@
-export type JournalView = 'timeline' | 'calendar'
+export type JournalView = 'timeline' | 'calendar' | 'categories'
 
 const viewPreferenceKey = 'daily-journal:view'
 
@@ -10,7 +10,7 @@ export function loadViewPreference(): JournalView | null {
   if (typeof window === 'undefined') return null
 
   const stored = window.localStorage.getItem(viewPreferenceKey)
-  return stored === 'timeline' || stored === 'calendar' ? stored : null
+  return stored === 'timeline' || stored === 'calendar' || stored === 'categories' ? stored : null
 }
 
 export function saveViewPreference(view: JournalView) {

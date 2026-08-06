@@ -29,6 +29,12 @@ export const zhTW = {
     viewMode: '檢視模式',
     timelineView: '時間軸',
     calendarView: '月曆',
+    createEntry: '新增記事',
+    export: '匯出資料',
+    close: '關閉',
+    back: '返回',
+    readEntry: '閱讀記事',
+    selectEntry: '選擇記事',
   },
   calendar: {
     previousMonth: '上個月',

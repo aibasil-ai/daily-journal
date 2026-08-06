@@ -23,6 +23,12 @@ test('以固定的 localStorage key 儲存並讀取有效檢視偏好', () => {
   expect(loadViewPreference()).toBe('timeline')
 })
 
+test('儲存並恢復分類管理視圖', () => {
+  saveViewPreference('categories')
+
+  expect(loadViewPreference()).toBe('categories')
+})
+
 test('忽略無效的已儲存檢視偏好', () => {
   window.localStorage.setItem('daily-journal:view', 'cards')
 
