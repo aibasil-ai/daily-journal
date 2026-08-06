@@ -124,7 +124,9 @@ test('匯出請求的 401 清除畫面且不保留匯出錯誤', async () => {
 
   render(<App client={client} />)
   await screen.findByText('記事內容 loaded')
-  await user.click(screen.getByRole('button', { name: '匯出全部記事' }))
+  await user.click(screen.getByRole('button', { name: '匯出資料' }))
+  const exportDialog = await screen.findByRole('dialog', { name: 'CSV 匯出' })
+  await user.click(within(exportDialog).getByRole('button', { name: '匯出全部記事' }))
 
   expect(await screen.findByRole('button', { name: '使用 Google 帳號登入' })).toBeInTheDocument()
   expect(client.signOut).toHaveBeenCalledOnce()
@@ -148,9 +150,11 @@ test('自動恢復後可載入更多、儲存並刪除時間軸記事', async ()
   await screen.findByText('記事內容 first')
   await user.click(screen.getByRole('button', { name: '載入更多' }))
   expect(await screen.findByText('記事內容 second')).toBeInTheDocument()
-  await user.type(screen.getByLabelText('記事內容'), '新記事')
-  await user.selectOptions(screen.getByLabelText('分類'), 'work')
-  await user.click(screen.getByRole('button', { name: '儲存記事' }))
+  await user.click(screen.getByRole('button', { name: '新增記事' }))
+  const editorDialog = await screen.findByRole('dialog', { name: '新增記事' })
+  await user.type(within(editorDialog).getByLabelText('記事內容'), '新記事')
+  await user.selectOptions(within(editorDialog).getByLabelText('分類'), 'work')
+  await user.click(within(editorDialog).getByRole('button', { name: '儲存記事' }))
   const savedCard = (await screen.findByRole('heading', { name: '新記事' })).closest('article')!
   await user.click(within(savedCard).getByRole('button', { name: '刪除記事' }))
   await user.click(screen.getByRole('button', { name: '確認刪除' }))
@@ -229,10 +233,12 @@ test('CSV 匯出成功下載資料，失敗時顯示後端訊息', async () => {
 
   render(<App client={client} />)
   await screen.findByText('已登入。')
-  await user.click(screen.getByRole('button', { name: '匯出全部記事' }))
+  await user.click(screen.getByRole('button', { name: '匯出資料' }))
+  const exportDialog = await screen.findByRole('dialog', { name: 'CSV 匯出' })
+  await user.click(within(exportDialog).getByRole('button', { name: '匯出全部記事' }))
   expect(createObjectURL).toHaveBeenCalledOnce()
   fail = true
-  await user.click(screen.getByRole('button', { name: '匯出全部記事' }))
+  await user.click(within(exportDialog).getByRole('button', { name: '匯出全部記事' }))
   expect(await screen.findByRole('alert')).toHaveTextContent('匯出資料失敗')
 })
 
@@ -270,7 +276,9 @@ test('正式 App 登出後不下載過期匯出或顯示過期失敗', async () 
   const user = userEvent.setup()
 
   render(<App client={client} />)
-  await user.click(await screen.findByRole('button', { name: '匯出全部記事' }))
+  await user.click(await screen.findByRole('button', { name: '匯出資料' }))
+  const exportDialog = await screen.findByRole('dialog', { name: 'CSV 匯出' })
+  await user.click(within(exportDialog).getByRole('button', { name: '匯出全部記事' }))
   await user.click(screen.getByRole('button', { name: '登出' }))
   await act(async () => pendingExport.resolve({ headers: ['標題'], rows: [['過期記事']] }))
   expect(createObjectURL).not.toHaveBeenCalled()
@@ -289,7 +297,9 @@ test('正式 App 登出後不顯示過期匯出失敗', async () => {
   const user = userEvent.setup()
 
   render(<App client={client} />)
-  await user.click(await screen.findByRole('button', { name: '匯出全部記事' }))
+  await user.click(await screen.findByRole('button', { name: '匯出資料' }))
+  const exportDialog = await screen.findByRole('dialog', { name: 'CSV 匯出' })
+  await user.click(within(exportDialog).getByRole('button', { name: '匯出全部記事' }))
   await user.click(screen.getByRole('button', { name: '登出' }))
   await act(async () => pendingExport.reject(new Error('過期匯出失敗')))
 
@@ -311,9 +321,11 @@ test('儲存後重新載入列表時不讓 pre-save 回應覆寫新資料', asyn
 
   render(<App client={client} />)
   await waitFor(() => expect(client.run).toHaveBeenCalledWith(expect.objectContaining({ action: 'listEntries' })))
-  await user.type(screen.getByLabelText('記事內容'), '新記事')
-  await user.selectOptions(screen.getByLabelText('分類'), 'work')
-  await user.click(screen.getByRole('button', { name: '儲存記事' }))
+  await user.click(screen.getByRole('button', { name: '新增記事' }))
+  const editorDialog = await screen.findByRole('dialog', { name: '新增記事' })
+  await user.type(within(editorDialog).getByLabelText('記事內容'), '新記事')
+  await user.selectOptions(within(editorDialog).getByLabelText('分類'), 'work')
+  await user.click(within(editorDialog).getByRole('button', { name: '儲存記事' }))
   await act(async () => {
     preSaveList.resolve(entryPage([entry('old-list', '2026-08-03')]))
     refreshedList.resolve(entryPage([entry('saved', '2026-08-04', { title: '', content: '新記事' })]))
@@ -344,6 +356,7 @@ test('新增、改期與刪除後更新月曆計數，且忽略舊計數回應',
       saved = undefined
       return undefined
     }
+    if (request.action === 'getEntriesForDate') return saved ? [saved] : []
     throw new Error('未預期的請求')
   })
   const user = userEvent.setup()
@@ -354,17 +367,28 @@ test('新增、改期與刪除後更新月曆計數，且忽略舊計數回應',
   await waitFor(() => expect(monthlyRequestCount).toBe(1))
   const originalDate = `${requestedMonth}-10`
   const movedDate = `${requestedMonth}-11`
-  fireEvent.change(screen.getByLabelText('記錄日期'), { target: { value: originalDate } })
-  await user.type(screen.getByLabelText('記事內容'), '待同步記事')
-  await user.selectOptions(screen.getByLabelText('分類'), 'work')
-  await user.click(screen.getByRole('button', { name: '儲存記事' }))
+  await user.click(screen.getByRole('button', { name: '新增記事' }))
+  const newEditorDialog = await screen.findByRole('dialog', { name: '新增記事' })
+  fireEvent.change(within(newEditorDialog).getByLabelText('記錄日期'), { target: { value: originalDate } })
+  await user.type(within(newEditorDialog).getByLabelText('記事內容'), '待同步記事')
+  await user.selectOptions(within(newEditorDialog).getByLabelText('分類'), 'work')
+  await user.click(within(newEditorDialog).getByRole('button', { name: '儲存記事' }))
   await waitFor(() => expect(monthlyRequestCount).toBe(2))
-  await user.click(screen.getByRole('button', { name: '編輯記事' }))
-  fireEvent.change(screen.getByLabelText('記錄日期'), { target: { value: movedDate } })
-  await user.click(screen.getByRole('button', { name: '儲存記事' }))
+  await user.click(await screen.findByRole('button', { name: `${originalDate}，共 1 則記事` }))
+  const readerDialog = await screen.findByRole('dialog', { name: '閱讀記事' })
+  await user.click(within(readerDialog).getByRole('button', { name: '編輯記事' }))
+  const editEditorDialog = await screen.findByRole('dialog', { name: '編輯記事' })
+  fireEvent.change(within(editEditorDialog).getByLabelText('記錄日期'), { target: { value: movedDate } })
+  await user.type(within(editEditorDialog).getByLabelText('記事內容'), '待同步記事')
+  await user.selectOptions(within(editEditorDialog).getByLabelText('分類'), 'work')
+  await user.click(within(editEditorDialog).getByRole('button', { name: '儲存記事' }))
+  await waitFor(() => expect(client.run).toHaveBeenCalledWith(expect.objectContaining({ action: 'saveEntry', entry: expect.objectContaining({ entryDate: movedDate }) })))
   await waitFor(() => expect(monthlyRequestCount).toBe(3))
-  await user.click(screen.getByRole('button', { name: '刪除記事' }))
-  await user.click(screen.getByRole('button', { name: '確認刪除' }))
+  await user.click(await screen.findByRole('button', { name: `${movedDate}，共 1 則記事` }))
+  const movedReaderDialog = await screen.findByRole('dialog', { name: '閱讀記事' })
+  await user.click(within(movedReaderDialog).getByRole('button', { name: '刪除記事' }))
+  const deleteDialog = await screen.findByRole('dialog', { name: '刪除記事確認' })
+  await user.click(within(deleteDialog).getByRole('button', { name: '確認刪除' }))
   await waitFor(() => expect(monthlyRequestCount).toBe(4))
   await act(async () => staleCounts.resolve([{ date: originalDate, count: 99 }]))
 
@@ -418,8 +442,10 @@ test('匯出目前篩選與全部記事分別送出目前及 default filter', as
   fireEvent.change(screen.getByLabelText('結束日期'), { target: { value: '2026-08-31' } })
   await user.selectOptions(screen.getByLabelText('分類篩選'), 'work')
   await user.selectOptions(screen.getByLabelText('標籤篩選'), '會議')
-  await user.click(screen.getByRole('button', { name: '匯出目前篩選結果' }))
-  await user.click(screen.getByRole('button', { name: '匯出全部記事' }))
+  await user.click(screen.getByRole('button', { name: '匯出資料' }))
+  const exportDialog = await screen.findByRole('dialog', { name: 'CSV 匯出' })
+  await user.click(within(exportDialog).getByRole('button', { name: '匯出目前篩選結果' }))
+  await user.click(within(exportDialog).getByRole('button', { name: '匯出全部記事' }))
 
   await waitFor(() => expect(client.run).toHaveBeenCalledWith({
     action: 'exportEntries',
