@@ -3,6 +3,7 @@ import type { ApiRequest, Category, Entry, EntryFilter, EntryInput, EntryListRes
 import type { CsvExport } from '../entries/csv-download'
 import { zhTW } from '../../i18n/zh-TW'
 import type { MonthlyEntryCount } from '../entries/calendar-view'
+import { AuthenticationError } from '../../services/journal-api-client'
 
 export type JournalStatus = 'checking-config' | 'signed-out' | 'loading' | 'ready' | 'error'
 
@@ -13,7 +14,8 @@ export type JournalBootstrap = {
 }
 
 export type JournalClient = {
-  signIn: () => Promise<void>
+  restoreSession: () => Promise<boolean>
+  beginSignIn: () => void
   signOut: () => void
   run: <T>(request: ApiRequest) => Promise<T>
 }
@@ -55,22 +57,30 @@ function defaultFilter(): EntryFilter {
 }
 
 export function useJournal(client: JournalClient) {
-  const [state, setState] = useState<JournalState>(signedOutState)
+  const [state, setState] = useState<JournalState>({ ...signedOutState, status: 'loading' })
   const sessionEpoch = useRef(0)
   const entryEpoch = useRef(0)
   const monthlyCountEpoch = useRef(0)
   const filterRef = useRef(defaultFilter())
 
-  async function connect(requestSignIn: boolean) {
-    if (state.status === 'loading') return
+  function clearSession(): void {
+    sessionEpoch.current += 1
+    entryEpoch.current += 1
+    monthlyCountEpoch.current += 1
+    filterRef.current = defaultFilter()
+    client.signOut()
+    setState(signedOutState)
+  }
 
-    const requestSession = sessionEpoch.current
+  function handleAuthenticationError(error: unknown): boolean {
+    if (!(error instanceof AuthenticationError)) return false
+    clearSession()
+    return true
+  }
+
+  async function bootstrap(requestSession: number) {
     setState({ ...signedOutState, status: 'loading' })
     try {
-      if (requestSignIn) {
-        await client.signIn()
-        if (requestSession !== sessionEpoch.current) return
-      }
       const bootstrap = await client.run<JournalBootstrap>({ action: 'bootstrap' })
       if (requestSession !== sessionEpoch.current) return
       filterRef.current = defaultFilter()
@@ -90,6 +100,29 @@ export function useJournal(client: JournalClient) {
       })
     } catch (error) {
       if (requestSession !== sessionEpoch.current) return
+      if (handleAuthenticationError(error)) return
+      setState({
+        ...signedOutState,
+        status: 'error',
+        error: error instanceof Error ? error.message : zhTW.api.requestFailed,
+      })
+    }
+  }
+
+  async function restoreSession() {
+    const requestSession = ++sessionEpoch.current
+    setState({ ...signedOutState, status: 'loading' })
+    try {
+      const authenticated = await client.restoreSession()
+      if (requestSession !== sessionEpoch.current) return
+      if (!authenticated) {
+        setState(signedOutState)
+        return
+      }
+      await bootstrap(requestSession)
+    } catch (error) {
+      if (requestSession !== sessionEpoch.current) return
+      if (handleAuthenticationError(error)) return
       setState({
         ...signedOutState,
         status: 'error',
@@ -114,6 +147,7 @@ export function useJournal(client: JournalClient) {
       }))
     } catch (error) {
       if (requestSession !== sessionEpoch.current || requestEpoch !== entryEpoch.current) return
+      if (handleAuthenticationError(error)) return
       setState((current) => ({ ...current, isLoadingEntries: false, error: error instanceof Error ? error.message : zhTW.api.requestFailed }))
     }
   }
@@ -129,6 +163,7 @@ export function useJournal(client: JournalClient) {
       setState((current) => ({ ...current, entries, nextCursor: null, isLoadingEntries: false }))
     } catch (error) {
       if (requestSession !== sessionEpoch.current || requestEpoch !== entryEpoch.current) return
+      if (handleAuthenticationError(error)) return
       setState((current) => ({ ...current, isLoadingEntries: false, error: error instanceof Error ? error.message : zhTW.api.requestFailed }))
     }
   }
@@ -152,13 +187,20 @@ export function useJournal(client: JournalClient) {
       setState((current) => ({ ...current, monthlyEntryCounts: Array.isArray(monthlyEntryCounts) ? monthlyEntryCounts : [], isLoadingMonthlyEntryCounts: false }))
     } catch (error) {
       if (requestSession !== sessionEpoch.current || requestEpoch !== monthlyCountEpoch.current) return
+      if (handleAuthenticationError(error)) return
       setState((current) => ({ ...current, isLoadingMonthlyEntryCounts: false, error: error instanceof Error ? error.message : zhTW.api.requestFailed }))
     }
   }
 
   async function saveEntry(input: EntryInput) {
     const requestSession = sessionEpoch.current
-    const saved = await client.run<Entry>({ action: 'saveEntry', entry: input })
+    let saved: Entry
+    try {
+      saved = await client.run<Entry>({ action: 'saveEntry', entry: input })
+    } catch (error) {
+      if (requestSession === sessionEpoch.current) handleAuthenticationError(error)
+      throw error
+    }
     if (requestSession !== sessionEpoch.current) return
     entryEpoch.current += 1
     monthlyCountEpoch.current += 1
@@ -172,7 +214,12 @@ export function useJournal(client: JournalClient) {
 
   async function deleteEntry(id: string) {
     const requestSession = sessionEpoch.current
-    await client.run<void>({ action: 'deleteEntry', id })
+    try {
+      await client.run<void>({ action: 'deleteEntry', id })
+    } catch (error) {
+      if (requestSession === sessionEpoch.current) handleAuthenticationError(error)
+      throw error
+    }
     if (requestSession !== sessionEpoch.current) return
     entryEpoch.current += 1
     monthlyCountEpoch.current += 1
@@ -186,7 +233,13 @@ export function useJournal(client: JournalClient) {
 
   async function saveCategory(name: string, id?: string) {
     const requestSession = sessionEpoch.current
-    const saved = await client.run<Category>({ action: 'saveCategory', category: { name, ...(id ? { id } : {}) } })
+    let saved: Category
+    try {
+      saved = await client.run<Category>({ action: 'saveCategory', category: { name, ...(id ? { id } : {}) } })
+    } catch (error) {
+      if (requestSession === sessionEpoch.current) handleAuthenticationError(error)
+      throw error
+    }
     if (requestSession !== sessionEpoch.current) return
     setState((current) => ({
       ...current,
@@ -198,7 +251,13 @@ export function useJournal(client: JournalClient) {
 
   async function deactivateCategory(id: string) {
     const requestSession = sessionEpoch.current
-    const saved = await client.run<Category>({ action: 'deactivateCategory', id })
+    let saved: Category
+    try {
+      saved = await client.run<Category>({ action: 'deactivateCategory', id })
+    } catch (error) {
+      if (requestSession === sessionEpoch.current) handleAuthenticationError(error)
+      throw error
+    }
     if (requestSession !== sessionEpoch.current) return
     const currentFilter = filterRef.current
     const nextFilter = currentFilter.categoryId === saved.id ? { ...currentFilter, categoryId: null, cursor: null } : currentFilter
@@ -219,17 +278,13 @@ export function useJournal(client: JournalClient) {
       return result
     } catch (error) {
       if (requestSession !== sessionEpoch.current) throw new SessionEndedError()
+      if (handleAuthenticationError(error)) throw new SessionEndedError()
       throw error
     }
   }
 
   function signOut(): void {
-    sessionEpoch.current += 1
-    entryEpoch.current += 1
-    monthlyCountEpoch.current += 1
-    filterRef.current = defaultFilter()
-    client.signOut()
-    setState(signedOutState)
+    clearSession()
   }
 
   function setFilter(filter: EntryFilter) {
@@ -240,6 +295,10 @@ export function useJournal(client: JournalClient) {
   }
 
   useEffect(() => {
+    void restoreSession()
+  }, [client])
+
+  useEffect(() => {
     if (state.status === 'ready' && state.entries.length === 0 && !state.isLoadingEntries && state.nextCursor === null) {
       void loadEntries(state.filter)
     }
@@ -247,9 +306,9 @@ export function useJournal(client: JournalClient) {
 
   return {
     ...state,
-    signIn: () => connect(true),
+    signIn: client.beginSignIn,
     signOut,
-    retry: () => connect(false),
+    retry: restoreSession,
     saveEntry,
     loadEntries,
     deleteEntry,

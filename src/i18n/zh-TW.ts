@@ -1,8 +1,5 @@
 export const zhTW = {
   appTitle: '每日記事',
-  config: {
-    missingDeployment: '找不到部署設定。請設定 APP_GOOGLE_CLIENT_ID 與 APP_GAS_DEPLOYMENT_ID，或建立 public/app-config.js。',
-  },
   validation: {
     entryDate: '請選擇記錄日期。',
     content: '請輸入記事內容。',
@@ -10,9 +7,8 @@ export const zhTW = {
     links: '每個連結都需要名稱與有效的 http 或 https 網址。',
   },
   auth: {
-    incomplete: 'Google 登入或授權未完成。',
-    expired: '登入已過期或沒有 GAS 使用權限，請重新登入。',
-    sdkUnavailable: 'Google 登入服務尚未載入。請確認網路連線後重新整理頁面，再重新登入。',
+    expired: '登入已過期，請重新登入。',
+    oauthFailed: '無法完成 Google 登入，請再試一次。',
   },
   api: {
     invalidResponse: '服務回應格式錯誤，請稍後再試。',
@@ -20,16 +16,16 @@ export const zhTW = {
   },
   journal: {
     connectionTitle: '連線至每日記事',
-    configErrorTitle: '部署設定有誤',
-    checkingConfig: '正在檢查部署設定...',
+    configErrorTitle: '服務暫時無法使用',
+    checkingConfig: '正在確認登入狀態...',
     signedOutDescription: '登入後即可安全連線至你的 Google Sheets 記事資料。',
-    connectingDescription: '正在登入並連線至 Google Sheets，請稍候。',
-    signIn: '繼續使用 Google',
+    connectingDescription: '正在確認登入狀態，請稍候。',
+    signIn: '使用 Google 帳號登入',
     signOut: '登出',
     signInAgain: '重新登入',
     retry: '重新嘗試',
     connecting: '連線中...',
-    ready: '已連線至 Google Sheets。',
+    ready: '已登入。',
     viewMode: '檢視模式',
     timelineView: '時間軸',
     calendarView: '月曆',

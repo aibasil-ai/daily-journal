@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { loadRuntimeConfig } from './config/runtime-config'
 import { EntryForm } from './features/entries/entry-form'
 import { CalendarView } from './features/entries/calendar-view'
 import { downloadCsv } from './features/entries/csv-download'
@@ -12,68 +11,25 @@ import { getInitialView, loadViewPreference, saveViewPreference, type JournalVie
 import type { Entry } from './domain/journal'
 import { monthInTimeZone } from './domain/time-zone'
 import { zhTW } from './i18n/zh-TW'
-import { GoogleOAuth } from './services/google-oauth'
-import { ExecutionClient } from './services/execution-client'
+import { JournalApiClient } from './services/journal-api-client'
 
 type AppProps = {
   client?: JournalClient
 }
 
-type ConfigurationState =
-  | { status: 'checking-config' }
-  | { status: 'ready'; client: JournalClient }
-  | { status: 'error'; error: string }
-
 export function App({ client }: AppProps) {
-  const [configuration, setConfiguration] = useState<ConfigurationState>(() => (
-    client ? { status: 'ready', client } : { status: 'checking-config' }
-  ))
-  const [configurationAttempt, setConfigurationAttempt] = useState(0)
-
-  useEffect(() => {
-    if (client) return
-
-    try {
-      const config = loadRuntimeConfig()
-      const oauth = new GoogleOAuth(config)
-      const executionClient = new ExecutionClient(config, oauth)
-      setConfiguration({
-        status: 'ready',
-        client: {
-          signIn: () => oauth.signIn(),
-          signOut: () => oauth.clearAccessToken(),
-          run: (request) => executionClient.run(request),
-        },
-      })
-    } catch (error) {
-      setConfiguration({
-        status: 'error',
-        error: error instanceof Error ? error.message : zhTW.api.requestFailed,
-      })
-    }
-  }, [client, configurationAttempt])
+  const [journalClient] = useState<JournalClient>(() => client ?? new JournalApiClient())
+  const loginError = getLoginError()
 
   return (
     <main>
       <h1>{zhTW.appTitle}</h1>
-      {configuration.status === 'checking-config' && (
-        <ConnectionScreen status="checking-config" onSignIn={() => {}} onRetry={() => {}} />
-      )}
-      {configuration.status === 'error' && (
-        <ConnectionScreen
-          status="error"
-          title={zhTW.journal.configErrorTitle}
-          error={configuration.error}
-          onSignIn={() => setConfigurationAttempt((attempt) => attempt + 1)}
-          onRetry={() => setConfigurationAttempt((attempt) => attempt + 1)}
-        />
-      )}
-      {configuration.status === 'ready' && <JournalApplication client={configuration.client} />}
+      <JournalApplication client={journalClient} loginError={loginError} />
     </main>
   )
 }
 
-function JournalApplication({ client }: { client: JournalClient }) {
+function JournalApplication({ client, loginError }: { client: JournalClient, loginError?: string }) {
   const journal = useJournal(client)
   const [editingEntry, setEditingEntry] = useState<Entry | undefined>()
   const [view, setView] = useState<JournalView>(() => getInitialView(typeof window === 'undefined' ? 1024 : window.innerWidth, loadViewPreference()))
@@ -193,6 +149,7 @@ function JournalApplication({ client }: { client: JournalClient }) {
     <ConnectionScreen
       status={journal.status}
       error={journal.error}
+      loginError={loginError}
       onSignIn={journal.signIn}
       onRetry={journal.retry}
     />
@@ -201,4 +158,12 @@ function JournalApplication({ client }: { client: JournalClient }) {
 
 export function currentMonth(timezone: string | undefined, date = new Date()): string {
   return monthInTimeZone(timezone, date)
+}
+
+function getLoginError(): string | undefined {
+  if (typeof window === 'undefined') return undefined
+
+  return new URLSearchParams(window.location.search).get('login_error') === 'oauth_failed'
+    ? zhTW.auth.oauthFailed
+    : undefined
 }

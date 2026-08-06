@@ -1,5 +1,7 @@
 # 登入續用與本網站登出設計
 
+> **歷史文件警示：** 本文件僅供歷史參考，已由 `docs/superpowers/specs/2026-08-06-server-side-session-design.md` 取代；禁止用來部署目前版本。
+
 ## 目標
 
 降低重新整理後重複出現 Google 同意畫面的頻率，並讓已登入使用者可立即結束本網站的連線狀態。網站維持純靜態部署，不保存 Google access token，也不撤銷 Google 帳號對此應用程式的授權。

@@ -6,7 +6,7 @@
 
 - [ ] 驗收日期與時間：__________
 - [ ] 驗收者：__________
-- [ ] 正式網站網址已私下記錄，且已加入 OAuth origin。
+- [ ] 正式網站網址已私下記錄，且 OAuth callback redirect URI 已設為 `https://正式網域/api/auth/callback`。
 - [ ] GAS API Executable deployment ID 已私下記錄。
 - [ ] Sheet 時區已在「檔案 > 設定」確認：__________
 
@@ -14,7 +14,7 @@
 
 - [ ] 依 [部署文件](deployment.md) 完成 Google Sheets、Google Cloud、OAuth、clasp 與 API Executable 設定。
 - [ ] 已在 GAS「專案設定 > 指令碼屬性」新增 `SPREADSHEET_ID` 並填入空白 Google Sheets ID；從函式下拉選單手動執行無參數的 `initializeJournal`，確認 `entries`、`categories`、`settings` 三個工作表已建立。
-- [ ] 正式網站只使用 `APP_GOOGLE_CLIENT_ID` 與 `APP_GAS_DEPLOYMENT_ID`；本機設定檔及任何識別資訊均未提交。
+- [ ] Vercel Production 已設定四個 server-only 值 `GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`、`SESSION_ENCRYPTION_KEY`、`GAS_DEPLOYMENT_ID`，且未設定 `APP_GOOGLE_CLIENT_ID` 或 `APP_GAS_DEPLOYMENT_ID`；本機設定檔及任何秘密均未提交。
 
 ## 響應式三斷點
 
@@ -24,12 +24,15 @@
 - [ ] `768px`，平板版：表單與記事內容為兩欄，篩選欄位為兩欄。
 - [ ] `1024px`，桌面版：兩欄版面與時間軸可正常閱讀、操作。
 
-## OAuth 與連線
+## OAuth 與工作階段
 
-- [ ] 從 `http://localhost:5173` 按「使用 Google 帳號登入」，完成帳號選取與授權後進入記事首頁。
-- [ ] 從正式網域重複登入，確認沒有 `origin_mismatch`，且能讀取初始化後的資料。
-- [ ] 讓權杖過期或撤銷網站的 Google 授權後執行需要 API 的動作，確認顯示重新登入指引；重新登入後可恢復操作。
-- [ ] 確認 Vercel Preview 網址未加入 OAuth origin，且正式部署仍可登入。
+完整 OAuth 驗收必須在 Vercel Production 網域執行；Preview URL 不可作為 OAuth 驗收目標。
+
+- [ ] OAuth Web Client 的 redirect URI 為 `https://正式網域/api/auth/callback`。
+- [ ] 清除正式網站 Cookie 後，首次按「使用 Google 帳號登入」，完成帳號選取與同意畫面，回到記事首頁並讀取資料。
+- [ ] 重新整理已登入的 Production 頁面，確認 session 自動恢復並載入記事，不再顯示登入按鈕、Google 帳號選擇或 OAuth 同意畫面。
+- [ ] 按「登出」後，確認畫面立即清空並回到登入畫面；重新整理仍維持未登入，並以重新登入或直接查看 Google Sheets 確認既有記事未被刪除。
+- [ ] 在 Google 帳號撤銷網站授權後重新整理，確認畫面顯示登入；重新授權後，實際新增、讀取、編輯、刪除一筆非敏感記事，並以 CSV 匯出驗證。
 
 ## 空白試算表與記事 CRUD
 
@@ -56,7 +59,7 @@
 ## Vercel 正式部署
 
 - [ ] Vercel 專案以 `npm run build` 建置，Output Directory 為 `dist`。
-- [ ] 兩個 `APP_` 值只設於 Production 建置環境，並重新部署 Production。
-- [ ] Production 網址已加入 OAuth origin；未加入任何 Vercel Preview 網址。
-- [ ] 直接開啟未知 SPA 路徑並重新整理，確認 rewrite 回傳 `index.html` 而不是 404。
+- [ ] 四個 server-only 環境變數只設於 Vercel Production，並重新部署 Production。
+- [ ] Production callback URL 已加入 OAuth redirect URI；確認不使用 browser GIS 與公開 OAuth 設定。
+- [ ] 直接開啟未知 SPA 路徑並重新整理，確認 fallback 回傳 `index.html`；`/api/session`、`/api/journal`、`/api/auth/start` 仍由 Function 回應。
 - [ ] 在 Production 網址完成登入、讀取、建立一筆非敏感測試記事並刪除，確認端對端流程成功。

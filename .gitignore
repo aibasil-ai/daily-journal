@@ -8,8 +8,6 @@ gas-dist/
 .env
 .env.*
 !.env.example
-app-config.js
-public/app-config.js
 .clasp.json
 .vercel/
 .netlify/

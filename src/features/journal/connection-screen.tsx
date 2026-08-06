@@ -4,12 +4,13 @@ import type { JournalStatus } from './use-journal'
 type ConnectionScreenProps = {
   status: Exclude<JournalStatus, 'ready'>
   error?: string
+  loginError?: string
   title?: string
   onSignIn: () => void
   onRetry: () => void
 }
 
-export function ConnectionScreen({ status, error, title = zhTW.journal.connectionTitle, onSignIn, onRetry }: ConnectionScreenProps) {
+export function ConnectionScreen({ status, error, loginError, title = zhTW.journal.connectionTitle, onSignIn, onRetry }: ConnectionScreenProps) {
   const loading = status === 'loading'
   const checkingConfig = status === 'checking-config'
 
@@ -17,6 +18,7 @@ export function ConnectionScreen({ status, error, title = zhTW.journal.connectio
     <section className="connection-screen" aria-live="polite">
       <h2>{title}</h2>
       {checkingConfig && <p>{zhTW.journal.checkingConfig}</p>}
+      {status === 'signed-out' && loginError && <p className="connection-screen__error" role="alert">{loginError}</p>}
       {status === 'signed-out' && <p>{zhTW.journal.signedOutDescription}</p>}
       {loading && <p>{zhTW.journal.connectingDescription}</p>}
       {status === 'error' && <p className="connection-screen__error">{error}</p>}

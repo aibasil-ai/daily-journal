@@ -1,5 +1,7 @@
 # 每日記事 App Implementation Plan
 
+> **歷史文件警示：** 本文件僅供歷史參考，已由 `docs/superpowers/specs/2026-08-06-server-side-session-design.md` 取代；禁止用來部署目前版本。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 建立可跨手機、平板與桌面使用的個人每日記事靜態網頁，透過 Google OAuth、GAS Execution API 與個人的 Google Sheets 安全儲存及查詢資料。
