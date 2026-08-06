@@ -63,6 +63,13 @@ test('成功停用並卸載觸發按鈕後焦點移至分類管理標題', async
   expect(screen.getByRole('heading', { name: '分類管理' })).toHaveFocus()
 })
 
+test('分類以卡片呈現且停用分類保留狀態標籤', () => {
+  render(<CategoryManager categories={[category('work', '工作'), category('old', '舊分類', false)]} onSave={vi.fn()} onDeactivate={vi.fn()} />)
+
+  expect(screen.getByRole('list', { name: '分類清單' })).toHaveClass('category-manager__grid')
+  expect(screen.getByText('已停用')).toBeInTheDocument()
+})
+
 test('停用的分類在清單中標示已停用且不可再操作', () => {
   render(<CategoryManager categories={[category('archived', '舊分類', false)]} onSave={vi.fn()} onDeactivate={vi.fn()} />)
 

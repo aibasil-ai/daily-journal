@@ -94,9 +94,9 @@ export function CategoryManager({ categories, onSave, onDeactivate }: CategoryMa
         </label>
         <button type="submit" disabled={isSaving}>{isSaving ? zhTW.categories.saving : zhTW.categories.add}</button>
       </form>
-      <ul className="category-manager__list" aria-label={zhTW.categories.list}>
+      <ul className="category-manager__list category-manager__grid" aria-label={zhTW.categories.list}>
         {categories.map((category) => (
-          <li key={category.id} className="category-manager__item">
+          <li key={category.id} className="category-manager__item category-manager__card">
             {editingId === category.id ? (
               <form className="category-manager__rename" onSubmit={saveCategory}>
                 <label>

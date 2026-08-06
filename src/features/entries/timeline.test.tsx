@@ -26,6 +26,16 @@ test('依記錄日期分組並僅在有游標時顯示載入更多', async () =>
   expect(screen.queryByRole('button', { name: '載入更多' })).not.toBeInTheDocument()
 })
 
+test('點選時間軸卡片會開啟正確記事', async () => {
+  const onOpen = vi.fn()
+  const user = userEvent.setup()
+
+  render(<Timeline entries={[entry('first', '2026-08-04')]} categoryNameById={new Map([['work', '工作']])} nextCursor={null} onOpen={onOpen} onEdit={vi.fn()} onDelete={vi.fn()} onLoadMore={vi.fn()} />)
+
+  await user.click(screen.getByRole('button', { name: '閱讀 標題 first' }))
+  expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'first' }))
+})
+
 test('標題留空時以記事內容前八十字顯示摘要，外部連結安全開啟', () => {
   const content = '這是一段用來驗證摘要行為的記事內容，會超過八十個字元，以確保卡片顯示正確截斷的標題。'.repeat(2)
 
@@ -36,18 +46,16 @@ test('標題留空時以記事內容前八十字顯示摘要，外部連結安�
   expect(screen.getByRole('link', { name: '參考資料' })).toHaveAttribute('rel', 'noreferrer noopener')
 })
 
-test('點選記事標題或摘要時傳出閱讀 callback', async () => {
+test('點選記事閱讀區塊時傳出閱讀 callback', async () => {
   const onOpen = vi.fn()
   const user = userEvent.setup()
   const openingEntry = entry('opening', '2026-08-04')
 
   render(<EntryCard entry={openingEntry} categoryName="工作" onOpen={onOpen} onEdit={vi.fn()} onDelete={vi.fn()} />)
 
-  await user.click(screen.getByRole('button', { name: '標題 opening' }))
-  await user.click(screen.getByRole('button', { name: '記事內容 opening' }))
+  await user.click(screen.getByRole('button', { name: '閱讀 標題 opening' }))
 
   expect(onOpen).toHaveBeenNthCalledWith(1, openingEntry)
-  expect(onOpen).toHaveBeenNthCalledWith(2, openingEntry)
 })
 
 test('歷史記事透過明確分類名稱顯示停用分類', () => {
@@ -110,12 +118,28 @@ test('任一篩選欄位變動時重設游標並傳出完整複合篩選', async
 
   await user.type(screen.getByLabelText('關鍵字'), '週會')
   expect(onChange).toHaveBeenLastCalledWith({ ...filter, query: '週會', cursor: null })
+  await user.click(screen.getByText('進階篩選'))
   await user.type(screen.getByLabelText('起始日期'), '2026-08-01')
   expect(onChange).toHaveBeenLastCalledWith({ ...filter, query: '週會', from: '2026-08-01', cursor: null })
   await user.selectOptions(screen.getByLabelText('分類篩選'), 'work')
   expect(onChange).toHaveBeenLastCalledWith({ ...filter, query: '週會', from: '2026-08-01', categoryId: 'work', cursor: null })
   await user.selectOptions(screen.getByLabelText('標籤篩選'), '會議')
   expect(onChange).toHaveBeenLastCalledWith({ ...filter, query: '週會', from: '2026-08-01', categoryId: 'work', tag: '會議', cursor: null })
+})
+
+test('展開進階篩選後仍可套用日期、分類與標籤', async () => {
+  const user = userEvent.setup()
+
+  render(<FilterBarHarness initialFilter={{ query: '', from: null, to: null, categoryId: null, tag: null, cursor: null, limit: 20 }} onChange={vi.fn()} />)
+
+  await user.click(screen.getByText('進階篩選'))
+  await user.type(screen.getByLabelText('起始日期'), '2026-08-01')
+  await user.selectOptions(screen.getByLabelText('分類篩選'), 'work')
+  await user.selectOptions(screen.getByLabelText('標籤篩選'), '會議')
+
+  expect(screen.getByLabelText('起始日期')).toHaveValue('2026-08-01')
+  expect(screen.getByLabelText('分類篩選')).toHaveValue('work')
+  expect(screen.getByLabelText('標籤篩選')).toHaveValue('會議')
 })
 
 test('分類篩選器保留停用分類並標示狀態', () => {
