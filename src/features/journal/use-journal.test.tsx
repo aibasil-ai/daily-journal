@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import '../../test/dialog-setup'
+import { useState } from 'react'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
@@ -197,6 +198,17 @@ test('月曆切換取得計數，選日依目前篩選載入記事', async () =>
   expect(await screen.findByText('記事內容 selected')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: '下個月' }))
   await waitFor(() => expect(client.run).toHaveBeenCalledWith(expect.objectContaining({ action: 'getMonthlyEntryCounts' })))
+})
+
+test('取得日期記事時回傳 API 的完整資料', async () => {
+  const entries = [entry('morning', '2026-08-04'), entry('evening', '2026-08-04')]
+  const client = journalClient(async (request) => request.action === 'bootstrap' ? bootstrap() : entries)
+  const user = userEvent.setup()
+
+  render(<DateSelectionHarness client={client} />)
+  await user.click(await screen.findByRole('button', { name: '載入 2026-08-04' }))
+
+  expect(await screen.findByText('morning,evening')).toBeInTheDocument()
 })
 
 test('CSV 匯出成功下載資料，失敗時顯示後端訊息', async () => {
@@ -515,6 +527,18 @@ function JournalTestHarness({ client, onExportError }: { client: JournalClient; 
       {journal.entries.map((currentEntry) => <p key={currentEntry.id}>{currentEntry.content}</p>)}
       <button type="button" onClick={journal.signOut}>登出</button>
       <button type="button" onClick={() => void journal.exportEntries('all').catch(onExportError)}>匯出</button>
+    </>
+  )
+}
+
+function DateSelectionHarness({ client }: { client: JournalClient }) {
+  const journal = useJournal(client)
+  const [ids, setIds] = useState('')
+
+  return (
+    <>
+      <button type="button" onClick={() => void journal.getEntriesForDate('2026-08-04').then((entries) => setIds(entries?.map((entry) => entry.id).join(',') ?? ''))}>載入 2026-08-04</button>
+      <output>{ids}</output>
     </>
   )
 }

@@ -152,19 +152,21 @@ export function useJournal(client: JournalClient) {
     }
   }
 
-  async function getEntriesForDate(date: string) {
+  async function getEntriesForDate(date: string): Promise<Entry[] | undefined> {
     const requestSession = sessionEpoch.current
     const requestEpoch = ++entryEpoch.current
     const filter = queryFilter(state.filter)
     setState((current) => ({ ...current, isLoadingEntries: true, error: undefined }))
     try {
       const entries = await client.run<Entry[]>({ action: 'getEntriesForDate', date, filter })
-      if (requestSession !== sessionEpoch.current || requestEpoch !== entryEpoch.current) return
+      if (requestSession !== sessionEpoch.current || requestEpoch !== entryEpoch.current) return undefined
       setState((current) => ({ ...current, entries, nextCursor: null, isLoadingEntries: false }))
+      return entries
     } catch (error) {
-      if (requestSession !== sessionEpoch.current || requestEpoch !== entryEpoch.current) return
-      if (handleAuthenticationError(error)) return
+      if (requestSession !== sessionEpoch.current || requestEpoch !== entryEpoch.current) return undefined
+      if (handleAuthenticationError(error)) return undefined
       setState((current) => ({ ...current, isLoadingEntries: false, error: error instanceof Error ? error.message : zhTW.api.requestFailed }))
+      return undefined
     }
   }
 

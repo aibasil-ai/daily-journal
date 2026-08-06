@@ -16,6 +16,13 @@ test('點選有兩則記事的日期時載入該日資料', async () => {
   expect(onSelectDate).toHaveBeenCalledWith('2026-08-04')
 })
 
+test('月曆只顯示每日數量 badge，不顯示記事標題', () => {
+  render(<CalendarView month="2026-08" counts={[{ date: '2026-08-04', count: 2 }]} onMonthChange={vi.fn()} onSelectDate={vi.fn()} />)
+
+  expect(screen.getByText('2 則記事')).toBeInTheDocument()
+  expect(screen.queryByText('標題 morning')).not.toBeInTheDocument()
+})
+
 test('以週一為首日顯示 ISO 月份、每日記事數量並切換月份', async () => {
   const onMonthChange = vi.fn()
   const user = userEvent.setup()

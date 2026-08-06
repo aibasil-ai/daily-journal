@@ -35,9 +35,9 @@ export function CalendarView({ month, counts, onMonthChange, onSelectDate }: Cal
           const date = `${month}-${String(day).padStart(2, '0')}`
           const count = countByDate.get(date) ?? 0
           return (
-            <button type="button" className="calendar-view__day" key={date} aria-label={zhTW.calendar.dateSummary(date, count)} onClick={() => onSelectDate(date)}>
-              <span aria-hidden="true">{day}</span>
-              {count > 0 && <small aria-hidden="true">{zhTW.calendar.entryCount(count)}</small>}
+            <button type="button" className="calendar-view__day" key={date} aria-label={zhTW.calendar.dateSummary(date, count)} onClick={() => void onSelectDate(date)}>
+              <span className="calendar-view__date" aria-hidden="true">{day}</span>
+              {count > 0 && <span className="calendar-view__count" aria-hidden="true">{zhTW.calendar.entryCount(count)}</span>}
             </button>
           )
         })}
