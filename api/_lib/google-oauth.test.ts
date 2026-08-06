@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
-import type { ServerConfig } from './server-config'
-import { buildAuthorizationUrl, exchangeAuthorizationCode } from './google-oauth'
+import type { ServerConfig } from './server-config.js'
+import { buildAuthorizationUrl, exchangeAuthorizationCode } from './google-oauth.js'
 
 const config: ServerConfig = {
   googleClientId: 'client-id',

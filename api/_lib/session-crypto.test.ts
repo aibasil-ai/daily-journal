@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { decryptSession, encryptSession } from './session-crypto'
+import { decryptSession, encryptSession } from './session-crypto.js'
 
 const key = Buffer.alloc(32, 7)
 const expiresAt = 2_000_000_000_000

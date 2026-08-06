@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { decryptSession } from '../_lib/session-crypto'
-import * as callback from './callback'
-import * as logout from './logout'
-import * as start from './start'
-import * as session from '../session'
+import { decryptSession } from '../_lib/session-crypto.js'
+import * as callback from './callback.js'
+import * as logout from './logout.js'
+import * as start from './start.js'
+import * as session from '../session.js'
 
 const encryptionKey = Buffer.alloc(32, 9)
 const serverEnvironment = {

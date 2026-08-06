@@ -1,7 +1,7 @@
-import { clearSessionCookie, readCookie } from './_lib/cookies'
-import { appendSetCookie } from './_lib/function-response'
-import { getServerConfig } from './_lib/server-config'
-import { decryptSession } from './_lib/session-crypto'
+import { clearSessionCookie, readCookie } from './_lib/cookies.js'
+import { appendSetCookie } from './_lib/function-response.js'
+import { getServerConfig } from './_lib/server-config.js'
+import { decryptSession } from './_lib/session-crypto.js'
 
 export async function GET(request: Request): Promise<Response> {
   const value = readCookie(request.headers.get('cookie'), 'session')

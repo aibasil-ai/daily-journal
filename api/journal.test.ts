@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { encryptSession } from './_lib/session-crypto'
-import * as journal from './journal'
+import { encryptSession } from './_lib/session-crypto.js'
+import * as journal from './journal.js'
 
 const encryptionKey = Buffer.alloc(32, 3)
 const serverEnvironment = {

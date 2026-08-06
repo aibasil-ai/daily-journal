@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { getServerConfig } from './server-config'
+import { getServerConfig } from './server-config.js'
 
 const encryptionKey = Buffer.alloc(32, 1).toString('base64url')
 

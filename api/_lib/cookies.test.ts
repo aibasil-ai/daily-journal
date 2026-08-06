@@ -5,7 +5,7 @@ import {
   createOAuthStateCookie,
   createSessionCookie,
   readCookie,
-} from './cookies'
+} from './cookies.js'
 
 describe('cookie helpers', () => {
   test('session Cookie 使用安全屬性並保存 30 天', () => {
