@@ -14,6 +14,8 @@ export type EntryReaderDialogProps = {
 
 export function EntryReaderDialog({ entry, categoryName, open, onEdit, onDelete, onRequestClose }: EntryReaderDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const readerTitleRef = useRef<HTMLHeadingElement>(null)
+  const deleteButtonRef = useRef<HTMLButtonElement>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export function EntryReaderDialog({ entry, categoryName, open, onEdit, onDelete,
       </header>
       <article className="entry-reader-dialog__content">
         <p className="entry-reader-dialog__metadata">{entry.entryDate} · {categoryName}</p>
-        <h2>{title}</h2>
+        <h2 ref={readerTitleRef} tabIndex={-1}>{title}</h2>
         <p className="entry-reader-dialog__body">{entry.content}</p>
         {entry.tags.length > 0 && <p className="entry-reader-dialog__tags">{entry.tags.map((tag) => <span key={tag} className="tag-chip">#{tag}</span>)}</p>}
         {entry.links.length > 0 && (
@@ -49,9 +51,9 @@ export function EntryReaderDialog({ entry, categoryName, open, onEdit, onDelete,
       </article>
       <div className="dialog-actions">
         <button type="button" className="button--secondary" onClick={() => onEdit(entry)}>{zhTW.entries.editEntry}</button>
-        <button type="button" className="button--danger" onClick={() => setIsDeleteDialogOpen(true)}>{zhTW.entries.deleteEntry}</button>
+        <button ref={deleteButtonRef} type="button" className="button--danger" onClick={() => setIsDeleteDialogOpen(true)}>{zhTW.entries.deleteEntry}</button>
       </div>
-      {isDeleteDialogOpen && <EntryDeleteDialog entry={entry} onDelete={onDelete} onRequestClose={() => setIsDeleteDialogOpen(false)} />}
+      {isDeleteDialogOpen && <EntryDeleteDialog entry={entry} onDelete={onDelete} onRequestClose={() => setIsDeleteDialogOpen(false)} returnFocusRef={deleteButtonRef} fallbackFocusRef={readerTitleRef} />}
     </dialog>
   )
 }

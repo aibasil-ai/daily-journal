@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 
 import '../../test/dialog-setup'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { useRef, useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
 import type { Entry } from '../../domain/journal'
+import { EntryDeleteDialog } from './entry-delete-dialog'
 import { EntryPickerDialog } from './entry-picker-dialog'
 import { EntryReaderDialog } from './entry-reader-dialog'
 
@@ -103,6 +105,103 @@ test('記事載入後會開啟已請求的閱讀 Dialog', () => {
 
   expect(screen.getByRole('dialog', { name: '閱讀記事' })).toBeInTheDocument()
 })
+
+test('刪除進行時 Escape 會保留確認 Dialog 與失敗訊息', async () => {
+  const deletion = pendingPromise<void>()
+  const onRequestClose = vi.fn()
+  const user = userEvent.setup()
+
+  render(<EntryDeleteDialog entry={entry('pending')} onDelete={() => deletion.promise} onRequestClose={onRequestClose} />)
+
+  await user.click(screen.getByRole('button', { name: '確認刪除' }))
+  fireEvent(screen.getByRole('dialog', { name: '刪除記事確認' }), new Event('cancel', { cancelable: true }))
+
+  expect(onRequestClose).not.toHaveBeenCalled()
+  expect(screen.getByRole('dialog', { name: '刪除記事確認' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '取消' })).toBeDisabled()
+
+  deletion.reject(new Error('刪除失敗'))
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('刪除失敗')
+  expect(screen.getByRole('dialog', { name: '刪除記事確認' })).toBeInTheDocument()
+})
+
+test('取消刪除後把焦點回到觸發按鈕', async () => {
+  const user = userEvent.setup()
+
+  render(<DeleteCancellationHarness />)
+
+  const trigger = screen.getByRole('button', { name: '刪除記事' })
+  await user.click(trigger)
+  await user.click(screen.getByRole('button', { name: '取消' }))
+
+  await waitFor(() => expect(trigger).toHaveFocus())
+})
+
+test('成功刪除卸載觸發按鈕後將焦點移至閱讀標題', async () => {
+  const user = userEvent.setup()
+
+  render(<DeleteSuccessHarness />)
+
+  await user.click(screen.getByRole('button', { name: '刪除記事' }))
+  await user.click(screen.getByRole('button', { name: '確認刪除' }))
+
+  expect(screen.queryByRole('button', { name: '刪除記事' })).not.toBeInTheDocument()
+  await waitFor(() => expect(screen.getByRole('heading', { name: '閱讀記事' })).toHaveFocus())
+})
+
+test('多個刪除 Dialog 使用各自的標題 ID', () => {
+  render(
+    <>
+      <EntryDeleteDialog entry={entry('first')} onDelete={async () => undefined} onRequestClose={vi.fn()} />
+      <EntryDeleteDialog entry={entry('second')} onDelete={async () => undefined} onRequestClose={vi.fn()} />
+    </>,
+  )
+
+  const [firstDialog, secondDialog] = screen.getAllByRole('dialog', { name: '刪除記事確認' })
+  const firstTitleId = firstDialog.getAttribute('aria-labelledby')
+  const secondTitleId = secondDialog.getAttribute('aria-labelledby')
+
+  expect(firstTitleId).not.toBe(secondTitleId)
+  expect(document.getElementById(firstTitleId ?? '')).toHaveTextContent('刪除記事確認')
+  expect(document.getElementById(secondTitleId ?? '')).toHaveTextContent('刪除記事確認')
+})
+
+function DeleteCancellationHarness() {
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+
+  return (
+    <>
+      <button ref={triggerRef} type="button" onClick={() => setIsDeleteDialogOpen(true)}>刪除記事</button>
+      {isDeleteDialogOpen && <EntryDeleteDialog entry={entry('cancel')} onDelete={async () => undefined} onRequestClose={() => setIsDeleteDialogOpen(false)} returnFocusRef={triggerRef} />}
+    </>
+  )
+}
+
+function DeleteSuccessHarness() {
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const readerTitleRef = useRef<HTMLHeadingElement>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [hasEntry, setHasEntry] = useState(true)
+
+  return (
+    <>
+      <h2 ref={readerTitleRef} tabIndex={-1}>閱讀記事</h2>
+      {hasEntry && <button ref={triggerRef} type="button" onClick={() => setIsDeleteDialogOpen(true)}>刪除記事</button>}
+      {isDeleteDialogOpen && <EntryDeleteDialog entry={entry('success')} onDelete={async () => setHasEntry(false)} onRequestClose={() => setIsDeleteDialogOpen(false)} returnFocusRef={triggerRef} fallbackFocusRef={readerTitleRef} />}
+    </>
+  )
+}
+
+function pendingPromise<T>() {
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((_resolve, rejectPromise) => {
+    reject = rejectPromise
+  })
+
+  return { promise, reject }
+}
 
 function entry(id: string, overrides: Partial<Entry> = {}): Entry {
   return {

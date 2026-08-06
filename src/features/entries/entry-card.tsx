@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { Entry } from '../../domain/journal'
 import { zhTW } from '../../i18n/zh-TW'
 import { EntryDeleteDialog } from './entry-delete-dialog'
@@ -12,6 +12,7 @@ type EntryCardProps = {
 }
 
 export function EntryCard({ entry, categoryName, onOpen, onEdit, onDelete }: EntryCardProps) {
+  const deleteButtonRef = useRef<HTMLButtonElement>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const title = entry.title.trim() || entry.content.slice(0, 80)
 
@@ -21,7 +22,7 @@ export function EntryCard({ entry, categoryName, onOpen, onEdit, onDelete }: Ent
         <h3>{onOpen ? <button type="button" className="entry-card__open" onClick={() => onOpen(entry)}>{title}</button> : title}</h3>
         <div className="entry-card__actions">
           <button type="button" className="button--secondary" onClick={() => onEdit(entry)}>{zhTW.entries.editEntry}</button>
-          <button type="button" className="button--danger" onClick={() => setIsDeleteDialogOpen(true)}>{zhTW.entries.deleteEntry}</button>
+          <button ref={deleteButtonRef} type="button" className="button--danger" onClick={() => setIsDeleteDialogOpen(true)}>{zhTW.entries.deleteEntry}</button>
         </div>
       </header>
       <p>{onOpen ? <button type="button" className="entry-card__open" onClick={() => onOpen(entry)}>{entry.content}</button> : entry.content}</p>
@@ -32,7 +33,7 @@ export function EntryCard({ entry, categoryName, onOpen, onEdit, onDelete }: Ent
           {entry.links.map((link) => <li key={`${link.label}-${link.url}`}>{isSafeHttpUrl(link.url) ? <a href={link.url} target="_blank" rel="noreferrer noopener">{link.label}</a> : link.label}</li>)}
         </ul>
       )}
-      {isDeleteDialogOpen && <EntryDeleteDialog entry={entry} onDelete={onDelete} onRequestClose={() => setIsDeleteDialogOpen(false)} />}
+      {isDeleteDialogOpen && <EntryDeleteDialog entry={entry} onDelete={onDelete} onRequestClose={() => setIsDeleteDialogOpen(false)} returnFocusRef={deleteButtonRef} />}
     </article>
   )
 }
