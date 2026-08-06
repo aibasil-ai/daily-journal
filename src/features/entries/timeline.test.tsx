@@ -36,6 +36,20 @@ test('標題留空時以記事內容前八十字顯示摘要，外部連結安�
   expect(screen.getByRole('link', { name: '參考資料' })).toHaveAttribute('rel', 'noreferrer noopener')
 })
 
+test('點選記事標題或摘要時傳出閱讀 callback', async () => {
+  const onOpen = vi.fn()
+  const user = userEvent.setup()
+  const openingEntry = entry('opening', '2026-08-04')
+
+  render(<EntryCard entry={openingEntry} categoryName="工作" onOpen={onOpen} onEdit={vi.fn()} onDelete={vi.fn()} />)
+
+  await user.click(screen.getByRole('button', { name: '標題 opening' }))
+  await user.click(screen.getByRole('button', { name: '記事內容 opening' }))
+
+  expect(onOpen).toHaveBeenNthCalledWith(1, openingEntry)
+  expect(onOpen).toHaveBeenNthCalledWith(2, openingEntry)
+})
+
 test('歷史記事透過明確分類名稱顯示停用分類', () => {
   render(<EntryCard {...{ entry: entry('inactive-category', '2026-08-04', { categoryId: 'old' }), categoryName: '舊分類', onEdit: vi.fn(), onDelete: vi.fn() }} />)
 
