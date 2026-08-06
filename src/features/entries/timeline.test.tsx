@@ -58,6 +58,19 @@ test('點選記事閱讀區塊時傳出閱讀 callback', async () => {
   expect(onOpen).toHaveBeenNthCalledWith(1, openingEntry)
 })
 
+test('閱讀按鈕保留可導覽標題與可閱讀摘要', () => {
+  render(<EntryCard entry={entry('semantic', '2026-08-04')} categoryName="工作" onOpen={() => undefined} onEdit={vi.fn()} onDelete={vi.fn()} />)
+
+  const heading = screen.getByRole('heading', { name: '標題 semantic' })
+  const readButton = screen.getByRole('button', { name: '閱讀 標題 semantic' })
+  const summary = screen.getByText('記事內容 semantic')
+
+  expect(heading).toContainElement(readButton)
+  expect(readButton.querySelector('h1, h2, h3, h4, h5, h6, p')).toBeNull()
+  expect(readButton).not.toContainElement(summary)
+  expect(summary).toBeVisible()
+})
+
 test('歷史記事透過明確分類名稱顯示停用分類', () => {
   render(<EntryCard {...{ entry: entry('inactive-category', '2026-08-04', { categoryId: 'old' }), categoryName: '舊分類', onEdit: vi.fn(), onDelete: vi.fn() }} />)
 

@@ -28,22 +28,13 @@ export function EntryCard({ entry, categoryName, onOpen, onEdit, onDelete }: Ent
   return (
     <article ref={cardRef} className="entry-card">
       <header className="entry-card__header">
-        {onOpen ? (
-          <button type="button" className="entry-card__read" aria-label={`${zhTW.entries.read} ${title}`} onClick={() => onOpen(entry)}>
-            <h3>{title}</h3>
-            <p>{entry.content}</p>
-          </button>
-        ) : (
-          <>
-            <h3>{title}</h3>
-            <p>{entry.content}</p>
-          </>
-        )}
+        <h3>{onOpen ? <button type="button" className="entry-card__read" aria-label={`${zhTW.entries.read} ${title}`} onClick={() => onOpen(entry)}>{title}</button> : title}</h3>
         <div className="entry-card__actions">
           <button type="button" className="button--secondary" onClick={() => onEdit(entry)}>{zhTW.entries.editEntry}</button>
           <button ref={deleteButtonRef} type="button" className="button--danger" onClick={openDeleteDialog}>{zhTW.entries.deleteEntry}</button>
         </div>
       </header>
+      <p>{entry.content}</p>
       <p className="entry-card__category">{zhTW.entries.categoryName(categoryName)}</p>
       {entry.tags.length > 0 && <p className="entry-card__tags">{zhTW.entries.tagsPrefix}{entry.tags.join('、')}</p>}
       {entry.links.length > 0 && (
