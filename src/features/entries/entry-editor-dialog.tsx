@@ -30,6 +30,7 @@ export function EntryEditorDialog({ entry, open, categories, tagSuggestions, tim
         <button type="button" className="icon-button" aria-label={zhTW.journal.close} onClick={onRequestClose}>×</button>
       </header>
       <EntryForm
+        key={`${open}-${entry?.id ?? 'new'}`}
         entry={entry}
         categories={categories}
         tagSuggestions={tagSuggestions}

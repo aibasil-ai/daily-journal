@@ -37,6 +37,70 @@ test('編輯 Dialog 按取消時要求關閉且不送出', async () => {
   expect(onRequestClose).toHaveBeenCalledOnce()
 })
 
+test('先開新增 Dialog 再編輯既有記事時以既有資料重新初始化', async () => {
+  const user = userEvent.setup()
+  const categories = [category('work'), category('personal')]
+  const { rerender } = render(<EntryEditorDialog open categories={categories} tagSuggestions={[]} onSave={vi.fn()} onRequestClose={vi.fn()} />)
+
+  await user.type(screen.getByLabelText('標題（選填）'), '草稿標題')
+  await user.type(screen.getByLabelText('記事內容'), '草稿內容')
+  await user.selectOptions(screen.getByLabelText('分類'), 'personal')
+  await user.type(screen.getByLabelText('標籤'), '草稿{Enter}')
+  await user.click(screen.getByRole('button', { name: '新增連結' }))
+  await user.type(screen.getByLabelText('連結名稱 1'), '草稿連結')
+  await user.type(screen.getByLabelText('連結網址 1'), 'https://example.com/draft')
+
+  rerender(<EntryEditorDialog open={false} categories={categories} tagSuggestions={[]} onSave={vi.fn()} onRequestClose={vi.fn()} />)
+  rerender(<EntryEditorDialog open entry={entry('entry-1')} categories={categories} tagSuggestions={[]} onSave={vi.fn()} onRequestClose={vi.fn()} />)
+
+  expect(screen.getByLabelText('記錄日期')).toHaveValue('2026-08-06')
+  expect(screen.getByLabelText('標題（選填）')).toHaveValue('既有標題')
+  expect(screen.getByLabelText('記事內容')).toHaveValue('既有內容')
+  expect(screen.getByLabelText('分類')).toHaveValue('work')
+  expect(screen.getByText('會議')).toBeInTheDocument()
+  expect(screen.getByLabelText('連結名稱 1')).toHaveValue('既有連結')
+  expect(screen.getByLabelText('連結網址 1')).toHaveValue('https://example.com/existing')
+})
+
+test('重新開啟新增 Dialog 時清除未儲存資料', async () => {
+  const user = userEvent.setup()
+  const { rerender } = render(<EntryEditorDialog open categories={[category('work')]} tagSuggestions={[]} onSave={vi.fn()} onRequestClose={vi.fn()} />)
+
+  await user.type(screen.getByLabelText('標題（選填）'), '未儲存標題')
+  await user.type(screen.getByLabelText('記事內容'), '未儲存內容')
+  await user.selectOptions(screen.getByLabelText('分類'), 'work')
+  await user.type(screen.getByLabelText('標籤'), '草稿{Enter}')
+  await user.click(screen.getByRole('button', { name: '新增連結' }))
+
+  rerender(<EntryEditorDialog open={false} categories={[category('work')]} tagSuggestions={[]} onSave={vi.fn()} onRequestClose={vi.fn()} />)
+  rerender(<EntryEditorDialog open categories={[category('work')]} tagSuggestions={[]} onSave={vi.fn()} onRequestClose={vi.fn()} />)
+
+  expect(screen.getByLabelText('標題（選填）')).toHaveValue('')
+  expect(screen.getByLabelText('記事內容')).toHaveValue('')
+  expect(screen.getByLabelText('分類')).toHaveValue('')
+  expect(screen.queryByText('草稿')).not.toBeInTheDocument()
+  expect(screen.queryByLabelText('連結名稱 1')).not.toBeInTheDocument()
+})
+
+test('新增記事儲存失敗後保留輸入資料', async () => {
+  const onSave = vi.fn<(_: EntryInput) => Promise<void>>().mockRejectedValue(new Error('儲存失敗'))
+  const user = userEvent.setup()
+
+  render(<EntryEditorDialog open categories={[category('work')]} tagSuggestions={[]} onSave={onSave} onRequestClose={vi.fn()} />)
+
+  await user.type(screen.getByLabelText('標題（選填）'), '失敗標題')
+  await user.type(screen.getByLabelText('記事內容'), '失敗內容')
+  await user.selectOptions(screen.getByLabelText('分類'), 'work')
+  await user.type(screen.getByLabelText('標籤'), '草稿{Enter}')
+  await user.click(screen.getByRole('button', { name: '儲存記事' }))
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('儲存失敗')
+  expect(screen.getByLabelText('標題（選填）')).toHaveValue('失敗標題')
+  expect(screen.getByLabelText('記事內容')).toHaveValue('失敗內容')
+  expect(screen.getByLabelText('分類')).toHaveValue('work')
+  expect(screen.getByText('草稿')).toBeInTheDocument()
+})
+
 test('Dialog 收到原生取消事件時要求關閉且不送出', () => {
   const onSave = vi.fn<(_: EntryInput) => Promise<void>>()
   const onRequestClose = vi.fn()
@@ -66,7 +130,7 @@ function entry(id: string): Entry {
     content: '既有內容',
     categoryId: 'work',
     tags: ['會議'],
-    links: [],
+    links: [{ label: '既有連結', url: 'https://example.com/existing' }],
     createdAt: '2026-08-04T00:00:00+08:00',
     updatedAt: '2026-08-04T00:00:00+08:00',
   }

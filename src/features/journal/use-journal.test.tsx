@@ -370,8 +370,13 @@ test('新增、改期與刪除後更新月曆計數，且忽略舊計數回應',
   await user.click(screen.getByRole('button', { name: '新增記事' }))
   const newEditorDialog = await screen.findByRole('dialog', { name: '新增記事' })
   fireEvent.change(within(newEditorDialog).getByLabelText('記錄日期'), { target: { value: originalDate } })
+  await user.type(within(newEditorDialog).getByLabelText('標題（選填）'), '原始標題')
   await user.type(within(newEditorDialog).getByLabelText('記事內容'), '待同步記事')
   await user.selectOptions(within(newEditorDialog).getByLabelText('分類'), 'work')
+  await user.type(within(newEditorDialog).getByLabelText('標籤'), '會議{Enter}')
+  await user.click(within(newEditorDialog).getByRole('button', { name: '新增連結' }))
+  await user.type(within(newEditorDialog).getByLabelText('連結名稱 1'), '原始連結')
+  await user.type(within(newEditorDialog).getByLabelText('連結網址 1'), 'https://example.com/original')
   await user.click(within(newEditorDialog).getByRole('button', { name: '儲存記事' }))
   await waitFor(() => expect(monthlyRequestCount).toBe(2))
   await user.click(await screen.findByRole('button', { name: `${originalDate}，共 1 則記事` }))
@@ -379,10 +384,19 @@ test('新增、改期與刪除後更新月曆計數，且忽略舊計數回應',
   await user.click(within(readerDialog).getByRole('button', { name: '編輯記事' }))
   const editEditorDialog = await screen.findByRole('dialog', { name: '編輯記事' })
   fireEvent.change(within(editEditorDialog).getByLabelText('記錄日期'), { target: { value: movedDate } })
-  await user.type(within(editEditorDialog).getByLabelText('記事內容'), '待同步記事')
-  await user.selectOptions(within(editEditorDialog).getByLabelText('分類'), 'work')
   await user.click(within(editEditorDialog).getByRole('button', { name: '儲存記事' }))
-  await waitFor(() => expect(client.run).toHaveBeenCalledWith(expect.objectContaining({ action: 'saveEntry', entry: expect.objectContaining({ entryDate: movedDate }) })))
+  await waitFor(() => expect(client.run).toHaveBeenCalledWith({
+    action: 'saveEntry',
+    entry: {
+      id: 'saved',
+      entryDate: movedDate,
+      title: '原始標題',
+      content: '待同步記事',
+      categoryId: 'work',
+      tags: ['會議'],
+      links: [{ label: '原始連結', url: 'https://example.com/original' }],
+    },
+  }))
   await waitFor(() => expect(monthlyRequestCount).toBe(3))
   await user.click(await screen.findByRole('button', { name: `${movedDate}，共 1 則記事` }))
   const movedReaderDialog = await screen.findByRole('dialog', { name: '閱讀記事' })
