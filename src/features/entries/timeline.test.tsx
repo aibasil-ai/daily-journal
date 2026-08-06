@@ -2,7 +2,7 @@
 
 import '../../test/dialog-setup'
 import { useState } from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
 import type { Category, Entry, EntryFilter } from '../../domain/journal'
@@ -88,6 +88,19 @@ test('刪除前要求再次確認，失敗後保留記事並顯示錯誤', async
   expect(screen.getByText('記事內容 delete')).toBeInTheDocument()
 })
 
+test('卡片成功刪除並卸載觸發按鈕後將焦點移至時間軸', async () => {
+  const user = userEvent.setup()
+
+  render(<EntryCardDeleteFallbackHarness />)
+
+  await user.click(screen.getByRole('button', { name: '刪除記事' }))
+  await user.click(screen.getByRole('button', { name: '確認刪除' }))
+
+  expect(screen.queryByRole('button', { name: '刪除記事' })).not.toBeInTheDocument()
+  await waitFor(() => expect(screen.getByRole('region', { name: '記事時間軸' })).toHaveFocus())
+  expect(document.body).not.toHaveFocus()
+})
+
 test('任一篩選欄位變動時重設游標並傳出完整複合篩選', async () => {
   const onChange = vi.fn()
   const user = userEvent.setup()
@@ -131,6 +144,24 @@ function FilterBarHarness({ initialFilter, onChange }: { initialFilter: EntryFil
         onChange(nextFilter)
       }}
     />
+  )
+}
+
+function EntryCardDeleteFallbackHarness() {
+  const [entries, setEntries] = useState([entry('delete-success', '2026-08-04')])
+
+  return (
+    <section className="timeline" aria-label="記事時間軸">
+      {entries.map((currentEntry) => (
+        <EntryCard
+          key={currentEntry.id}
+          entry={currentEntry}
+          categoryName="工作"
+          onEdit={vi.fn()}
+          onDelete={async () => setEntries([])}
+        />
+      ))}
+    </section>
   )
 }
 

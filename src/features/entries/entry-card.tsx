@@ -12,17 +12,26 @@ type EntryCardProps = {
 }
 
 export function EntryCard({ entry, categoryName, onOpen, onEdit, onDelete }: EntryCardProps) {
+  const cardRef = useRef<HTMLElement>(null)
   const deleteButtonRef = useRef<HTMLButtonElement>(null)
+  const fallbackFocusRef = useRef<HTMLElement>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const title = entry.title.trim() || entry.content.slice(0, 80)
 
+  function openDeleteDialog() {
+    const timeline = cardRef.current?.closest<HTMLElement>('.timeline')
+    if (timeline) timeline.tabIndex = -1
+    fallbackFocusRef.current = timeline ?? null
+    setIsDeleteDialogOpen(true)
+  }
+
   return (
-    <article className="entry-card">
+    <article ref={cardRef} className="entry-card">
       <header className="entry-card__header">
         <h3>{onOpen ? <button type="button" className="entry-card__open" onClick={() => onOpen(entry)}>{title}</button> : title}</h3>
         <div className="entry-card__actions">
           <button type="button" className="button--secondary" onClick={() => onEdit(entry)}>{zhTW.entries.editEntry}</button>
-          <button ref={deleteButtonRef} type="button" className="button--danger" onClick={() => setIsDeleteDialogOpen(true)}>{zhTW.entries.deleteEntry}</button>
+          <button ref={deleteButtonRef} type="button" className="button--danger" onClick={openDeleteDialog}>{zhTW.entries.deleteEntry}</button>
         </div>
       </header>
       <p>{onOpen ? <button type="button" className="entry-card__open" onClick={() => onOpen(entry)}>{entry.content}</button> : entry.content}</p>
@@ -33,7 +42,7 @@ export function EntryCard({ entry, categoryName, onOpen, onEdit, onDelete }: Ent
           {entry.links.map((link) => <li key={`${link.label}-${link.url}`}>{isSafeHttpUrl(link.url) ? <a href={link.url} target="_blank" rel="noreferrer noopener">{link.label}</a> : link.label}</li>)}
         </ul>
       )}
-      {isDeleteDialogOpen && <EntryDeleteDialog entry={entry} onDelete={onDelete} onRequestClose={() => setIsDeleteDialogOpen(false)} returnFocusRef={deleteButtonRef} />}
+      {isDeleteDialogOpen && <EntryDeleteDialog entry={entry} onDelete={onDelete} onRequestClose={() => setIsDeleteDialogOpen(false)} returnFocusRef={deleteButtonRef} fallbackFocusRef={fallbackFocusRef} />}
     </article>
   )
 }
