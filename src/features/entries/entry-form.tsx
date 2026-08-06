@@ -72,7 +72,6 @@ export function EntryForm({ categories, onSave, tagSuggestions, entry, onCancel,
 
   return (
     <form className="entry-form" onSubmit={handleSubmit} noValidate>
-      <h2>{entry ? zhTW.entries.edit : zhTW.entries.add}</h2>
       <FormErrors issues={issues} />
       <label>
         {zhTW.entries.date}

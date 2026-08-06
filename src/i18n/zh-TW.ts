@@ -86,7 +86,7 @@ export const zhTW = {
     removeLink: (position: number) => `移除連結 ${position}`,
     save: '儲存記事',
     saving: '儲存中...',
-    cancelEdit: '取消編輯',
+    cancelEdit: '取消',
     filters: '篩選記事',
     keyword: '關鍵字',
     from: '起始日期',

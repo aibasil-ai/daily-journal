@@ -12,6 +12,7 @@ test('提交含標籤與兩筆網址的記事', async () => {
 
   render(<EntryForm categories={[category('work')]} onSave={onSave} tagSuggestions={['會議']} />)
 
+  expect(screen.queryByRole('toolbar')).not.toBeInTheDocument()
   await user.type(screen.getByLabelText('記事內容'), '完成週會紀錄')
   await user.selectOptions(screen.getByLabelText('分類'), 'work')
   await user.type(screen.getByLabelText('標籤'), '會議{Enter}專案A{Enter}')
