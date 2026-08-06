@@ -15,13 +15,13 @@ export function ConnectionScreen({ status, error, loginError, title = zhTW.journ
   const checkingConfig = status === 'checking-config'
 
   return (
-    <section className="connection-screen" aria-live="polite">
+    <section className="connection-screen connection-screen--centered" aria-label={title} aria-live="polite">
       <h2>{title}</h2>
       {checkingConfig && <p>{zhTW.journal.checkingConfig}</p>}
       {status === 'signed-out' && loginError && <p className="connection-screen__error" role="alert">{loginError}</p>}
       {status === 'signed-out' && <p>{zhTW.journal.signedOutDescription}</p>}
       {loading && <p>{zhTW.journal.connectingDescription}</p>}
-      {status === 'error' && <p className="connection-screen__error">{error}</p>}
+      {status === 'error' && <p className="connection-screen__error" role="alert">{error}</p>}
 
       {status === 'signed-out' && (
         <button type="button" onClick={onSignIn}>{zhTW.journal.signIn}</button>

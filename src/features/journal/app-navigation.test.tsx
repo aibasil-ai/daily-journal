@@ -44,3 +44,10 @@ test('行動導覽列只提供三個主要視圖', () => {
   expect(mobileBar.queryByRole('button', { name: '匯出資料' })).not.toBeInTheDocument()
   expect(mobileBar.queryByRole('button', { name: '登出' })).not.toBeInTheDocument()
 })
+
+test('新版應用殼層保留桌面側欄與行動底部導覽 class', () => {
+  render(<AppNavigation view="timeline" onViewChange={vi.fn()} onCreateEntry={vi.fn()} onExport={vi.fn()} onSignOut={vi.fn()} />)
+
+  expect(screen.getByRole('navigation', { name: '主要導覽' }).className).toContain('app-navigation__sidebar')
+  expect(screen.getByRole('navigation', { name: '行動主要導覽' }).className).toContain('app-navigation__mobile')
+})

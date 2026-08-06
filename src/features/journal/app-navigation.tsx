@@ -19,9 +19,9 @@ const navigationItems: Array<{ view: JournalView, label: string, icon: string }>
 export function AppNavigation({ view, onViewChange, onCreateEntry, onExport, onSignOut }: AppNavigationProps): JSX.Element {
   return (
     <div className="app-navigation">
-      <aside className="app-navigation__sidebar">
+      <nav className="app-navigation__sidebar" aria-label="主要導覽">
         <p className="app-navigation__title">{zhTW.appTitle}</p>
-        <NavigationItems ariaLabel="主要導覽" view={view} onViewChange={onViewChange} />
+        <NavigationItems view={view} onViewChange={onViewChange} />
         <div className="app-navigation__actions">
           <button type="button" onClick={onCreateEntry}>
             <span className="material-symbols-outlined" aria-hidden="true">add</span>
@@ -36,26 +36,26 @@ export function AppNavigation({ view, onViewChange, onCreateEntry, onExport, onS
             {zhTW.journal.signOut}
           </button>
         </div>
-      </aside>
-      <NavigationItems ariaLabel="行動主要導覽" className="app-navigation__mobile-bar" view={view} onViewChange={onViewChange} />
+      </nav>
+      <nav aria-label="行動主要導覽" className="app-navigation__mobile app-navigation__mobile-bar">
+        <NavigationItems view={view} onViewChange={onViewChange} />
+      </nav>
     </div>
   )
 }
 
-function NavigationItems({ ariaLabel, className, view, onViewChange }: {
-  ariaLabel: string
-  className?: string
+function NavigationItems({ view, onViewChange }: {
   view: JournalView
   onViewChange: (view: JournalView) => void
 }): JSX.Element {
   return (
-    <nav aria-label={ariaLabel} className={className}>
+    <>
       {navigationItems.map((item) => (
         <button key={item.view} type="button" aria-current={view === item.view ? 'page' : undefined} onClick={() => onViewChange(item.view)}>
           <span className="material-symbols-outlined" aria-hidden="true">{item.icon}</span>
           {item.label}
         </button>
       ))}
-    </nav>
+    </>
   )
 }
