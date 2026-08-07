@@ -25,7 +25,13 @@ export function Timeline({ entries, categoryNameById, nextCursor, onOpen, onEdit
       {[...groups.entries()].map(([entryDate, dateEntries]) => (
         <section className="timeline__group" key={entryDate}>
           <h2>{entryDate}</h2>
-          {dateEntries.map((entry) => <EntryCard key={entry.id} entry={entry} categoryName={categoryNameById.get(entry.categoryId) ?? zhTW.entries.unknownCategory} onOpen={onOpen} onEdit={onEdit} onDelete={onDelete} />)}
+          {dateEntries.map((entry) => (
+            <div className="timeline__entry" key={entry.id}>
+              <time className="timeline__time" dateTime={entry.createdAt}>{entry.createdAt.slice(11, 16)}</time>
+              <span className="timeline__node" aria-hidden="true" />
+              <EntryCard entry={entry} categoryName={categoryNameById.get(entry.categoryId) ?? zhTW.entries.unknownCategory} onOpen={onOpen} onEdit={onEdit} onDelete={onDelete} />
+            </div>
+          ))}
         </section>
       ))}
       {nextCursor !== null && <button type="button" onClick={onLoadMore} disabled={isLoadingMore}>{isLoadingMore ? zhTW.entries.loading : zhTW.entries.loadMore}</button>}

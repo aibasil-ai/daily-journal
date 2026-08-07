@@ -26,6 +26,12 @@ test('依記錄日期分組並僅在有游標時顯示載入更多', async () =>
   expect(screen.queryByRole('button', { name: '載入更多' })).not.toBeInTheDocument()
 })
 
+test('時間軸將記事建立時間作為卡片的時間節點', () => {
+  render(<Timeline entries={[entry('first', '2026-08-04')]} categoryNameById={new Map([['work', '工作']])} nextCursor={null} onEdit={vi.fn()} onDelete={vi.fn()} onLoadMore={vi.fn()} />)
+
+  expect(screen.getByText('00:00')).toHaveAttribute('dateTime', '2026-08-04T00:00:00+08:00')
+})
+
 test('點選時間軸卡片會開啟正確記事', async () => {
   const onOpen = vi.fn()
   const user = userEvent.setup()
@@ -129,9 +135,9 @@ test('任一篩選欄位變動時重設游標並傳出完整複合篩選', async
 
   render(<FilterBarHarness initialFilter={filter} onChange={onChange} />)
 
-  await user.type(screen.getByLabelText('關鍵字'), '週會')
+  await user.type(screen.getByRole('searchbox', { name: '搜尋記事' }), '週會')
   expect(onChange).toHaveBeenLastCalledWith({ ...filter, query: '週會', cursor: null })
-  await user.click(screen.getByText('進階篩選'))
+  await user.click(screen.getByText('篩選'))
   await user.type(screen.getByLabelText('起始日期'), '2026-08-01')
   expect(onChange).toHaveBeenLastCalledWith({ ...filter, query: '週會', from: '2026-08-01', cursor: null })
   await user.selectOptions(screen.getByLabelText('分類篩選'), 'work')

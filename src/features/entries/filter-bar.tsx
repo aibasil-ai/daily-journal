@@ -6,21 +6,27 @@ type FilterBarProps = {
   tagSuggestions: string[]
   filter: EntryFilter
   onChange: (filter: EntryFilter) => void
+  variant?: 'timeline'
 }
 
-export function FilterBar({ categories, tagSuggestions, filter, onChange }: FilterBarProps) {
+export function FilterBar({ categories, tagSuggestions, filter, onChange, variant }: FilterBarProps) {
   function updateFilter(change: Partial<EntryFilter>) {
     onChange({ ...filter, ...change, cursor: null })
   }
 
   return (
-    <section className="filter-bar" aria-label={zhTW.entries.filters}>
-      <label>
-        {zhTW.entries.keyword}
-        <input type="search" value={filter.query} onChange={(event) => updateFilter({ query: event.target.value })} />
+    <section className={`filter-bar${variant === 'timeline' ? ' filter-bar--timeline' : ''}`} aria-label={zhTW.entries.filters}>
+      <label className="filter-bar__search">
+        <span className="filter-bar__search-label">{zhTW.entries.keyword}</span>
+        <span className="material-symbols-outlined filter-bar__search-icon" aria-hidden="true">search</span>
+        <input type="search" aria-label="搜尋記事" placeholder="搜尋記事..." value={filter.query} onChange={(event) => updateFilter({ query: event.target.value })} />
       </label>
       <details aria-label={zhTW.entries.advancedFilters}>
-        <summary>{zhTW.entries.advancedFilters}</summary>
+        <summary>
+          <span className="material-symbols-outlined" aria-hidden="true">filter_list</span>
+          <span>篩選</span>
+          <span className="visually-hidden">{zhTW.entries.advancedFilters}</span>
+        </summary>
         <label>
           {zhTW.entries.from}
           <input type="date" value={filter.from ?? ''} onChange={(event) => updateFilter({ from: event.target.value || null })} />

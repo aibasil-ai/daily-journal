@@ -15,6 +15,17 @@ test('顯示每日記事標題', () => {
   expect(screen.getByRole('heading', { name: '每日記事' })).toBeInTheDocument()
 })
 
+test('時間軸頁首提供可搜尋記事的輸入框', async () => {
+  const user = userEvent.setup()
+  render(<App client={readyClient()} />)
+  const mobileNavigation = await screen.findByRole('navigation', { name: '行動主要導覽' })
+
+  await user.click(within(mobileNavigation).getByRole('button', { name: '時間軸' }))
+
+  expect(screen.getByRole('heading', { name: '時間軸' })).toBeInTheDocument()
+  expect(screen.getByRole('searchbox', { name: '搜尋記事' })).toBeInTheDocument()
+})
+
 test('月曆預設月份依試算表時區計算', () => {
   expect(currentMonth('America/Los_Angeles', new Date('2026-08-01T00:30:00.000Z'))).toBe('2026-07')
 })

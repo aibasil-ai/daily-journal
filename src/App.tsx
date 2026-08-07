@@ -112,6 +112,12 @@ function JournalApplication({ client, loginError, appFocusTargetRef }: { client:
 
   if (journal.status === 'ready') {
     const categoryNameById = new Map(journal.categories.map((category) => [category.id, category.name]))
+    const filterProps = {
+      categories: journal.categories,
+      tagSuggestions: journal.tagSuggestions,
+      filter: journal.filter,
+      onChange: journal.setFilter,
+    }
 
     return (
       <div className="journal-application">
@@ -127,30 +133,32 @@ function JournalApplication({ client, loginError, appFocusTargetRef }: { client:
         />
         <p>{zhTW.journal.ready}</p>
         {journal.error && <p className="journal-error" role="alert">{journal.error}</p>}
-        <div className="journal-layout">
-          {view !== 'categories' && (
-            <FilterBar
-              categories={journal.categories}
-              tagSuggestions={journal.tagSuggestions}
-              filter={journal.filter}
-              onChange={journal.setFilter}
-            />
-          )}
+        <div className={`journal-layout${view === 'timeline' ? ' journal-layout--timeline' : ''}`}>
+          {view !== 'categories' && view !== 'timeline' && <FilterBar {...filterProps} />}
           <section className="journal-layout__content">
             {view === 'timeline' ? (
-              <Timeline
-                entries={journal.entries}
-                categoryNameById={categoryNameById}
-                nextCursor={journal.nextCursor}
-                isLoadingMore={journal.isLoadingEntries}
-                onOpen={setReadingEntry}
-                onEdit={(entry) => {
-                  setEditingEntry(entry)
-                  setIsEditorOpen(true)
-                }}
-                onDelete={journal.deleteEntry}
-                onLoadMore={() => journal.loadEntries({ ...journal.filter, cursor: journal.nextCursor }, true)}
-              />
+              <>
+                <header className="journal-page-header">
+                  <div className="journal-page-header__title">
+                    <h2>時間軸</h2>
+                    <p>回顧您的每一天。</p>
+                  </div>
+                  <FilterBar variant="timeline" {...filterProps} />
+                </header>
+                <Timeline
+                  entries={journal.entries}
+                  categoryNameById={categoryNameById}
+                  nextCursor={journal.nextCursor}
+                  isLoadingMore={journal.isLoadingEntries}
+                  onOpen={setReadingEntry}
+                  onEdit={(entry) => {
+                    setEditingEntry(entry)
+                    setIsEditorOpen(true)
+                  }}
+                  onDelete={journal.deleteEntry}
+                  onLoadMore={() => journal.loadEntries({ ...journal.filter, cursor: journal.nextCursor }, true)}
+                />
+              </>
             ) : view === 'calendar' ? (
               <CalendarView
                 month={currentJournalMonth}
