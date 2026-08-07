@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import './test/dialog-setup'
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, test, vi } from 'vitest'
 import { App } from './App'
@@ -71,7 +71,80 @@ test('月曆日期有多筆記事時先顯示選擇視窗', async () => {
   expect(await screen.findByRole('dialog', { name: '選擇記事' })).toBeInTheDocument()
 })
 
-function readyClient({ entriesForDate = [] }: { entriesForDate?: Entry[] } = {}): JournalClient {
+test('行動操作可新增、匯出並登出', async () => {
+  const client = readyClient()
+  const user = userEvent.setup()
+  render(<App client={client} />)
+
+  const mobileActions = within(await screen.findByRole('group', { name: '行動操作' }))
+  await user.click(mobileActions.getByRole('button', { name: '新增記事' }))
+  expect(await screen.findByRole('dialog', { name: '新增記事' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: '關閉' }))
+
+  await user.click(mobileActions.getByRole('button', { name: '行動操作' }))
+  await user.click(mobileActions.getByRole('button', { name: '匯出資料' }))
+  expect(await screen.findByRole('dialog', { name: 'CSV 匯出' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: '關閉' }))
+
+  await user.click(mobileActions.getByRole('button', { name: '行動操作' }))
+  await user.click(mobileActions.getByRole('button', { name: '登出' }))
+
+  expect(await screen.findByRole('button', { name: '使用 Google 帳號登入' })).toBeInTheDocument()
+  expect(client.signOut).toHaveBeenCalledOnce()
+})
+
+test('關閉閱讀視窗會先將焦點還給穩定的 App 主區域', async () => {
+  const user = userEvent.setup()
+  render(<App client={readyClient({ entriesForDate: [entry('only')] })} />)
+  const mobileNavigation = await screen.findByRole('navigation', { name: '行動主要導覽' })
+
+  await user.click(within(mobileNavigation).getByRole('button', { name: '月曆' }))
+  await user.click(screen.getByRole('button', { name: /2026-08-04/ }))
+  const reader = await screen.findByRole('dialog', { name: '閱讀記事' })
+  await user.click(within(reader).getByRole('button', { name: '關閉' }))
+
+  await waitFor(() => expect(screen.getByRole('main')).toHaveFocus())
+  expect(screen.queryByRole('dialog', { name: '閱讀記事' })).not.toBeInTheDocument()
+})
+
+test('成功刪除閱讀中的記事後將焦點還給穩定的 App 主區域', async () => {
+  const user = userEvent.setup()
+  render(<App client={readyClient({ entriesForDate: [entry('only')] })} />)
+  const mobileNavigation = await screen.findByRole('navigation', { name: '行動主要導覽' })
+
+  await user.click(within(mobileNavigation).getByRole('button', { name: '月曆' }))
+  await user.click(screen.getByRole('button', { name: /2026-08-04/ }))
+  const reader = await screen.findByRole('dialog', { name: '閱讀記事' })
+  await user.click(within(reader).getByRole('button', { name: '刪除記事' }))
+  await user.click(screen.getByRole('button', { name: '確認刪除' }))
+
+  await waitFor(() => expect(screen.getByRole('main')).toHaveFocus())
+  expect(screen.queryByRole('dialog', { name: '閱讀記事' })).not.toBeInTheDocument()
+})
+
+test('月曆日期請求在切換離開再回到月曆後完成時不開啟過期閱讀視窗', async () => {
+  const selection = pendingPromise<Entry[]>()
+  const client = readyClient({ entriesForDatePromise: selection.promise })
+  const user = userEvent.setup()
+  render(<App client={client} />)
+  const mobileNavigation = await screen.findByRole('navigation', { name: '行動主要導覽' })
+
+  await user.click(within(mobileNavigation).getByRole('button', { name: '月曆' }))
+  await user.click(screen.getByRole('button', { name: /2026-08-04/ }))
+  await waitFor(() => expect(client.run).toHaveBeenCalledWith(expect.objectContaining({ action: 'getEntriesForDate', date: '2026-08-04' })))
+  await user.click(within(mobileNavigation).getByRole('button', { name: '時間軸' }))
+  await user.click(within(mobileNavigation).getByRole('button', { name: '月曆' }))
+
+  await act(async () => {
+    selection.resolve([entry('stale')])
+    await selection.promise
+  })
+
+  expect(screen.queryByRole('dialog', { name: '閱讀記事' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('dialog', { name: '選擇記事' })).not.toBeInTheDocument()
+})
+
+function readyClient({ entriesForDate = [], entriesForDatePromise }: { entriesForDate?: Entry[], entriesForDatePromise?: Promise<Entry[]> } = {}): JournalClient {
   return {
     restoreSession: vi.fn().mockResolvedValue(true),
     beginSignIn: vi.fn(),
@@ -80,7 +153,8 @@ function readyClient({ entriesForDate = [] }: { entriesForDate?: Entry[] } = {})
       if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
       if (request.action === 'listEntries') return { items: [], nextCursor: null }
       if (request.action === 'getMonthlyEntryCounts') return [{ date: '2026-08-04', count: entriesForDate.length }]
-      if (request.action === 'getEntriesForDate') return entriesForDate
+      if (request.action === 'getEntriesForDate') return entriesForDatePromise ?? entriesForDate
+      if (request.action === 'deleteEntry') return undefined
       throw new Error(`未預期的請求：${request.action}`)
     }) as JournalClient['run'],
   }
@@ -108,4 +182,13 @@ function category(id: string): Category {
     createdAt: '2026-08-04T00:00:00+08:00',
     updatedAt: '2026-08-04T00:00:00+08:00',
   }
+}
+
+function pendingPromise<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise
+  })
+
+  return { promise, resolve }
 }

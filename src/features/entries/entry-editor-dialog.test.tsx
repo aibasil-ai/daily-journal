@@ -101,6 +101,34 @@ test('新增記事儲存失敗後保留輸入資料', async () => {
   expect(screen.getByText('草稿')).toBeInTheDocument()
 })
 
+test('儲存中禁止關閉，失敗後保留 Dialog、草稿與錯誤', async () => {
+  const saving = pendingPromise<void>()
+  const onRequestClose = vi.fn()
+  const user = userEvent.setup()
+
+  render(<EntryEditorDialog open categories={[category('work')]} tagSuggestions={[]} onSave={() => saving.promise} onRequestClose={onRequestClose} />)
+
+  await user.type(screen.getByLabelText('標題（選填）'), '儲存中的草稿')
+  await user.type(screen.getByLabelText('記事內容'), '尚未完成的記事')
+  await user.selectOptions(screen.getByLabelText('分類'), 'work')
+  await user.click(screen.getByRole('button', { name: '儲存記事' }))
+
+  const dialog = screen.getByRole('dialog')
+  expect(screen.getByRole('button', { name: '關閉' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: '取消' })).toBeDisabled()
+  fireEvent(dialog, new Event('cancel', { cancelable: true }))
+  expect(onRequestClose).not.toHaveBeenCalled()
+
+  saving.reject(new Error('儲存失敗'))
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('儲存失敗')
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+  expect(screen.getByLabelText('標題（選填）')).toHaveValue('儲存中的草稿')
+  expect(screen.getByLabelText('記事內容')).toHaveValue('尚未完成的記事')
+  expect(screen.getByRole('button', { name: '關閉' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: '取消' })).toBeEnabled()
+})
+
 test('Dialog 收到原生取消事件時要求關閉且不送出', () => {
   const onSave = vi.fn<(_: EntryInput) => Promise<void>>()
   const onRequestClose = vi.fn()
@@ -134,4 +162,13 @@ function entry(id: string): Entry {
     createdAt: '2026-08-04T00:00:00+08:00',
     updatedAt: '2026-08-04T00:00:00+08:00',
   }
+}
+
+function pendingPromise<T>() {
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((_resolve, rejectPromise) => {
+    reject = rejectPromise
+  })
+
+  return { promise, reject }
 }

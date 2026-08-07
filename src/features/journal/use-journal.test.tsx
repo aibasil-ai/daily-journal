@@ -150,7 +150,7 @@ test('自動恢復後可載入更多、儲存並刪除時間軸記事', async ()
   await screen.findByText('記事內容 first')
   await user.click(screen.getByRole('button', { name: '載入更多' }))
   expect(await screen.findByText('記事內容 second')).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: '新增記事' }))
+  await user.click(within(screen.getByRole('group', { name: '行動操作' })).getByRole('button', { name: '新增記事' }))
   const editorDialog = await screen.findByRole('dialog', { name: '新增記事' })
   await user.type(within(editorDialog).getByLabelText('記事內容'), '新記事')
   await user.selectOptions(within(editorDialog).getByLabelText('分類'), 'work')
@@ -321,7 +321,7 @@ test('儲存後重新載入列表時不讓 pre-save 回應覆寫新資料', asyn
 
   render(<App client={client} />)
   await waitFor(() => expect(client.run).toHaveBeenCalledWith(expect.objectContaining({ action: 'listEntries' })))
-  await user.click(screen.getByRole('button', { name: '新增記事' }))
+  await user.click(within(screen.getByRole('group', { name: '行動操作' })).getByRole('button', { name: '新增記事' }))
   const editorDialog = await screen.findByRole('dialog', { name: '新增記事' })
   await user.type(within(editorDialog).getByLabelText('記事內容'), '新記事')
   await user.selectOptions(within(editorDialog).getByLabelText('分類'), 'work')
@@ -367,7 +367,7 @@ test('新增、改期與刪除後更新月曆計數，且忽略舊計數回應',
   await waitFor(() => expect(monthlyRequestCount).toBe(1))
   const originalDate = `${requestedMonth}-10`
   const movedDate = `${requestedMonth}-11`
-  await user.click(screen.getByRole('button', { name: '新增記事' }))
+  await user.click(within(screen.getByRole('group', { name: '行動操作' })).getByRole('button', { name: '新增記事' }))
   const newEditorDialog = await screen.findByRole('dialog', { name: '新增記事' })
   fireEvent.change(within(newEditorDialog).getByLabelText('記錄日期'), { target: { value: originalDate } })
   await user.type(within(newEditorDialog).getByLabelText('標題（選填）'), '原始標題')

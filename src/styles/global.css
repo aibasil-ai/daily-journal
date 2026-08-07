@@ -196,6 +196,73 @@ main > h1 {
   backdrop-filter: blur(0.75rem);
 }
 
+.app-navigation__mobile-actions {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: calc(5.25rem + env(safe-area-inset-bottom));
+  z-index: 11;
+  display: flex;
+  gap: 0.625rem;
+  align-items: end;
+}
+
+.app-navigation__mobile-fab,
+.app-navigation__mobile-menu-button {
+  width: 3.25rem;
+  min-width: 3.25rem;
+  height: 3.25rem;
+  min-height: 3.25rem;
+  padding: 0;
+  border-radius: 50%;
+  box-shadow: 0 0.5rem 1.5rem rgb(25 28 30 / 25%);
+}
+
+.app-navigation__mobile-fab {
+  width: 3.5rem;
+  min-width: 3.5rem;
+  height: 3.5rem;
+  min-height: 3.5rem;
+}
+
+.app-navigation__mobile-menu-button {
+  color: var(--primary);
+  background: var(--surface-card);
+  border-color: var(--outline);
+}
+
+.app-navigation__mobile-menu-button:hover:not(:disabled) {
+  color: var(--on-primary-container);
+  background: var(--primary-container);
+  border-color: var(--primary-container);
+}
+
+.app-navigation__mobile-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.75rem);
+  display: grid;
+  gap: 0.5rem;
+  min-width: 11rem;
+  padding: 0.5rem;
+  background: var(--surface-card);
+  border: 1px solid var(--outline);
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow);
+}
+
+.app-navigation__mobile-menu button {
+  justify-content: flex-start;
+  color: var(--primary);
+  background: var(--surface-card);
+  border-color: transparent;
+}
+
+.app-navigation__mobile-menu button:hover:not(:disabled) {
+  color: var(--on-primary-container);
+  background: var(--primary-container);
+  border-color: var(--primary-container);
+}
+
 .app-navigation__mobile button {
   flex-direction: column;
   gap: 0.125rem;
@@ -809,6 +876,10 @@ dialog::backdrop {
   }
 
   .app-navigation__mobile {
+    display: none;
+  }
+
+  .app-navigation__mobile-actions {
     display: none;
   }
 

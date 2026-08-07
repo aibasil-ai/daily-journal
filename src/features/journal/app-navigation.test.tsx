@@ -15,9 +15,9 @@ test('導覽點選月曆、建立、匯出與登出時傳出對應 callback', as
   render(<AppNavigation view="timeline" onViewChange={onViewChange} onCreateEntry={onCreateEntry} onExport={onExport} onSignOut={onSignOut} />)
   const sidebar = within(screen.getByRole('navigation', { name: '主要導覽' }))
   await user.click(sidebar.getByRole('button', { name: '月曆' }))
-  await user.click(screen.getByRole('button', { name: '新增記事' }))
-  await user.click(screen.getByRole('button', { name: '匯出資料' }))
-  await user.click(screen.getByRole('button', { name: '登出' }))
+  await user.click(sidebar.getByRole('button', { name: '新增記事' }))
+  await user.click(sidebar.getByRole('button', { name: '匯出資料' }))
+  await user.click(sidebar.getByRole('button', { name: '登出' }))
 
   expect(onViewChange).toHaveBeenCalledWith('calendar')
   expect(onCreateEntry).toHaveBeenCalledOnce()
@@ -34,15 +34,29 @@ test('僅將目前視圖標示為目前頁面', () => {
   expect(sidebar.getByRole('button', { name: '分類管理' })).not.toHaveAttribute('aria-current')
 })
 
-test('行動導覽列只提供三個主要視圖', () => {
-  render(<AppNavigation view="timeline" onViewChange={vi.fn()} onCreateEntry={vi.fn()} onExport={vi.fn()} onSignOut={vi.fn()} />)
+test('行動導覽保留主要視圖，並可從行動操作新增、匯出與登出', async () => {
+  const onCreateEntry = vi.fn()
+  const onExport = vi.fn()
+  const onSignOut = vi.fn()
+  const user = userEvent.setup()
+
+  render(<AppNavigation view="timeline" onViewChange={vi.fn()} onCreateEntry={onCreateEntry} onExport={onExport} onSignOut={onSignOut} />)
 
   const mobileBar = within(screen.getByRole('navigation', { name: '行動主要導覽' }))
   expect(mobileBar.getByRole('button', { name: '時間軸' })).toBeInTheDocument()
   expect(mobileBar.getByRole('button', { name: '月曆' })).toBeInTheDocument()
   expect(mobileBar.getByRole('button', { name: '分類管理' })).toBeInTheDocument()
-  expect(mobileBar.queryByRole('button', { name: '匯出資料' })).not.toBeInTheDocument()
-  expect(mobileBar.queryByRole('button', { name: '登出' })).not.toBeInTheDocument()
+
+  const mobileActions = within(screen.getByRole('group', { name: '行動操作' }))
+  await user.click(mobileActions.getByRole('button', { name: '新增記事' }))
+  await user.click(mobileActions.getByRole('button', { name: '行動操作' }))
+  await user.click(mobileActions.getByRole('button', { name: '匯出資料' }))
+  await user.click(mobileActions.getByRole('button', { name: '行動操作' }))
+  await user.click(mobileActions.getByRole('button', { name: '登出' }))
+
+  expect(onCreateEntry).toHaveBeenCalledOnce()
+  expect(onExport).toHaveBeenCalledOnce()
+  expect(onSignOut).toHaveBeenCalledOnce()
 })
 
 test('新版應用殼層保留桌面側欄與行動底部導覽 class', () => {

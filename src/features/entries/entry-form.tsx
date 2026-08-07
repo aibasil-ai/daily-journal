@@ -10,18 +10,25 @@ type EntryFormProps = {
   tagSuggestions: string[]
   entry?: Entry
   onCancel?: () => void
+  onSaveSuccess?: () => void
+  onSavingChange?: (isSaving: boolean) => void
   timezone?: string
 }
 
 type FormValues = Omit<EntryInput, 'id'>
 
-export function EntryForm({ categories, onSave, tagSuggestions, entry, onCancel, timezone }: EntryFormProps) {
+export function EntryForm({ categories, onSave, tagSuggestions, entry, onCancel, onSaveSuccess, onSavingChange, timezone }: EntryFormProps) {
   const [values, setValues] = useState<FormValues>(() => entryValues(entry, timezone))
   const [tagDraft, setTagDraft] = useState('')
   const [issues, setIssues] = useState<ValidationIssue[]>([])
   const [isSaving, setIsSaving] = useState(false)
 
   const activeCategories = categories.filter((category) => category.isActive)
+
+  function setSaving(nextIsSaving: boolean) {
+    setIsSaving(nextIsSaving)
+    onSavingChange?.(nextIsSaving)
+  }
 
   function addTags(value: string) {
     const newTags = value.split(',').map((tag) => tag.trim()).filter(Boolean)
@@ -56,17 +63,18 @@ export function EntryForm({ categories, onSave, tagSuggestions, entry, onCancel,
     setIssues(nextIssues)
     if (nextIssues.length) return
 
-    setIsSaving(true)
+    setSaving(true)
     try {
       await onSave(input)
       if (!entry) {
         setValues(entryValues(undefined, timezone))
         setTagDraft('')
       }
+      onSaveSuccess?.()
     } catch (error) {
       setIssues([{ field: 'content', message: error instanceof Error ? error.message : zhTW.api.requestFailed }])
     } finally {
-      setIsSaving(false)
+      setSaving(false)
     }
   }
 
@@ -145,7 +153,7 @@ export function EntryForm({ categories, onSave, tagSuggestions, entry, onCancel,
       </section>
       <div className="entry-form__actions">
         <button type="submit" disabled={isSaving}>{isSaving ? zhTW.entries.saving : zhTW.entries.save}</button>
-        {onCancel && <button type="button" className="button--secondary" onClick={onCancel}>{zhTW.entries.cancelEdit}</button>}
+        {onCancel && <button type="button" className="button--secondary" onClick={onCancel} disabled={isSaving}>{zhTW.entries.cancelEdit}</button>}
       </div>
     </form>
   )

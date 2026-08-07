@@ -23,17 +23,18 @@ type AppProps = {
 
 export function App({ client }: AppProps) {
   const [journalClient] = useState<JournalClient>(() => client ?? new JournalApiClient())
+  const appFocusTargetRef = useRef<HTMLElement>(null)
   const loginError = getLoginError()
 
   return (
-    <main>
+    <main ref={appFocusTargetRef} tabIndex={-1}>
       <h1>{zhTW.appTitle}</h1>
-      <JournalApplication client={journalClient} loginError={loginError} />
+      <JournalApplication client={journalClient} loginError={loginError} appFocusTargetRef={appFocusTargetRef} />
     </main>
   )
 }
 
-function JournalApplication({ client, loginError }: { client: JournalClient, loginError?: string }) {
+function JournalApplication({ client, loginError, appFocusTargetRef }: { client: JournalClient, loginError?: string, appFocusTargetRef: { current: HTMLElement | null } }) {
   const journal = useJournal(client)
   const [view, setView] = useState<JournalView>(() => getInitialView(typeof window === 'undefined' ? 1024 : window.innerWidth, loadViewPreference()))
   const [editingEntry, setEditingEntry] = useState<Entry | undefined>()
@@ -45,6 +46,7 @@ function JournalApplication({ client, loginError }: { client: JournalClient, log
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | undefined>()
   const exportSessionEpoch = useRef(0)
+  const calendarSelectionEpoch = useRef(0)
   const currentJournalMonth = month ?? currentMonth(journal.bootstrap?.timezone)
 
   useEffect(() => {
@@ -53,15 +55,27 @@ function JournalApplication({ client, loginError }: { client: JournalClient, log
   }, [journal.status, view, currentJournalMonth, journal.filter.query, journal.filter.from, journal.filter.to, journal.filter.categoryId, journal.filter.tag, journal.monthlyEntryCountsRevision])
 
   function changeView(nextView: JournalView) {
+    calendarSelectionEpoch.current += 1
     setView(nextView)
     saveViewPreference(nextView)
   }
 
   async function selectCalendarDate(date: string) {
+    const requestEpoch = ++calendarSelectionEpoch.current
     const entries = await journal.getEntriesForDate(date)
+    if (requestEpoch !== calendarSelectionEpoch.current) return
     if (!entries?.length) return
     if (entries.length === 1) setReadingEntry(entries[0])
     else setSelectedDateEntries(entries)
+  }
+
+  function focusAppTarget() {
+    appFocusTargetRef.current?.focus()
+  }
+
+  function closeReader() {
+    focusAppTarget()
+    setReadingEntry(undefined)
   }
 
   async function exportEntries(scope: 'filtered' | 'all') {
@@ -84,6 +98,7 @@ function JournalApplication({ client, loginError }: { client: JournalClient, log
 
   function signOut() {
     exportSessionEpoch.current += 1
+    calendarSelectionEpoch.current += 1
     setEditingEntry(undefined)
     setIsEditorOpen(false)
     setReadingEntry(undefined)
@@ -171,9 +186,9 @@ function JournalApplication({ client, loginError }: { client: JournalClient, log
           }}
           onDelete={async (id) => {
             await journal.deleteEntry(id)
-            setReadingEntry(undefined)
           }}
-          onRequestClose={() => setReadingEntry(undefined)}
+          onRequestClose={closeReader}
+          onDeleted={closeReader}
         />
         <EntryPickerDialog
           date={selectedDateEntries[0]?.entryDate}

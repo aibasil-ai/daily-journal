@@ -10,12 +10,14 @@ export type EntryReaderDialogProps = {
   onEdit: (entry: Entry) => void
   onDelete: (id: string) => Promise<void>
   onRequestClose: () => void
+  onDeleted?: () => void
 }
 
-export function EntryReaderDialog({ entry, categoryName, open, onEdit, onDelete, onRequestClose }: EntryReaderDialogProps) {
+export function EntryReaderDialog({ entry, categoryName, open, onEdit, onDelete, onRequestClose, onDeleted }: EntryReaderDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const readerTitleRef = useRef<HTMLHeadingElement>(null)
   const deleteButtonRef = useRef<HTMLButtonElement>(null)
+  const closeActionRef = useRef<(() => void) | undefined>(undefined)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   useEffect(() => {
@@ -33,10 +35,23 @@ export function EntryReaderDialog({ entry, categoryName, open, onEdit, onDelete,
 
   const title = entry.title.trim() || entry.content.slice(0, 80)
 
+  function closeReader(action = onRequestClose) {
+    closeActionRef.current = action
+    const dialog = dialogRef.current
+    if (dialog?.open) dialog.close()
+    else handleDialogClose()
+  }
+
+  function handleDialogClose() {
+    const action = closeActionRef.current ?? onRequestClose
+    closeActionRef.current = undefined
+    action()
+  }
+
   return (
-    <dialog ref={dialogRef} className="entry-reader-dialog" aria-label={zhTW.journal.readEntry} onCancel={(event) => { event.preventDefault(); onRequestClose() }}>
+    <dialog ref={dialogRef} className="entry-reader-dialog" aria-label={zhTW.journal.readEntry} onCancel={(event) => { event.preventDefault(); closeReader() }} onClose={handleDialogClose}>
       <header className="entry-reader-dialog__header">
-        <button type="button" className="icon-button" aria-label={zhTW.journal.close} onClick={onRequestClose}>×</button>
+        <button type="button" className="icon-button" aria-label={zhTW.journal.close} onClick={() => closeReader()}>×</button>
       </header>
       <article className="entry-reader-dialog__content">
         <p className="entry-reader-dialog__metadata">{entry.entryDate} · {categoryName}</p>
@@ -50,10 +65,10 @@ export function EntryReaderDialog({ entry, categoryName, open, onEdit, onDelete,
         )}
       </article>
       <div className="dialog-actions">
-        <button type="button" className="button--secondary" onClick={() => onEdit(entry)}>{zhTW.entries.editEntry}</button>
+        <button type="button" className="button--secondary" onClick={() => closeReader(() => onEdit(entry))}>{zhTW.entries.editEntry}</button>
         <button ref={deleteButtonRef} type="button" className="button--danger" onClick={() => setIsDeleteDialogOpen(true)}>{zhTW.entries.deleteEntry}</button>
       </div>
-      {isDeleteDialogOpen && <EntryDeleteDialog entry={entry} onDelete={onDelete} onRequestClose={() => setIsDeleteDialogOpen(false)} returnFocusRef={deleteButtonRef} fallbackFocusRef={readerTitleRef} />}
+      {isDeleteDialogOpen && <EntryDeleteDialog entry={entry} onDelete={onDelete} onRequestClose={() => setIsDeleteDialogOpen(false)} onDeleted={() => closeReader(onDeleted ?? onRequestClose)} returnFocusRef={deleteButtonRef} fallbackFocusRef={readerTitleRef} />}
     </dialog>
   )
 }

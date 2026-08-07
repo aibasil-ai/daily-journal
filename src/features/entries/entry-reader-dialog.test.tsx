@@ -126,6 +126,25 @@ test('刪除進行時 Escape 會保留確認 Dialog 與失敗訊息', async () =
   expect(screen.getByRole('dialog', { name: '刪除記事確認' })).toBeInTheDocument()
 })
 
+test('刪除確認透過 native modal 開啟並在取消後關閉', () => {
+  const onRequestClose = vi.fn()
+  const showModal = vi.spyOn(HTMLDialogElement.prototype, 'showModal')
+  const close = vi.spyOn(HTMLDialogElement.prototype, 'close')
+
+  try {
+    render(<EntryDeleteDialog entry={entry('native-modal')} onDelete={async () => undefined} onRequestClose={onRequestClose} />)
+
+    const dialog = screen.getByRole('dialog', { name: '刪除記事確認' })
+    expect(showModal).toHaveBeenCalledOnce()
+    fireEvent(dialog, new Event('cancel', { cancelable: true }))
+    expect(close).toHaveBeenCalledOnce()
+    expect(onRequestClose).toHaveBeenCalledOnce()
+  } finally {
+    showModal.mockRestore()
+    close.mockRestore()
+  }
+})
+
 test('取消刪除後把焦點回到觸發按鈕', async () => {
   const user = userEvent.setup()
 
