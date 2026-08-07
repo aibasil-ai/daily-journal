@@ -135,7 +135,7 @@ test('任一篩選欄位變動時重設游標並傳出完整複合篩選', async
 
   render(<FilterBarHarness initialFilter={filter} onChange={onChange} />)
 
-  await user.type(screen.getByRole('searchbox', { name: '搜尋記事' }), '週會')
+  await user.type(screen.getByRole('searchbox', { name: '關鍵字' }), '週會')
   expect(onChange).toHaveBeenLastCalledWith({ ...filter, query: '週會', cursor: null })
   await user.click(screen.getByText('篩選'))
   await user.type(screen.getByLabelText('起始日期'), '2026-08-01')

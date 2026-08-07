@@ -19,7 +19,7 @@ export function FilterBar({ categories, tagSuggestions, filter, onChange, varian
       <label className="filter-bar__search">
         <span className="filter-bar__search-label">{zhTW.entries.keyword}</span>
         <span className="material-symbols-outlined filter-bar__search-icon" aria-hidden="true">search</span>
-        <input type="search" aria-label="搜尋記事" placeholder="搜尋記事..." value={filter.query} onChange={(event) => updateFilter({ query: event.target.value })} />
+        <input type="search" placeholder="搜尋記事..." value={filter.query} onChange={(event) => updateFilter({ query: event.target.value })} />
       </label>
       <details aria-label={zhTW.entries.advancedFilters}>
         <summary>

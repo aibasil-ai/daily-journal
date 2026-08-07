@@ -23,7 +23,7 @@ test('時間軸頁首提供可搜尋記事的輸入框', async () => {
   await user.click(within(mobileNavigation).getByRole('button', { name: '時間軸' }))
 
   expect(screen.getByRole('heading', { name: '時間軸' })).toBeInTheDocument()
-  expect(screen.getByRole('searchbox', { name: '搜尋記事' })).toBeInTheDocument()
+  expect(screen.getByRole('searchbox', { name: '關鍵字' })).toHaveAttribute('placeholder', '搜尋記事...')
 })
 
 test('月曆預設月份依試算表時區計算', () => {
