@@ -49,7 +49,7 @@ export function EntryReaderDialog({ entry, categoryName, open, onEdit, onDelete,
   }
 
   return (
-    <dialog ref={dialogRef} className="entry-reader-dialog" aria-label={zhTW.journal.readEntry} onCancel={(event) => { event.preventDefault(); closeReader() }} onClose={handleDialogClose}>
+    <dialog ref={dialogRef} className="entry-reader-dialog" aria-label={zhTW.journal.readEntry} onCancel={(event) => { event.preventDefault(); closeReader() }} onClose={(event) => { if (event.target === event.currentTarget) handleDialogClose() }}>
       <header className="entry-reader-dialog__header">
         <button type="button" className="button--text entry-reader-dialog__back" onClick={() => closeReader()}>
           <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span>

@@ -89,6 +89,17 @@ test('閱讀 Dialog 刪除失敗時顯示錯誤並保留記事', async () => {
   expect(screen.getByText('記事內容 delete-failure')).toBeInTheDocument()
 })
 
+test('取消閱讀 Dialog 中的刪除確認時維持閱讀視窗', async () => {
+  const user = userEvent.setup()
+
+  render(<ReaderDeleteCancellationHarness />)
+
+  await user.click(screen.getByRole('button', { name: '刪除記事' }))
+  await user.click(screen.getByRole('button', { name: '取消' }))
+
+  expect(screen.getByRole('dialog', { name: '閱讀記事' })).toBeInTheDocument()
+})
+
 test('同日多筆記事時，選擇正確的記事', async () => {
   const onSelect = vi.fn()
   const user = userEvent.setup()
@@ -216,6 +227,12 @@ function DeleteCancellationHarness() {
       {isDeleteDialogOpen && <EntryDeleteDialog entry={entry('cancel')} onDelete={async () => undefined} onRequestClose={() => setIsDeleteDialogOpen(false)} returnFocusRef={triggerRef} />}
     </>
   )
+}
+
+function ReaderDeleteCancellationHarness() {
+  const [isOpen, setIsOpen] = useState(true)
+
+  return isOpen && <EntryReaderDialog open entry={entry('reader-cancel')} categoryName="工作" onEdit={vi.fn()} onDelete={async () => undefined} onRequestClose={() => setIsOpen(false)} />
 }
 
 function DeleteSuccessHarness() {

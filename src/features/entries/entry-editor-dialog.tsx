@@ -34,12 +34,20 @@ export function EntryEditorDialog({ entry, open, categories, tagSuggestions, tim
   }, [open])
 
   function requestClose() {
-    if (!isSaving) onRequestClose()
+    if (isSaving) return
+
+    const dialog = dialogRef.current
+    if (dialog?.open) dialog.close()
+    else onRequestClose()
   }
 
   return (
-    <dialog ref={dialogRef} className={`entry-editor-dialog ${entry ? 'entry-editor-dialog--edit' : 'entry-editor-dialog--create'}`} aria-labelledby="entry-editor-title" onCancel={(event) => { event.preventDefault(); requestClose() }}>
+    <dialog ref={dialogRef} className={`entry-editor-dialog ${entry ? 'entry-editor-dialog--edit' : 'entry-editor-dialog--create'}`} aria-labelledby="entry-editor-title" onCancel={(event) => { event.preventDefault(); requestClose() }} onClose={(event) => { if (event.target === event.currentTarget) onRequestClose() }}>
       <header className="entry-editor-dialog__header">
+        {!entry && <button type="button" className="button--text entry-editor-dialog__back" onClick={requestClose} disabled={isSaving}>
+          <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+          {zhTW.journal.back}
+        </button>}
         <h2 ref={titleRef} id="entry-editor-title">{entry ? zhTW.entries.edit : zhTW.entries.add}</h2>
         <div className="entry-editor-dialog__header-actions">
           {entry && onDelete && <button ref={deleteButtonRef} type="button" className="button--text entry-editor-dialog__delete" onClick={() => setIsDeleteDialogOpen(true)} disabled={isSaving}>
@@ -57,10 +65,10 @@ export function EntryEditorDialog({ entry, open, categories, tagSuggestions, tim
         timezone={timezone}
         onCancel={requestClose}
         onSave={onSave}
-        onSaveSuccess={onRequestClose}
+        onSaveSuccess={requestClose}
         onSavingChange={setIsSaving}
       />
-      {entry && onDelete && isDeleteDialogOpen && <EntryDeleteDialog entry={entry} onDelete={onDelete} onRequestClose={() => setIsDeleteDialogOpen(false)} onDeleted={onRequestClose} returnFocusRef={deleteButtonRef} fallbackFocusRef={titleRef} />}
+      {entry && onDelete && isDeleteDialogOpen && <EntryDeleteDialog entry={entry} onDelete={onDelete} onRequestClose={() => setIsDeleteDialogOpen(false)} onDeleted={requestClose} returnFocusRef={deleteButtonRef} fallbackFocusRef={titleRef} />}
     </dialog>
   )
 }

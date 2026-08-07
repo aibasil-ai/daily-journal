@@ -125,6 +125,18 @@ test('行動操作可新增、匯出並登出', async () => {
   expect(client.signOut).toHaveBeenCalledOnce()
 })
 
+test('全頁新增記事提供可及的返回操作', async () => {
+  const user = userEvent.setup()
+  render(<App client={readyClient()} />)
+  const mobileActions = within(await screen.findByRole('group', { name: '行動操作' }))
+
+  await user.click(mobileActions.getByRole('button', { name: '新增記事' }))
+  const editor = await screen.findByRole('dialog', { name: '新增記事' })
+  await user.click(within(editor).getByRole('button', { name: '返回' }))
+
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: '新增記事' })).not.toBeInTheDocument())
+})
+
 test('關閉閱讀視窗會先將焦點還給穩定的 App 主區域', async () => {
   const user = userEvent.setup()
   render(<App client={readyClient({ entriesForDate: [entry('only')] })} />)
@@ -136,7 +148,39 @@ test('關閉閱讀視窗會先將焦點還給穩定的 App 主區域', async () 
   await user.click(within(reader).getByRole('button', { name: '關閉' }))
 
   await waitFor(() => expect(screen.getByRole('main')).toHaveFocus())
+  expect(document.body).not.toHaveFocus()
   expect(screen.queryByRole('dialog', { name: '閱讀記事' })).not.toBeInTheDocument()
+})
+
+test('關閉編輯視窗會將焦點還給穩定的 App 主區域', async () => {
+  const user = userEvent.setup()
+  render(<App client={readyClient({ entries: [entry('editing')] })} />)
+  const mobileNavigation = await screen.findByRole('navigation', { name: '行動主要導覽' })
+
+  await user.click(within(mobileNavigation).getByRole('button', { name: '時間軸' }))
+  await user.click(await screen.findByRole('button', { name: '編輯記事' }))
+  const editor = await screen.findByRole('dialog', { name: '編輯記事' })
+  await user.click(within(editor).getByRole('button', { name: '關閉' }))
+
+  await waitFor(() => expect(screen.getByRole('main')).toHaveFocus())
+  expect(document.body).not.toHaveFocus()
+  expect(screen.queryByRole('dialog', { name: '編輯記事' })).not.toBeInTheDocument()
+})
+
+test('成功刪除編輯中的記事後將焦點還給穩定的 App 主區域', async () => {
+  const user = userEvent.setup()
+  render(<App client={readyClient({ entries: [entry('delete-editing')] })} />)
+  const mobileNavigation = await screen.findByRole('navigation', { name: '行動主要導覽' })
+
+  await user.click(within(mobileNavigation).getByRole('button', { name: '時間軸' }))
+  await user.click(await screen.findByRole('button', { name: '編輯記事' }))
+  const editor = await screen.findByRole('dialog', { name: '編輯記事' })
+  await user.click(within(editor).getByRole('button', { name: '刪除記事' }))
+  await user.click(screen.getByRole('button', { name: '確認刪除' }))
+
+  await waitFor(() => expect(screen.getByRole('main')).toHaveFocus())
+  expect(document.body).not.toHaveFocus()
+  expect(screen.queryByRole('dialog', { name: '編輯記事' })).not.toBeInTheDocument()
 })
 
 test('成功刪除閱讀中的記事後將焦點還給穩定的 App 主區域', async () => {
@@ -176,14 +220,14 @@ test('月曆日期請求在切換離開再回到月曆後完成時不開啟過�
   expect(screen.queryByRole('dialog', { name: '選擇記事' })).not.toBeInTheDocument()
 })
 
-function readyClient({ entriesForDate = [], entriesForDatePromise }: { entriesForDate?: Entry[], entriesForDatePromise?: Promise<Entry[]> } = {}): JournalClient {
+function readyClient({ entries = [], entriesForDate = [], entriesForDatePromise }: { entries?: Entry[], entriesForDate?: Entry[], entriesForDatePromise?: Promise<Entry[]> } = {}): JournalClient {
   return {
     restoreSession: vi.fn().mockResolvedValue(true),
     beginSignIn: vi.fn(),
     signOut: vi.fn(),
     run: vi.fn(async (request: ApiRequest) => {
       if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category('work')], tagSuggestions: [] }
-      if (request.action === 'listEntries') return { items: [], nextCursor: null }
+      if (request.action === 'listEntries') return { items: entries, nextCursor: null }
       if (request.action === 'getMonthlyEntryCounts') return [{ date: '2026-08-04', count: entriesForDate.length }]
       if (request.action === 'getEntriesForDate') return entriesForDatePromise ?? entriesForDate
       if (request.action === 'deleteEntry') return undefined

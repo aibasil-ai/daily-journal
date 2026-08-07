@@ -79,6 +79,12 @@ function JournalApplication({ client, loginError, appFocusTargetRef }: { client:
     setReadingEntry(undefined)
   }
 
+  function closeEditor() {
+    focusAppTarget()
+    setEditingEntry(undefined)
+    setIsEditorOpen(false)
+  }
+
   async function exportEntries(scope: 'filtered' | 'all') {
     if (isExporting) return
 
@@ -181,10 +187,7 @@ function JournalApplication({ client, loginError, appFocusTargetRef }: { client:
           timezone={journal.bootstrap?.timezone}
           onSave={journal.saveEntry}
           onDelete={journal.deleteEntry}
-          onRequestClose={() => {
-            setEditingEntry(undefined)
-            setIsEditorOpen(false)
-          }}
+          onRequestClose={closeEditor}
         />
         <EntryReaderDialog
           entry={readingEntry}
