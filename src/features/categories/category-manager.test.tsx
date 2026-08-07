@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import '../../test/dialog-setup'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
 import type { Category } from '../../domain/journal'
@@ -14,7 +14,7 @@ test('可新增與改名啟用中的分類', async () => {
   render(<CategoryManager categories={[category('work', '工作')]} onSave={onSave} onDeactivate={vi.fn()} />)
 
   await user.type(screen.getByLabelText('新增分類名稱'), '生活')
-  await user.click(screen.getByRole('button', { name: '新增分類' }))
+  await user.click(screen.getByRole('button', { name: '新增類別' }))
   expect(onSave).toHaveBeenLastCalledWith('生活', undefined)
 
   await user.click(screen.getByRole('button', { name: '改名 工作' }))
@@ -60,7 +60,7 @@ test('成功停用並卸載觸發按鈕後焦點移至分類管理標題', async
   await user.click(screen.getByRole('button', { name: '確認停用' }))
 
   expect(screen.queryByRole('button', { name: '停用 工作' })).not.toBeInTheDocument()
-  expect(screen.getByRole('heading', { name: '分類管理' })).toHaveFocus()
+  expect(screen.getByRole('heading', { name: '類別管理' })).toHaveFocus()
 })
 
 test('分類以卡片呈現且停用分類保留狀態標籤', () => {
@@ -68,6 +68,15 @@ test('分類以卡片呈現且停用分類保留狀態標籤', () => {
 
   expect(screen.getByRole('list', { name: '分類清單' })).toHaveClass('category-manager__grid')
   expect(screen.getByText('已停用')).toBeInTheDocument()
+})
+
+test('類別管理頁首提供說明與新增類別操作', () => {
+  render(<CategoryManager categories={[category('work', '工作')]} onSave={vi.fn()} onDeactivate={vi.fn()} />)
+
+  const pageHeader = screen.getByRole('heading', { name: '類別管理' }).closest('header')
+  expect(pageHeader).toHaveClass('journal-page-header')
+  expect(within(pageHeader!).getByText('組織與管理您的記事分類')).toBeInTheDocument()
+  expect(within(pageHeader!).getByRole('button', { name: '新增類別' })).toBeInTheDocument()
 })
 
 test('停用的分類在清單中標示已停用且不可再操作', () => {

@@ -49,10 +49,11 @@ export const zhTW = {
     invalidMonth: '月份格式必須為 YYYY-MM。',
   },
   categories: {
-    title: '分類管理',
+    title: '類別管理',
+    description: '組織與管理您的記事分類',
     list: '分類清單',
     newName: '新增分類名稱',
-    add: '新增分類',
+    add: '新增類別',
     rename: (name: string) => `改名 ${name}`,
     nameLabel: (name: string) => `分類名稱 ${name}`,
     saveName: '儲存分類名稱',

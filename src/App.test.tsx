@@ -65,10 +65,20 @@ test('切換分類管理時只顯示分類工作區', async () => {
   render(<App client={readyClient()} />)
   const mobileNavigation = await screen.findByRole('navigation', { name: '行動主要導覽' })
 
-  await user.click(within(mobileNavigation).getByRole('button', { name: '分類管理' }))
+  await user.click(within(mobileNavigation).getByRole('button', { name: '類別管理' }))
 
-  expect(screen.getByRole('heading', { name: '分類管理' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: '類別管理' })).toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: /月曆/ })).not.toBeInTheDocument()
+})
+
+test('分類管理在桌面使用完整內容工作區', async () => {
+  const user = userEvent.setup()
+  render(<App client={readyClient()} />)
+  const mobileNavigation = await screen.findByRole('navigation', { name: '行動主要導覽' })
+
+  await user.click(within(mobileNavigation).getByRole('button', { name: '類別管理' }))
+
+  expect(screen.getByRole('heading', { name: '類別管理' }).closest('.journal-layout')).toHaveClass('journal-layout--categories')
 })
 
 test('月曆日期有一筆記事時直接開啟閱讀視圖', async () => {

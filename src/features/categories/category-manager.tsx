@@ -85,18 +85,26 @@ export function CategoryManager({ categories, onSave, onDeactivate }: CategoryMa
 
   return (
     <section className="category-manager" aria-labelledby="category-manager-title">
-      <h2 ref={titleRef} id="category-manager-title" tabIndex={-1}>{zhTW.categories.title}</h2>
+      <header className="journal-page-header category-manager__header">
+        <div className="journal-page-header__title">
+          <h2 ref={titleRef} id="category-manager-title" tabIndex={-1}>{zhTW.categories.title}</h2>
+          <p>{zhTW.categories.description}</p>
+        </div>
+        <button type="submit" form="new-category-form" disabled={isSaving}>
+          <span className="material-symbols-outlined" aria-hidden="true">add</span>
+          {isSaving ? zhTW.categories.saving : zhTW.categories.add}
+        </button>
+      </header>
       {error && <p className="category-manager__error" role="alert">{error}</p>}
-      <form className="category-manager__form" onSubmit={saveCategory}>
+      <form id="new-category-form" className="category-manager__form" onSubmit={saveCategory}>
         <label>
           {zhTW.categories.newName}
           <input value={newName} onChange={(event) => setNewName(event.target.value)} />
         </label>
-        <button type="submit" disabled={isSaving}>{isSaving ? zhTW.categories.saving : zhTW.categories.add}</button>
       </form>
       <ul className="category-manager__list category-manager__grid" aria-label={zhTW.categories.list}>
         {categories.map((category) => (
-          <li key={category.id} className="category-manager__item category-manager__card">
+          <li key={category.id} className={`category-manager__item category-manager__card${category.isActive ? '' : ' category-manager__item--inactive'}`}>
             {editingId === category.id ? (
               <form className="category-manager__rename" onSubmit={saveCategory}>
                 <label>
@@ -108,15 +116,24 @@ export function CategoryManager({ categories, onSave, onDeactivate }: CategoryMa
               </form>
             ) : (
               <>
-                <span>{category.name}</span>
-                {!category.isActive && <span className="category-manager__inactive">{zhTW.categories.inactive}</span>}
+                <div className="category-manager__card-header">
+                  <span className="category-manager__card-icon material-symbols-outlined" aria-hidden="true">category</span>
+                  <div>
+                    <h3>{category.name}</h3>
+                    {!category.isActive && <span className="category-manager__inactive">{zhTW.categories.inactive}</span>}
+                  </div>
+                </div>
                 {category.isActive && (
                   <div className="category-manager__actions">
-                    <button type="button" className="button--secondary" onClick={() => startEditing(category)}>{zhTW.categories.rename(category.name)}</button>
+                    <button type="button" className="button--secondary" aria-label={zhTW.categories.rename(category.name)} onClick={() => startEditing(category)}>
+                      <span className="material-symbols-outlined" aria-hidden="true">edit</span>
+                    </button>
                     <button ref={(element) => {
                       if (element) deactivateButtonRefs.current.set(category.id, element)
                       else deactivateButtonRefs.current.delete(category.id)
-                    }} type="button" className="button--danger" onClick={() => openDeactivateDialog(category)}>{zhTW.categories.deactivate(category.name)}</button>
+                    }} type="button" className="button--danger" aria-label={zhTW.categories.deactivate(category.name)} onClick={() => openDeactivateDialog(category)}>
+                      <span className="material-symbols-outlined" aria-hidden="true">block</span>
+                    </button>
                   </div>
                 )}
               </>

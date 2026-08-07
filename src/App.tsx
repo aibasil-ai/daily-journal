@@ -134,7 +134,7 @@ function JournalApplication({ client, loginError, appFocusTargetRef }: { client:
         />
         <p>{zhTW.journal.ready}</p>
         {journal.error && <p className="journal-error" role="alert">{journal.error}</p>}
-        <div className={`journal-layout${view === 'timeline' ? ' journal-layout--timeline' : ''}`}>
+        <div className={`journal-layout${view === 'timeline' ? ' journal-layout--timeline' : view === 'categories' ? ' journal-layout--categories' : ''}`}>
           {view !== 'categories' && view !== 'timeline' && <FilterBar {...filterProps} />}
           <section className="journal-layout__content">
             {view === 'timeline' ? (

@@ -31,7 +31,7 @@ test('僅將目前視圖標示為目前頁面', () => {
   const sidebar = within(screen.getByRole('navigation', { name: '主要導覽' }))
   expect(sidebar.getByRole('button', { name: '時間軸' })).not.toHaveAttribute('aria-current')
   expect(sidebar.getByRole('button', { name: '月曆' })).toHaveAttribute('aria-current', 'page')
-  expect(sidebar.getByRole('button', { name: '分類管理' })).not.toHaveAttribute('aria-current')
+  expect(sidebar.getByRole('button', { name: '類別管理' })).not.toHaveAttribute('aria-current')
 })
 
 test('行動導覽保留主要視圖，並可從行動操作新增、匯出與登出', async () => {
@@ -45,7 +45,7 @@ test('行動導覽保留主要視圖，並可從行動操作新增、匯出與�
   const mobileBar = within(screen.getByRole('navigation', { name: '行動主要導覽' }))
   expect(mobileBar.getByRole('button', { name: '時間軸' })).toBeInTheDocument()
   expect(mobileBar.getByRole('button', { name: '月曆' })).toBeInTheDocument()
-  expect(mobileBar.getByRole('button', { name: '分類管理' })).toBeInTheDocument()
+  expect(mobileBar.getByRole('button', { name: '類別管理' })).toBeInTheDocument()
 
   const mobileActions = within(screen.getByRole('group', { name: '行動操作' }))
   await user.click(mobileActions.getByRole('button', { name: '新增記事' }))

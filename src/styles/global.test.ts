@@ -29,3 +29,14 @@ test('記事操作控制項保留至少 44px 的觸控高度', () => {
   expect(cardActionRule).toContain('min-height: 2.75rem')
   expect(cardActionRule).toContain('flex-shrink: 0')
 })
+
+test('行動版聚焦閱讀與新增頁時隱藏全域導覽', () => {
+  const mobileRules = globalStyles.slice(
+    globalStyles.indexOf('@media (max-width: 767px)'),
+    globalStyles.indexOf('@media (min-width: 600px)'),
+  )
+
+  expect(mobileRules).toContain('.journal-application:has(.entry-editor-dialog--create[open]) .app-navigation')
+  expect(mobileRules).toContain('.journal-application:has(.entry-reader-dialog[open]) .app-navigation')
+  expect(mobileRules).toContain('display: none')
+})
