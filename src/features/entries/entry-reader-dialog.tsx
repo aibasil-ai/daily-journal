@@ -51,23 +51,40 @@ export function EntryReaderDialog({ entry, categoryName, open, onEdit, onDelete,
   return (
     <dialog ref={dialogRef} className="entry-reader-dialog" aria-label={zhTW.journal.readEntry} onCancel={(event) => { event.preventDefault(); closeReader() }} onClose={handleDialogClose}>
       <header className="entry-reader-dialog__header">
-        <button type="button" className="icon-button" aria-label={zhTW.journal.close} onClick={() => closeReader()}>×</button>
+        <button type="button" className="button--text entry-reader-dialog__back" onClick={() => closeReader()}>
+          <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+          返回月曆
+        </button>
+        <div className="entry-reader-dialog__actions">
+          <button type="button" className="button--secondary" onClick={() => closeReader(() => onEdit(entry))}>
+            <span className="material-symbols-outlined" aria-hidden="true">edit</span>
+            {zhTW.entries.editEntry}
+          </button>
+          <button ref={deleteButtonRef} type="button" className="icon-button entry-reader-dialog__delete" aria-label={zhTW.entries.deleteEntry} onClick={() => setIsDeleteDialogOpen(true)}>
+            <span className="material-symbols-outlined" aria-hidden="true">delete</span>
+          </button>
+          <button type="button" className="icon-button" aria-label={zhTW.journal.close} onClick={() => closeReader()}>×</button>
+        </div>
       </header>
       <article className="entry-reader-dialog__content">
-        <p className="entry-reader-dialog__metadata">{entry.entryDate} · {categoryName}</p>
-        <h2 ref={readerTitleRef} tabIndex={-1}>{title}</h2>
+        <header className="entry-reader-dialog__entry-header">
+          <div className="entry-reader-dialog__metadata">
+            <span className="entry-reader-dialog__category">{categoryName}</span>
+            <time dateTime={entry.entryDate}>{entry.entryDate}</time>
+          </div>
+          <h2 ref={readerTitleRef} tabIndex={-1}>{title}</h2>
+          {entry.tags.length > 0 && <p className="entry-reader-dialog__tags">{entry.tags.map((tag) => <span key={tag} className="tag-chip">#{tag}</span>)}</p>}
+        </header>
         <p className="entry-reader-dialog__body">{entry.content}</p>
-        {entry.tags.length > 0 && <p className="entry-reader-dialog__tags">{entry.tags.map((tag) => <span key={tag} className="tag-chip">#{tag}</span>)}</p>}
         {entry.links.length > 0 && (
-          <ul className="entry-reader-dialog__links" aria-label={zhTW.entries.links}>
-            {entry.links.map((link) => <li key={`${link.label}-${link.url}`}>{isSafeHttpUrl(link.url) ? <a href={link.url} target="_blank" rel="noreferrer noopener">{link.label}</a> : link.label}</li>)}
-          </ul>
+          <section className="entry-reader-dialog__link-section" aria-labelledby="entry-reader-links-title">
+            <h3 id="entry-reader-links-title">{zhTW.entries.links}</h3>
+            <ul className="entry-reader-dialog__links">
+              {entry.links.map((link) => <li key={`${link.label}-${link.url}`}>{isSafeHttpUrl(link.url) ? <a href={link.url} target="_blank" rel="noreferrer noopener">{link.label}</a> : link.label}</li>)}
+            </ul>
+          </section>
         )}
       </article>
-      <div className="dialog-actions">
-        <button type="button" className="button--secondary" onClick={() => closeReader(() => onEdit(entry))}>{zhTW.entries.editEntry}</button>
-        <button ref={deleteButtonRef} type="button" className="button--danger" onClick={() => setIsDeleteDialogOpen(true)}>{zhTW.entries.deleteEntry}</button>
-      </div>
       {isDeleteDialogOpen && <EntryDeleteDialog entry={entry} onDelete={onDelete} onRequestClose={() => setIsDeleteDialogOpen(false)} onDeleted={() => closeReader(onDeleted ?? onRequestClose)} returnFocusRef={deleteButtonRef} fallbackFocusRef={readerTitleRef} />}
     </dialog>
   )

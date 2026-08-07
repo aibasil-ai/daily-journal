@@ -32,6 +32,26 @@ test('閱讀 Dialog 顯示記事、可安全開啟連結並轉入編輯', async 
   expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 'entry-1' }))
 })
 
+test('閱讀 Dialog 提供返回月曆操作', async () => {
+  const onRequestClose = vi.fn()
+  const user = userEvent.setup()
+
+  render(
+    <EntryReaderDialog
+      open
+      entry={entry('return-calendar')}
+      categoryName="工作"
+      onEdit={vi.fn()}
+      onDelete={vi.fn()}
+      onRequestClose={onRequestClose}
+    />,
+  )
+
+  await user.click(screen.getByRole('button', { name: '返回月曆' }))
+
+  expect(onRequestClose).toHaveBeenCalledOnce()
+})
+
 test('閱讀 Dialog 將不安全連結顯示為文字', () => {
   render(
     <EntryReaderDialog

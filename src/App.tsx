@@ -47,7 +47,8 @@ function JournalApplication({ client, loginError, appFocusTargetRef }: { client:
   const [exportError, setExportError] = useState<string | undefined>()
   const exportSessionEpoch = useRef(0)
   const calendarSelectionEpoch = useRef(0)
-  const currentJournalMonth = month ?? currentMonth(journal.bootstrap?.timezone)
+  const todayMonth = currentMonth(journal.bootstrap?.timezone)
+  const currentJournalMonth = month ?? todayMonth
 
   useEffect(() => {
     if (journal.status !== 'ready' || view !== 'calendar') return
@@ -162,6 +163,7 @@ function JournalApplication({ client, loginError, appFocusTargetRef }: { client:
             ) : view === 'calendar' ? (
               <CalendarView
                 month={currentJournalMonth}
+                todayMonth={todayMonth}
                 counts={journal.monthlyEntryCounts}
                 onMonthChange={setMonth}
                 onSelectDate={selectCalendarDate}

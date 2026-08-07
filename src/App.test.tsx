@@ -30,6 +30,17 @@ test('月曆預設月份依試算表時區計算', () => {
   expect(currentMonth('America/Los_Angeles', new Date('2026-08-01T00:30:00.000Z'))).toBe('2026-07')
 })
 
+test('月曆工作區提供月份標題與今天操作', async () => {
+  const user = userEvent.setup()
+  render(<App client={readyClient()} />)
+  const mobileNavigation = await screen.findByRole('navigation', { name: '行動主要導覽' })
+
+  await user.click(within(mobileNavigation).getByRole('button', { name: '月曆' }))
+
+  expect(screen.getByRole('heading', { name: /月曆/ })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '今天' })).toBeInTheDocument()
+})
+
 afterEach(() => {
   window.history.replaceState({}, '', '/')
 })
