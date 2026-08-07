@@ -9,16 +9,14 @@ function ruleAfter(selector: string): string {
   return start === -1 || end === -1 ? '' : globalStyles.slice(start, end)
 }
 
-test('行動版編輯 Dialog 使用可捲動的全螢幕版面', () => {
-  const rule = globalStyles.match(/@media \(max-width: 767px\) \{[\s\S]*?\.entry-editor-dialog\s*\{([^}]*)\}/)?.[1] ?? ''
+test('行動版編輯 Dialog 維持置中且表單可捲動', () => {
+  const dialogRule = globalStyles.match(/@media \(max-width: 767px\) \{[\s\S]*?\.entry-editor-dialog--edit\s*\{([^}]*)\}/)?.[1] ?? ''
+  const formRule = ruleAfter('.entry-editor-dialog .entry-form')
 
-  expect(rule).toContain('width: 100vw')
-  expect(rule).toContain('max-width: none')
-  expect(rule).toContain('height: 100dvh')
-  expect(rule).toContain('max-height: none')
-  expect(rule).toContain('margin: 0')
-  expect(rule).toContain('border-radius: 0')
-  expect(rule).toContain('overflow-y: auto')
+  expect(dialogRule).toContain('width: calc(100% - 2rem)')
+  expect(dialogRule).toContain('max-height: calc(100dvh - 2rem)')
+  expect(dialogRule).toContain('border-radius: 0.75rem')
+  expect(formRule).toContain('overflow-y: auto')
 })
 
 test('記事操作控制項保留至少 44px 的觸控高度', () => {

@@ -14,6 +14,7 @@ test('新增記事 Dialog 提交後關閉並傳入既有表單資料', async () 
 
   render(<EntryEditorDialog open categories={[category('work')]} tagSuggestions={[]} onSave={onSave} onRequestClose={onRequestClose} />)
 
+  expect(screen.getByRole('dialog', { name: '新增記事' })).toHaveClass('entry-editor-dialog--create')
   expect(screen.getAllByRole('heading', { level: 2, name: '新增記事' })).toHaveLength(1)
   await user.selectOptions(screen.getByLabelText('分類'), 'work')
   await user.type(screen.getByLabelText('記事內容'), '完成設計稿套用')
@@ -30,10 +31,25 @@ test('編輯 Dialog 按取消時要求關閉且不送出', async () => {
 
   render(<EntryEditorDialog open entry={entry('entry-1')} categories={[category('work')]} tagSuggestions={[]} onSave={onSave} onRequestClose={onRequestClose} />)
 
+  expect(screen.getByRole('dialog', { name: '編輯記事' })).toHaveClass('entry-editor-dialog--edit')
   expect(screen.getAllByRole('heading', { level: 2, name: '編輯記事' })).toHaveLength(1)
   await user.click(screen.getByRole('button', { name: '取消' }))
 
   expect(onSave).not.toHaveBeenCalled()
+  expect(onRequestClose).toHaveBeenCalledOnce()
+})
+
+test('編輯記事可從標題列進入既有刪除流程', async () => {
+  const onDelete = vi.fn<(_: string) => Promise<void>>().mockResolvedValue(undefined)
+  const onRequestClose = vi.fn()
+  const user = userEvent.setup()
+
+  render(<EntryEditorDialog open entry={entry('entry-delete')} categories={[category('work')]} tagSuggestions={[]} onSave={vi.fn()} onDelete={onDelete} onRequestClose={onRequestClose} />)
+
+  await user.click(screen.getByRole('button', { name: '刪除記事' }))
+  await user.click(screen.getByRole('button', { name: '確認刪除' }))
+
+  expect(onDelete).toHaveBeenCalledWith('entry-delete')
   expect(onRequestClose).toHaveBeenCalledOnce()
 })
 

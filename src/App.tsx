@@ -180,6 +180,7 @@ function JournalApplication({ client, loginError, appFocusTargetRef }: { client:
           tagSuggestions={journal.tagSuggestions}
           timezone={journal.bootstrap?.timezone}
           onSave={journal.saveEntry}
+          onDelete={journal.deleteEntry}
           onRequestClose={() => {
             setEditingEntry(undefined)
             setIsEditorOpen(false)

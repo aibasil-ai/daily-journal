@@ -79,17 +79,29 @@ export function EntryForm({ categories, onSave, tagSuggestions, entry, onCancel,
   }
 
   return (
-    <form className="entry-form" onSubmit={handleSubmit} noValidate>
+    <form className={`entry-form ${entry ? 'entry-form--edit' : 'entry-form--create'}`} onSubmit={handleSubmit} noValidate>
       <FormErrors issues={issues} />
-      <label>
-        {zhTW.entries.date}
-        <input
-          type="date"
-          value={values.entryDate}
-          onChange={(event) => setValues((current) => ({ ...current, entryDate: event.target.value }))}
-        />
-      </label>
-      <label>
+      <div className="entry-form__top-controls">
+        <label>
+          {zhTW.entries.date}
+          <input
+            type="date"
+            value={values.entryDate}
+            onChange={(event) => setValues((current) => ({ ...current, entryDate: event.target.value }))}
+          />
+        </label>
+        <label>
+          {zhTW.entries.category}
+          <select
+            value={values.categoryId}
+            onChange={(event) => setValues((current) => ({ ...current, categoryId: event.target.value }))}
+          >
+            <option value="">{zhTW.entries.selectCategory}</option>
+            {activeCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+          </select>
+        </label>
+      </div>
+      <label className="entry-form__title">
         {zhTW.entries.title}
         <input
           type="text"
@@ -97,49 +109,43 @@ export function EntryForm({ categories, onSave, tagSuggestions, entry, onCancel,
           onChange={(event) => setValues((current) => ({ ...current, title: event.target.value }))}
         />
       </label>
-      <label>
-        {zhTW.entries.category}
-        <select
-          value={values.categoryId}
-          onChange={(event) => setValues((current) => ({ ...current, categoryId: event.target.value }))}
-        >
-          <option value="">{zhTW.entries.selectCategory}</option>
-          {activeCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-        </select>
-      </label>
-      <label>
+      <div className="entry-form__tags">
+        <label htmlFor="entry-tags">{zhTW.entries.tags}</label>
+        <div className="entry-form__tag-control">
+          {values.tags.length > 0 && (
+            <ul className="tag-list" aria-label={zhTW.entries.selectedTags}>
+              {values.tags.map((tag) => (
+                <li key={tag}>
+                  {tag}
+                  <button type="button" className="tag-list__remove" onClick={() => setValues((current) => ({ ...current, tags: current.tags.filter((item) => item !== tag) }))} aria-label={zhTW.entries.removeTag(tag)}>{zhTW.entries.removeTagButton}</button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <input
+            id="entry-tags"
+            list="tag-suggestions"
+            value={tagDraft}
+            onChange={(event) => handleTagChange(event.target.value)}
+            onKeyDown={handleTagKeyDown}
+          />
+        </div>
+        <datalist id="tag-suggestions">
+          {tagSuggestions.map((tag) => <option key={tag} value={tag} />)}
+        </datalist>
+      </div>
+      <label className="entry-form__content">
         {zhTW.entries.content}
         <textarea
           value={values.content}
           onChange={(event) => setValues((current) => ({ ...current, content: event.target.value }))}
         />
       </label>
-      <div className="entry-form__tags">
-        <label>
-          {zhTW.entries.tags}
-          <input
-            list="tag-suggestions"
-            value={tagDraft}
-            onChange={(event) => handleTagChange(event.target.value)}
-            onKeyDown={handleTagKeyDown}
-          />
-        </label>
-        <datalist id="tag-suggestions">
-          {tagSuggestions.map((tag) => <option key={tag} value={tag} />)}
-        </datalist>
-        {values.tags.length > 0 && (
-          <ul className="tag-list" aria-label={zhTW.entries.selectedTags}>
-            {values.tags.map((tag) => (
-              <li key={tag}>
-                {tag}
-                <button type="button" className="tag-list__remove" onClick={() => setValues((current) => ({ ...current, tags: current.tags.filter((item) => item !== tag) }))} aria-label={zhTW.entries.removeTag(tag)}>{zhTW.entries.removeTagButton}</button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
       <section className="entry-form__links" aria-label={zhTW.entries.links}>
-        <h3>{zhTW.entries.links}</h3>
+        <div className="entry-form__links-header">
+          <h3>{zhTW.entries.links}</h3>
+          <button type="button" className="button--text" onClick={() => setValues((current) => ({ ...current, links: [...current.links, { label: '', url: '' }] }))}>{zhTW.entries.addLink}</button>
+        </div>
         {values.links.map((link, index) => (
           <LinkFields
             key={index}
@@ -149,7 +155,6 @@ export function EntryForm({ categories, onSave, tagSuggestions, entry, onCancel,
             onRemove={() => setValues((current) => ({ ...current, links: current.links.filter((_, itemIndex) => itemIndex !== index) }))}
           />
         ))}
-        <button type="button" className="button--secondary" onClick={() => setValues((current) => ({ ...current, links: [...current.links, { label: '', url: '' }] }))}>{zhTW.entries.addLink}</button>
       </section>
       <div className="entry-form__actions">
         <button type="submit" disabled={isSaving}>{isSaving ? zhTW.entries.saving : zhTW.entries.save}</button>
