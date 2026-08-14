@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>類別管理 - 每日記事</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-dim": "#d8dadc",
+                      "surface-bright": "#f7f9fb",
+                      "surface-container-high": "#e6e8ea",
+                      "surface-container": "#eceef0",
+                      "error": "#ba1a1a",
+                      "on-tertiary-fixed-variant": "#93000b",
+                      "on-error-container": "#93000a",
+                      "secondary-fixed-dim": "#b7c8e1",
+                      "on-background": "#191c1e",
+                      "tertiary": "#ae0010",
+                      "secondary-container": "#d0e1fb",
+                      "on-error": "#ffffff",
+                      "tertiary-fixed": "#ffdad6",
+                      "on-tertiary": "#ffffff",
+                      "on-tertiary-container": "#ffecea",
+                      "on-primary-container": "#eeefff",
+                      "primary-fixed-dim": "#b4c5ff",
+                      "on-secondary-fixed-variant": "#38485d",
+                      "on-secondary-fixed": "#0b1c30",
+                      "surface-container-highest": "#e0e3e5",
+                      "inverse-primary": "#b4c5ff",
+                      "surface-tint": "#0053db",
+                      "primary": "#004ac6",
+                      "outline": "#737686",
+                      "error-container": "#ffdad6",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary-fixed": "#00174b",
+                      "on-primary": "#ffffff",
+                      "primary-container": "#2563eb",
+                      "on-secondary-container": "#54647a",
+                      "primary-fixed": "#dbe1ff",
+                      "tertiary-fixed-dim": "#ffb4ab",
+                      "on-primary-fixed-variant": "#003ea8",
+                      "surface-variant": "#e0e3e5",
+                      "on-surface-variant": "#434655",
+                      "on-surface": "#191c1e",
+                      "surface": "#f7f9fb",
+                      "inverse-on-surface": "#eff1f3",
+                      "outline-variant": "#c3c6d7",
+                      "surface-container-low": "#f2f4f6",
+                      "on-secondary": "#ffffff",
+                      "inverse-surface": "#2d3133",
+                      "on-tertiary-fixed": "#410002",
+                      "secondary": "#505f76",
+                      "tertiary-container": "#d52022",
+                      "secondary-fixed": "#d3e4fe",
+                      "background": "#f7f9fb"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "lg": "24px",
+                      "xs": "4px",
+                      "2xl": "48px",
+                      "sm": "8px",
+                      "container-max": "1200px",
+                      "gutter": "24px",
+                      "base": "4px",
+                      "xl": "32px",
+                      "md": "16px"
+              },
+              "fontFamily": {
+                      "body-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "label-sm": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "body-sm": [
+                              "Hanken Grotesk"
+                      ],
+                      "display-lg-mobile": [
+                              "Hanken Grotesk"
+                      ],
+                      "title-sm": [
+                              "Hanken Grotesk"
+                      ],
+                      "label-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "display-lg": [
+                              "Hanken Grotesk"
+                      ]
+              },
+              "fontSize": {
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "title-sm": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .ambient-shadow {
+            box-shadow: 0 4px 12px 0 rgba(15, 23, 42, 0.05);
+        }
+        .interactive-shadow {
+            box-shadow: 0 8px 24px 0 rgba(15, 23, 42, 0.1);
+        }
+      </style>
+</head>
+<body class="bg-surface-bright text-on-surface font-body-md min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="bg-surface-container-low dark:bg-surface-container-high hidden md:flex flex-col h-screen w-64 fixed left-0 top-0 p-md border-r border-outline-variant dark:border-outline z-40">
+<div class="mb-xl px-sm">
+<h1 class="font-display-lg text-display-lg font-bold text-primary dark:text-primary-fixed-dim">每日記事</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-xs">您的每日隨筆</p>
+</div>
+<button class="w-full bg-primary text-on-primary py-sm px-md rounded-lg font-label-md text-label-md mb-xl flex items-center justify-center gap-sm hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add</span>
+            新增記事
+        </button>
+<ul class="flex flex-col gap-sm flex-1 font-body-md text-body-md">
+<li>
+<a class="flex items-center gap-md px-md py-sm text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-highest dark:hover:bg-inverse-surface transition-all rounded-lg scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined">timeline</span>
+                    時間軸
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-highest dark:hover:bg-inverse-surface transition-all rounded-lg scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+                    月曆
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-lg scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">category</span>
+                    類別管理
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-highest dark:hover:bg-inverse-surface transition-all rounded-lg scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined">ios_share</span>
+                    匯出資料
+                </a>
+</li>
+</ul>
+<div class="mt-auto pt-lg border-t border-outline-variant font-body-md text-body-md">
+<ul class="flex flex-col gap-sm">
+<li>
+<a class="flex items-center gap-md px-md py-sm text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-highest dark:hover:bg-inverse-surface transition-all rounded-lg scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined">settings</span>
+                        設定
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-highest dark:hover:bg-inverse-surface transition-all rounded-lg scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined">contact_support</span>
+                        支援
+                    </a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- BottomNavBar (Mobile) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-sm pb-safe h-16 border-t border-outline-variant dark:border-outline bg-surface dark:bg-inverse-surface shadow-lg">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 active:bg-surface-container-high transition-all duration-200 ease-in-out rounded-xl" href="#">
+<span class="material-symbols-outlined">timeline</span>
+<span class="font-label-sm text-label-sm-mobile mt-xs">時間軸</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 active:bg-surface-container-high transition-all duration-200 ease-in-out rounded-xl" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+<span class="font-label-sm text-label-sm-mobile mt-xs">月曆</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container dark:bg-primary-fixed-variant text-on-primary-container dark:text-on-primary rounded-xl px-4 py-1 active:bg-surface-container-high transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">category</span>
+<span class="font-label-sm text-label-sm-mobile mt-xs">類別管理</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 active:bg-surface-container-high transition-all duration-200 ease-in-out rounded-xl" href="#">
+<span class="material-symbols-outlined">ios_share</span>
+<span class="font-label-sm text-label-sm-mobile mt-xs">匯出資料</span>
+</a>
+</nav>
+<!-- Main Content -->
+<main class="flex-1 md:ml-64 p-md md:p-lg lg:p-xl max-w-container-max mx-auto w-full pb-24 md:pb-lg">
+<!-- Header -->
+<header class="flex flex-col sm:flex-row sm:items-center justify-between mb-xl gap-md border-b border-outline-variant pb-md">
+<div>
+<h2 class="font-display-lg text-display-lg font-bold text-on-surface">類別管理</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-xs">組織與管理您的記事分類</p>
+</div>
+<button class="bg-primary text-on-primary font-label-md text-label-md py-sm px-lg rounded-lg flex items-center justify-center gap-sm hover:opacity-90 transition-opacity w-full sm:w-auto">
+<span class="material-symbols-outlined">add</span>
+                新增類別
+            </button>
+</header>
+<!-- Category Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-lg">
+<!-- Category Card 1 -->
+<div class="bg-surface-container-lowest rounded-lg p-lg ambient-shadow border border-transparent hover:border-outline-variant transition-colors group">
+<div class="flex justify-between items-start mb-md">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">work</span>
+</div>
+<div>
+<h3 class="font-title-sm text-title-sm text-on-surface">工作專案</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">42 篇記事</p>
+</div>
+</div>
+<div class="flex gap-xs opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+<button class="p-xs text-secondary hover:text-primary transition-colors rounded-full hover:bg-surface-container" title="編輯">
+<span class="material-symbols-outlined text-lg">edit</span>
+</button>
+<button class="p-xs text-secondary hover:text-error transition-colors rounded-full hover:bg-error-container" title="停用">
+<span class="material-symbols-outlined text-lg">block</span>
+</button>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">包含所有會議記錄、專案進度與工作相關的想法。</p>
+</div>
+<!-- Category Card 2 -->
+<div class="bg-surface-container-lowest rounded-lg p-lg ambient-shadow border border-transparent hover:border-outline-variant transition-colors group">
+<div class="flex justify-between items-start mb-md">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">menu_book</span>
+</div>
+<div>
+<h3 class="font-title-sm text-title-sm text-on-surface">閱讀筆記</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">18 篇記事</p>
+</div>
+</div>
+<div class="flex gap-xs opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+<button class="p-xs text-secondary hover:text-primary transition-colors rounded-full hover:bg-surface-container" title="編輯">
+<span class="material-symbols-outlined text-lg">edit</span>
+</button>
+<button class="p-xs text-secondary hover:text-error transition-colors rounded-full hover:bg-error-container" title="停用">
+<span class="material-symbols-outlined text-lg">block</span>
+</button>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">讀書心得、文章摘錄與學習筆記整理。</p>
+</div>
+<!-- Category Card 3 -->
+<div class="bg-surface-container-lowest rounded-lg p-lg ambient-shadow border border-transparent hover:border-outline-variant transition-colors group">
+<div class="flex justify-between items-start mb-md">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">favorite</span>
+</div>
+<div>
+<h3 class="font-title-sm text-title-sm text-on-surface">個人反思</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">86 篇記事</p>
+</div>
+</div>
+<div class="flex gap-xs opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+<button class="p-xs text-secondary hover:text-primary transition-colors rounded-full hover:bg-surface-container" title="編輯">
+<span class="material-symbols-outlined text-lg">edit</span>
+</button>
+<button class="p-xs text-secondary hover:text-error transition-colors rounded-full hover:bg-error-container" title="停用">
+<span class="material-symbols-outlined text-lg">block</span>
+</button>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">每日心情、目標追蹤與生活點滴記錄。</p>
+</div>
+<!-- Category Card 4 (Disabled State Example) -->
+<div class="bg-surface-container-low rounded-lg p-lg ambient-shadow border border-transparent transition-colors group opacity-70">
+<div class="flex justify-between items-start mb-md">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">flight_takeoff</span>
+</div>
+<div>
+<h3 class="font-title-sm text-title-sm text-on-surface-variant flex items-center gap-xs">
+                                旅遊計畫 
+                                <span class="bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded text-xs">已停用</span>
+</h3>
+<p class="font-body-sm text-body-sm text-outline">12 篇記事</p>
+</div>
+</div>
+<div class="flex gap-xs opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+<button class="p-xs text-secondary hover:text-primary transition-colors rounded-full hover:bg-surface-container" title="編輯">
+<span class="material-symbols-outlined text-lg">edit</span>
+</button>
+<button class="p-xs text-secondary hover:text-primary transition-colors rounded-full hover:bg-primary-container" title="啟用">
+<span class="material-symbols-outlined text-lg">check_circle</span>
+</button>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-outline line-clamp-2">過去的旅遊行程規劃與遊記保留區。</p>
+</div>
+</div>
+</main>
+</body></html>

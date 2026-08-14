@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+
+<html class="light" lang="zh-TW"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>月曆檢視 - 每日記事</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-dim": "#d8dadc",
+                        "surface-bright": "#f7f9fb",
+                        "surface-container-high": "#e6e8ea",
+                        "surface-container": "#eceef0",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed-variant": "#93000b",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "on-background": "#191c1e",
+                        "tertiary": "#ae0010",
+                        "secondary-container": "#d0e1fb",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed": "#ffdad6",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-container": "#ffecea",
+                        "on-primary-container": "#eeefff",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "on-secondary-fixed": "#0b1c30",
+                        "surface-container-highest": "#e0e3e5",
+                        "inverse-primary": "#b4c5ff",
+                        "surface-tint": "#0053db",
+                        "primary": "#004ac6",
+                        "outline": "#737686",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed": "#00174b",
+                        "on-primary": "#ffffff",
+                        "primary-container": "#2563eb",
+                        "on-secondary-container": "#54647a",
+                        "primary-fixed": "#dbe1ff",
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-variant": "#e0e3e5",
+                        "on-surface-variant": "#434655",
+                        "on-surface": "#191c1e",
+                        "surface": "#f7f9fb",
+                        "inverse-on-surface": "#eff1f3",
+                        "outline-variant": "#c3c6d7",
+                        "surface-container-low": "#f2f4f6",
+                        "on-secondary": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "on-tertiary-fixed": "#410002",
+                        "secondary": "#505f76",
+                        "tertiary-container": "#d52022",
+                        "secondary-fixed": "#d3e4fe",
+                        "background": "#f7f9fb"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "24px",
+                        "xs": "4px",
+                        "2xl": "48px",
+                        "sm": "8px",
+                        "container-max": "1200px",
+                        "gutter": "24px",
+                        "base": "4px",
+                        "xl": "32px",
+                        "md": "16px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Hanken Grotesk"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-sm": ["Hanken Grotesk"],
+                        "display-lg-mobile": ["Hanken Grotesk"],
+                        "title-sm": ["Hanken Grotesk"],
+                        "label-md": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "display-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "title-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Hanken Grotesk', sans-serif; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen">
+<!-- TopAppBar (Mobile Only) -->
+<header class="md:hidden flex justify-between items-center w-full px-lg py-sm max-w-container-max mx-auto bg-surface border-b border-outline-variant sticky top-0 z-40">
+<div class="font-display-lg-mobile text-display-lg-mobile font-bold text-primary">每日記事</div>
+<div class="flex gap-md">
+<button class="text-on-surface-variant hover:bg-surface-container transition-colors p-sm rounded-full cursor-pointer active:opacity-80">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<button class="text-on-surface-variant hover:bg-surface-container transition-colors p-sm rounded-full cursor-pointer active:opacity-80">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</button>
+</div>
+</header>
+<div class="flex flex-col md:flex-row min-h-[calc(100vh-64px)] md:min-h-screen">
+<!-- SideNavBar (Desktop Only) -->
+<nav class="hidden md:flex flex-col h-screen w-64 fixed left-0 top-0 p-md border-r border-outline-variant bg-surface-container-low z-30 flex-shrink-0">
+<div class="mb-xl">
+<h1 class="font-display-lg text-display-lg font-bold text-primary tracking-tight">每日記事</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-sm">您的每日隨筆</p>
+</div>
+<button class="w-full bg-primary text-on-primary font-title-sm text-title-sm py-sm px-md rounded-lg mb-xl hover:bg-primary-fixed-variant transition-colors flex justify-center items-center gap-sm shadow-sm scale-98 active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+                新增記事
+            </button>
+<ul class="flex flex-col gap-sm flex-grow">
+<li>
+<a class="flex items-center gap-md px-md py-sm text-secondary hover:bg-surface-container-highest transition-all rounded-lg scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="timeline">timeline</span>
+<span class="font-body-md text-body-md">時間軸</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm bg-secondary-container text-on-secondary-container rounded-lg scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_month" data-weight="fill" style="font-variation-settings: 'FILL' 1;">calendar_month</span>
+<span class="font-body-md text-body-md font-medium">月曆</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm text-secondary hover:bg-surface-container-highest transition-all rounded-lg scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="category">category</span>
+<span class="font-body-md text-body-md">類別管理</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm text-secondary hover:bg-surface-container-highest transition-all rounded-lg scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="ios_share">ios_share</span>
+<span class="font-body-md text-body-md">匯出資料</span>
+</a>
+</li>
+</ul>
+<ul class="flex flex-col gap-sm mt-auto border-t border-outline-variant pt-md">
+<li>
+<a class="flex items-center gap-md px-md py-sm text-secondary hover:bg-surface-container-highest transition-all rounded-lg scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-body-md text-body-md">設定</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm text-secondary hover:bg-surface-container-highest transition-all rounded-lg scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="contact_support">contact_support</span>
+<span class="font-body-md text-body-md">支援</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-grow w-full md:ml-64 p-md md:p-xl md:max-w-[calc(100vw-256px)] pb-24 md:pb-xl">
+<div class="max-w-5xl mx-auto">
+<!-- Calendar Header & Controls -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-lg gap-md">
+<div>
+<h2 class="font-display-lg text-display-lg font-bold text-on-background mb-xs">2023年 10月</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">本月共有 24 篇記事</p>
+</div>
+<div class="flex items-center gap-sm bg-surface-container rounded-lg p-xs w-full md:w-auto">
+<button class="p-sm rounded text-on-surface-variant hover:bg-surface-container-high transition-colors flex-1 md:flex-none flex justify-center">
+<span class="material-symbols-outlined" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="px-md py-sm rounded bg-surface font-title-sm text-title-sm text-on-surface shadow-sm flex-grow md:flex-grow-0 text-center">
+                            今天
+                        </button>
+<button class="p-sm rounded text-on-surface-variant hover:bg-surface-container-high transition-colors flex-1 md:flex-none flex justify-center">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Calendar Grid Container -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant overflow-hidden">
+<!-- Days of Week Header -->
+<div class="grid grid-cols-7 border-b border-outline-variant bg-surface-bright">
+<div class="py-sm text-center font-label-md text-label-md text-on-surface-variant">日</div>
+<div class="py-sm text-center font-label-md text-label-md text-on-surface-variant">一</div>
+<div class="py-sm text-center font-label-md text-label-md text-on-surface-variant">二</div>
+<div class="py-sm text-center font-label-md text-label-md text-on-surface-variant">三</div>
+<div class="py-sm text-center font-label-md text-label-md text-on-surface-variant">四</div>
+<div class="py-sm text-center font-label-md text-label-md text-on-surface-variant">五</div>
+<div class="py-sm text-center font-label-md text-label-md text-on-surface-variant">六</div>
+</div>
+<!-- Calendar Grid -->
+<div class="grid grid-cols-7 grid-rows-5 gap-px bg-outline-variant">
+<!-- Week 1 -->
+<div class="bg-surface-bright p-sm min-h-[100px] flex flex-col opacity-50">
+<span class="font-body-sm text-body-sm text-on-surface-variant block mb-xs">24</span>
+</div>
+<div class="bg-surface-bright p-sm min-h-[100px] flex flex-col opacity-50">
+<span class="font-body-sm text-body-sm text-on-surface-variant block mb-xs">25</span>
+</div>
+<div class="bg-surface-bright p-sm min-h-[100px] flex flex-col opacity-50">
+<span class="font-body-sm text-body-sm text-on-surface-variant block mb-xs">26</span>
+</div>
+<div class="bg-surface-bright p-sm min-h-[100px] flex flex-col opacity-50">
+<span class="font-body-sm text-body-sm text-on-surface-variant block mb-xs">27</span>
+</div>
+<div class="bg-surface-bright p-sm min-h-[100px] flex flex-col opacity-50">
+<span class="font-body-sm text-body-sm text-on-surface-variant block mb-xs">28</span>
+</div>
+<div class="bg-surface-bright p-sm min-h-[100px] flex flex-col opacity-50">
+<span class="font-body-sm text-body-sm text-on-surface-variant block mb-xs">29</span>
+</div>
+<div class="bg-surface-bright p-sm min-h-[100px] flex flex-col opacity-50">
+<span class="font-body-sm text-body-sm text-on-surface-variant block mb-xs">30</span>
+</div>
+<!-- Week 2 -->
+<div class="bg-surface-container-lowest p-sm min-h-[100px] flex flex-col group hover:bg-surface-bright transition-colors cursor-pointer">
+<span class="font-body-sm text-body-sm text-on-surface block mb-xs">1</span>
+</div>
+<div class="bg-surface-container-lowest p-sm min-h-[100px] flex flex-col group hover:bg-surface-bright transition-colors cursor-pointer">
+<span class="font-body-sm text-body-sm text-on-surface block mb-xs">2</span>
+<div class="mt-auto flex flex-col gap-xs">
+<div class="bg-secondary-container text-on-secondary-container font-label-sm text-label-sm px-xs py-[2px] rounded truncate">晨跑與心得</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-sm min-h-[100px] flex flex-col group hover:bg-surface-bright transition-colors cursor-pointer ring-1 ring-inset ring-primary">
+<span class="font-body-sm text-body-sm text-primary font-bold block mb-xs">3</span>
+<div class="mt-auto flex flex-col gap-xs">
+<div class="bg-primary-container text-on-primary-container font-label-sm text-label-sm px-xs py-[2px] rounded truncate">專案里程碑</div>
+<div class="bg-surface-container text-on-surface-variant font-label-sm text-label-sm px-xs py-[2px] rounded truncate">+ 還有 1 則</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-sm min-h-[100px] flex flex-col group hover:bg-surface-bright transition-colors cursor-pointer">
+<span class="font-body-sm text-body-sm text-on-surface block mb-xs">4</span>
+</div>
+<div class="bg-surface-container-lowest p-sm min-h-[100px] flex flex-col group hover:bg-surface-bright transition-colors cursor-pointer">
+<span class="font-body-sm text-body-sm text-on-surface block mb-xs">5</span>
+<div class="mt-auto flex flex-col gap-xs">
+<div class="bg-secondary-container text-on-secondary-container font-label-sm text-label-sm px-xs py-[2px] rounded truncate">安靜的晚間閱讀</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-sm min-h-[100px] flex flex-col group hover:bg-surface-bright transition-colors cursor-pointer">
+<span class="font-body-sm text-body-sm text-on-surface block mb-xs">6</span>
+</div>
+<div class="bg-surface-container-lowest p-sm min-h-[100px] flex flex-col group hover:bg-surface-bright transition-colors cursor-pointer">
+<span class="font-body-sm text-body-sm text-on-surface block mb-xs">7</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-sm pb-safe h-16 border-t border-outline-variant bg-surface shadow-lg transition-all duration-200 ease-in-out">
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 active:bg-surface-container-high rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="timeline">timeline</span>
+<span class="font-label-sm text-label-sm-mobile mt-xs">時間軸</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-4 py-1 active:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_month" data-weight="fill" style="font-variation-settings: 'FILL' 1;">calendar_month</span>
+<span class="font-label-sm text-label-sm-mobile mt-xs font-medium">月曆</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 active:bg-surface-container-high rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="category">category</span>
+<span class="font-label-sm text-label-sm-mobile mt-xs">類別管理</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 active:bg-surface-container-high rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="ios_share">ios_share</span>
+<span class="font-label-sm text-label-sm-mobile mt-xs">匯出資料</span>
+</a>
+</nav>
+<!-- Mobile FAB (Float above BottomNavBar) -->
+<button class="md:hidden fixed bottom-24 right-md bg-primary text-on-primary p-md rounded-xl shadow-lg z-40 active:scale-95 transition-transform flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]" data-icon="add">add</span>
+</button>
+</body></html>

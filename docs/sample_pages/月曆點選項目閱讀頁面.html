@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+
+<html class="light" lang="zh-TW"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>每日記事 - Entry Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-tint": "#0053db",
+                    "secondary": "#505f76",
+                    "primary-fixed": "#dbe1ff",
+                    "surface-container-high": "#e6e8ea",
+                    "on-primary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "on-secondary-container": "#54647a",
+                    "on-surface-variant": "#434655",
+                    "surface-container": "#eceef0",
+                    "tertiary-fixed": "#ffdad6",
+                    "secondary-container": "#d0e1fb",
+                    "surface-container-highest": "#e0e3e5",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-container": "#d52022",
+                    "on-primary-container": "#eeefff",
+                    "surface-variant": "#e0e3e5",
+                    "on-secondary-fixed-variant": "#38485d",
+                    "background": "#f7f9fb",
+                    "on-error-container": "#93000a",
+                    "error-container": "#ffdad6",
+                    "outline-variant": "#c3c6d7",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "inverse-on-surface": "#eff1f3",
+                    "outline": "#737686",
+                    "on-primary-fixed": "#00174b",
+                    "surface-dim": "#d8dadc",
+                    "on-secondary-fixed": "#0b1c30",
+                    "on-secondary": "#ffffff",
+                    "inverse-primary": "#b4c5ff",
+                    "on-background": "#191c1e",
+                    "primary": "#004ac6",
+                    "on-tertiary-fixed": "#410002",
+                    "surface": "#f7f9fb",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "surface-container-low": "#f2f4f6",
+                    "inverse-surface": "#2d3133",
+                    "primary-container": "#2563eb",
+                    "on-tertiary-container": "#ffecea",
+                    "tertiary-fixed-dim": "#ffb4ab",
+                    "on-tertiary": "#ffffff",
+                    "surface-bright": "#f7f9fb",
+                    "tertiary": "#ae0010",
+                    "on-surface": "#191c1e",
+                    "secondary-fixed": "#d3e4fe",
+                    "secondary-fixed-dim": "#b7c8e1",
+                    "on-tertiary-fixed-variant": "#93000b",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "md": "16px",
+                    "2xl": "48px",
+                    "lg": "24px",
+                    "sm": "8px",
+                    "base": "4px",
+                    "xl": "32px",
+                    "gutter": "24px",
+                    "container-max": "1200px",
+                    "xs": "4px"
+            },
+            "fontFamily": {
+                    "body-sm": [
+                            "Hanken Grotesk"
+                    ],
+                    "display-lg-mobile": [
+                            "Hanken Grotesk"
+                    ],
+                    "body-md": [
+                            "Hanken Grotesk"
+                    ],
+                    "label-md": [
+                            "Hanken Grotesk"
+                    ],
+                    "headline-md": [
+                            "Hanken Grotesk"
+                    ],
+                    "title-sm": [
+                            "Hanken Grotesk"
+                    ],
+                    "display-lg": [
+                            "Hanken Grotesk"
+                    ],
+                    "label-sm": [
+                            "Hanken Grotesk"
+                    ]
+            },
+            "fontSize": {
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "display-lg-mobile": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-md": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "label-md": [
+                            "14px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-md": [
+                            "20px",
+                            {
+                                    "lineHeight": "28px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "title-sm": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "display-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "label-sm": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "fontWeight": "500"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+</head>
+<body class="bg-surface text-on-surface font-body-md antialiased overflow-hidden">
+<!-- App Container -->
+<div class="flex h-screen w-full">
+<!-- SideNavBar (Desktop Only) -->
+<aside class="hidden md:flex flex-col h-full w-64 p-md border-r border-outline-variant bg-surface-container-low fixed left-0 top-0 z-10 shrink-0">
+<!-- Header -->
+<div class="mb-xl px-sm">
+<div class="font-display-lg text-display-lg font-bold text-primary mb-1">每日記事</div>
+<div class="text-on-surface-variant font-label-md text-label-md">您的每日隨筆</div>
+</div>
+<!-- CTA -->
+<button class="w-full flex justify-center items-center gap-sm bg-primary text-on-primary py-sm px-md rounded-lg font-label-md text-label-md mb-lg hover:bg-on-primary-fixed-variant transition-colors cursor-pointer active:scale-95">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                新增記事
+            </button>
+<!-- Navigation Links -->
+<nav class="flex-1 flex flex-col gap-sm">
+<!-- Timeline (Inactive) -->
+<a class="flex items-center gap-md px-md py-sm text-secondary hover:bg-surface-container-highest transition-all scale-98 active:scale-95 cursor-pointer rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px] text-secondary group-hover:text-on-surface">timeline</span>
+<span class="font-label-md text-label-md group-hover:text-on-surface">時間軸</span>
+</a>
+<!-- Calendar (Active - Since we navigated from it) -->
+<a class="flex items-center gap-md px-md py-sm bg-secondary-container text-on-secondary-container rounded-lg transition-all scale-98 active:scale-95 cursor-pointer" href="#">
+<span class="material-symbols-outlined text-[20px] text-on-secondary-container">calendar_month</span>
+<span class="font-label-md text-label-md">月曆</span>
+</a>
+<!-- Categories (Inactive) -->
+<a class="flex items-center gap-md px-md py-sm text-secondary hover:bg-surface-container-highest transition-all scale-98 active:scale-95 cursor-pointer rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px] text-secondary group-hover:text-on-surface">category</span>
+<span class="font-label-md text-label-md group-hover:text-on-surface">類別管理</span>
+</a>
+<!-- Export (Inactive) -->
+<a class="flex items-center gap-md px-md py-sm text-secondary hover:bg-surface-container-highest transition-all scale-98 active:scale-95 cursor-pointer rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px] text-secondary group-hover:text-on-surface">ios_share</span>
+<span class="font-label-md text-label-md group-hover:text-on-surface">匯出資料</span>
+</a>
+</nav>
+<!-- Footer Navigation -->
+<div class="mt-auto border-t border-outline-variant pt-sm flex flex-col gap-sm">
+<a class="flex items-center gap-md px-md py-sm text-secondary hover:bg-surface-container-highest transition-all scale-98 active:scale-95 cursor-pointer rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px] text-secondary group-hover:text-on-surface">settings</span>
+<span class="font-label-md text-label-md group-hover:text-on-surface">設定</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-secondary hover:bg-surface-container-highest transition-all scale-98 active:scale-95 cursor-pointer rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px] text-secondary group-hover:text-on-surface">contact_support</span>
+<span class="font-label-md text-label-md group-hover:text-on-surface">支援</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas (Detail View) -->
+<main class="flex-1 md:ml-64 h-full overflow-y-auto bg-background p-md md:p-xl flex justify-center">
+<div class="w-full max-w-container-max max-w-3xl pt-safe-top pb-24 md:pb-xl">
+<!-- Action Bar (Top) -->
+<div class="flex items-center justify-between mb-lg">
+<!-- Back Button -->
+<button class="flex items-center gap-xs text-primary hover:bg-primary-fixed py-xs px-sm rounded-md transition-colors font-label-md text-label-md cursor-pointer">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                        返回月曆
+                    </button>
+<!-- Edit / Delete Actions -->
+<div class="flex items-center gap-sm">
+<button class="flex items-center gap-xs text-primary border border-primary py-xs px-sm rounded-md hover:bg-primary-fixed transition-colors font-label-md text-label-md cursor-pointer bg-surface-container-lowest">
+<span class="material-symbols-outlined text-[16px]">edit</span>
+                            編輯
+                        </button>
+<button aria-label="刪除記事" class="flex items-center justify-center text-error hover:bg-error-container p-xs rounded-md transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</div>
+<!-- Entry Detail Card -->
+<article class="bg-surface-container-lowest rounded-xl shadow-[0_4px_12px_rgba(15,23,42,0.05)] border border-outline-variant p-lg md:p-2xl flex flex-col gap-lg">
+<!-- Header Section -->
+<header class="flex flex-col gap-sm border-b border-surface-container-highest pb-md">
+<!-- Metadata (Category & Date) -->
+<div class="flex flex-wrap items-center justify-between gap-sm mb-xs">
+<div class="flex items-center gap-sm">
+<span class="bg-primary-fixed text-primary px-sm py-1 rounded-md font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">folder</span>
+                                    工作專案
+                                </span>
+</div>
+<time class="text-on-surface-variant font-body-sm text-body-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+                                2023年10月24日 14:30
+                            </time>
+</div>
+<!-- Title -->
+<h1 class="font-display-lg text-display-lg font-bold text-on-surface">新一代設計系統架構檢討與初步提案</h1>
+<!-- Tags -->
+<div class="flex flex-wrap gap-xs mt-xs">
+<span class="text-secondary font-label-sm text-label-sm bg-surface-container px-2 py-1 rounded">#設計系統</span>
+<span class="text-secondary font-label-sm text-label-sm bg-surface-container px-2 py-1 rounded">#會議紀錄</span>
+<span class="text-secondary font-label-sm text-label-sm bg-surface-container px-2 py-1 rounded">#Q4目標</span>
+</div>
+</header>
+<!-- Body Content -->
+<div class="prose prose-slate max-w-none font-body-md text-body-md text-on-surface-variant leading-relaxed">
+<p class="mb-4">今日下午與前端開發團隊進行了設計系統架構的初步檢討會議。主要目的是為了解決目前組件庫在不同產品線之間風格不一致的問題，以及提升整體開發效率。</p>
+<h3 class="font-title-sm text-title-sm text-on-surface mt-6 mb-2">核心討論點：</h3>
+<ul class="list-disc pl-5 mb-4 space-y-2">
+<li><strong>Tokens 抽象化：</strong> 目前顏色與排版數值過於寫死，需要全面改用語義化的 Design Tokens (如 <code>surface-container-high</code>, <code>primary-fixed</code>)。</li>
+<li><strong>組件覆用性：</strong> 重新檢視按鈕與卡片組件，減少特定情境的客製化樣式，回歸極簡與功能導向的設計。</li>
+<li><strong>無障礙設計 (A11y)：</strong> 確認顏色對比度需符合 WCAG AA 標準，並在互動組件加上正確的 aria 標籤。</li>
+</ul>
+<p class="mb-4">會議決議下週三前產出第一版 Token JSON 文件，並請開發團隊建立基本的 Tailwind 設置。這將是我們邁向「平靜且可靠」視覺風格的重要一步。需要特別注意暗黑模式下的陰影與邊界處理，確保層次清晰。</p>
+<blockquote class="border-l-4 border-primary pl-4 italic bg-surface-container-lowest py-2 my-4">
+                            "設計系統不只是 UI 組件的集合，更是團隊溝通的共同語言。" - 會議結語
+                        </blockquote>
+</div>
+<!-- Reference Links Section -->
+<section class="mt-md border-t border-surface-container-highest pt-md">
+<h4 class="font-title-sm text-title-sm text-on-surface mb-sm flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px] text-secondary">link</span>
+                            參考連結
+                        </h4>
+<div class="flex flex-col gap-2">
+<a class="flex items-center gap-sm p-sm rounded-lg hover:bg-surface-container transition-colors group cursor-pointer border border-transparent hover:border-outline-variant" href="#">
+<div class="bg-surface-container-high p-xs rounded text-secondary group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">description</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface group-hover:text-primary transition-colors">Q4 設計系統改版企劃書</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Google Docs</span>
+</div>
+</a>
+<a class="flex items-center gap-sm p-sm rounded-lg hover:bg-surface-container transition-colors group cursor-pointer border border-transparent hover:border-outline-variant" href="#">
+<div class="bg-surface-container-high p-xs rounded text-secondary group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">drive_file_rename_outline</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface group-hover:text-primary transition-colors">Token 視覺化提案草稿</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Figma</span>
+</div>
+</a>
+</div>
+</section>
+</article>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) - Suppressed because this is a detail/task-focused screen with a 'Back' action -->
+<!-- The user is in a focused journey (reading a specific entry), so the global navigation shell on mobile is suppressed to prioritize the Canvas. -->
+</div>
+</body></html>

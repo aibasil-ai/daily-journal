@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>每日記事 - 時間軸</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#004ac6",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#434655",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "surface-container-high": "#e6e8ea",
+                        "surface": "#f7f9fb",
+                        "on-secondary": "#ffffff",
+                        "surface-tint": "#0053db",
+                        "inverse-primary": "#b4c5ff",
+                        "surface-bright": "#f7f9fb",
+                        "surface-container-low": "#f2f4f6",
+                        "background": "#f7f9fb",
+                        "on-primary-container": "#eeefff",
+                        "on-tertiary-fixed-variant": "#93000b",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed": "#00174b",
+                        "secondary-fixed": "#d3e4fe",
+                        "on-primary": "#ffffff",
+                        "surface-container-highest": "#e0e3e5",
+                        "secondary": "#505f76",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-surface": "#191c1e",
+                        "on-tertiary-fixed": "#410002",
+                        "secondary-container": "#d0e1fb",
+                        "on-secondary-container": "#54647a",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "surface-dim": "#d8dadc",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "on-background": "#191c1e",
+                        "on-tertiary": "#ffffff",
+                        "outline-variant": "#c3c6d7",
+                        "surface-container": "#eceef0",
+                        "outline": "#737686",
+                        "tertiary-container": "#d52022",
+                        "primary-fixed": "#dbe1ff",
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "on-secondary-fixed": "#0b1c30",
+                        "primary-container": "#2563eb",
+                        "on-error-container": "#93000a",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-tertiary-container": "#ffecea",
+                        "tertiary": "#ae0010",
+                        "tertiary-fixed": "#ffdad6",
+                        "surface-variant": "#e0e3e5",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "24px",
+                        "sm": "8px",
+                        "xs": "4px",
+                        "container-max": "1200px",
+                        "base": "4px",
+                        "md": "16px",
+                        "xl": "32px",
+                        "2xl": "48px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "title-sm": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-md": ["Hanken Grotesk"],
+                        "display-lg-mobile": ["Hanken Grotesk"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "body-sm": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "title-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "display-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Hanken Grotesk', sans-serif;
+            background-color: #f7f9fb; /* surface-muted equivalent */
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background">
+<!-- Mobile TopNav (Visible only on mobile) -->
+<header class="md:hidden flex justify-between items-center w-full px-lg py-sm bg-surface border-b border-outline-variant fixed top-0 z-50">
+<div class="text-headline-md font-headline-md font-bold text-primary">每日記事</div>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-primary cursor-pointer active:opacity-80">search</span>
+<span class="material-symbols-outlined text-primary cursor-pointer active:opacity-80">settings</span>
+<span class="material-symbols-outlined text-primary cursor-pointer active:opacity-80">account_circle</span>
+</div>
+</header>
+<!-- SideNavBar (Hidden on mobile) -->
+<nav class="hidden md:flex flex-col h-full py-xl px-md border-r border-outline-variant bg-surface-container-low w-64 left-0 flex-shrink-0 relative z-10 font-body-md text-body-md">
+<!-- Header -->
+<div class="mb-xl px-md">
+<div class="flex items-center gap-md">
+<img alt="User Avatar" class="w-10 h-10 rounded-full object-cover border border-outline-variant" data-alt="A sleek, minimalist corporate avatar image for a user profile. The image shows a stylized, abstract geometric representation of a professional, using calm blues and soft grays to match a serene, focused journal application. The lighting is high-key and modern." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAuSjHyFRpp4hVgfPMxpNnlyzdbI-JXPjgDkiKG6mrDTJzcEkQTszShUD_VeKjZXG5DeJxmswb9G2Y245tGPV_x0T5de3mDHykPCKal7IHzgQHPHx2i7foxLiJ1WDS6wVN2WNcp_tBvHeWHzYhkQ7j_M-z7qXptA2n5u7uYHj0NrQ8Wmb47QZ0ARmMTWSylcwQAA2zEwwZQFMn1YAdUVpFLN2dduCYlLv3SPCyX0X1m4711e90ijddU"/>
+<div>
+<h1 class="text-title-sm font-title-sm font-bold text-primary">每日記事</h1>
+<p class="text-body-sm text-on-surface-variant font-body-sm">Azure Chronical</p>
+</div>
+</div>
+</div>
+<!-- Navigation Tabs -->
+<div class="flex-1 space-y-sm">
+<!-- Active Tab: 時間軸 -->
+<a class="flex items-center gap-md bg-secondary-container text-on-secondary-container rounded-lg px-md py-sm cursor-pointer active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">timeline</span>
+<span>時間軸</span>
+</a>
+<!-- Inactive Tabs -->
+<a class="flex items-center gap-md text-on-surface-variant px-md py-sm hover:bg-surface-container-high transition-all rounded-lg cursor-pointer active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+<span>月曆</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant px-md py-sm hover:bg-surface-container-high transition-all rounded-lg cursor-pointer active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined">category</span>
+<span>類別管理</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant px-md py-sm hover:bg-surface-container-high transition-all rounded-lg cursor-pointer active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined">file_export</span>
+<span>匯出資料</span>
+</a>
+</div>
+<!-- Footer Tabs -->
+<div class="mt-auto space-y-sm border-t border-outline-variant pt-md">
+<a class="flex items-center gap-md text-on-surface-variant px-md py-sm hover:bg-surface-container-high transition-all rounded-lg cursor-pointer active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>設定</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant px-md py-sm hover:bg-surface-container-high transition-all rounded-lg cursor-pointer active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined">help</span>
+<span>說明</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col pt-16 md:pt-0 overflow-hidden relative">
+<!-- Header Section -->
+<header class="px-xl py-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-md bg-background z-10 sticky top-0 md:static">
+<div>
+<h2 class="text-display-lg-mobile md:text-display-lg font-display-lg-mobile md:font-display-lg text-on-surface">時間軸</h2>
+<p class="text-body-md font-body-md text-on-surface-variant mt-1">回顧您的每一天。</p>
+</div>
+<!-- Search and Filter Actions -->
+<div class="flex items-center gap-md w-full md:w-auto">
+<div class="relative w-full md:w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-10 pr-4 py-2 border border-outline-variant rounded-lg text-body-md font-body-md bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" placeholder="搜尋記事..." type="text"/>
+</div>
+<button class="flex items-center gap-xs px-4 py-2 border border-outline-variant rounded-lg bg-surface text-on-surface-variant text-label-md font-label-md hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+<span class="hidden md:inline">篩選</span>
+</button>
+<button class="flex items-center justify-center w-10 h-10 bg-primary text-on-primary rounded-lg shadow-sm hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add</span>
+</button>
+</div>
+</header>
+<!-- Timeline List Container -->
+<div class="flex-1 overflow-y-auto px-md md:px-xl pb-xl no-scrollbar">
+<div class="max-w-4xl mx-auto">
+<!-- Date Group: Today -->
+<div class="mb-xl relative pl-4 md:pl-0">
+<div class="sticky top-0 bg-background/95 backdrop-blur-sm py-xs mb-md z-10 flex items-center gap-sm">
+<h3 class="text-title-sm font-title-sm text-on-surface">10月24日, 2023</h3>
+<span class="text-label-sm font-label-sm text-outline px-2 py-1 bg-surface-container-low rounded-full">今天</span>
+</div>
+<!-- Timeline line (Desktop) -->
+<div class="hidden md:block absolute left-24 top-12 bottom-0 w-[2px] bg-outline-variant/30"></div>
+<!-- Card 1 -->
+<div class="relative flex flex-col md:flex-row gap-md md:gap-xl mb-lg group">
+<!-- Time Indicator -->
+<div class="md:w-20 flex md:justify-end shrink-0 pt-1 relative">
+<!-- Desktop Dot -->
+<div class="hidden md:block absolute right-[-17px] top-[14px] w-3 h-3 rounded-full bg-primary border-2 border-background z-10"></div>
+<span class="text-label-md font-label-md text-on-surface-variant">09:30 AM</span>
+</div>
+<!-- Content Card -->
+<div class="flex-1 bg-on-secondary rounded-lg p-lg shadow-[0_4px_12px_rgba(15,23,42,0.05)] border border-outline-variant/20 hover:shadow-[0_8px_24px_rgba(15,23,42,0.08)] transition-shadow relative">
+<div class="flex justify-between items-start mb-sm">
+<div>
+<h4 class="text-headline-md font-headline-md text-on-surface">Q4 專案啟動會議紀錄</h4>
+<div class="mt-2 inline-flex items-center px-2 py-1 rounded bg-secondary-fixed text-on-primary-fixed text-label-sm font-label-sm">
+                                        工作專案
+                                    </div>
+</div>
+<!-- Actions (Edit/Delete) -->
+<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="p-1 text-outline hover:text-error transition-colors">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</div>
+<p class="text-body-md font-body-md text-on-surface-variant line-clamp-3">
+                                會議確認了第四季度的核心目標與資源分配。開發團隊將優先處理核心架構重構，設計團隊則著手更新UI指南。需在下週一前提交初步進度報告給管理層。
+                            </p>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="relative flex flex-col md:flex-row gap-md md:gap-xl mb-lg group">
+<!-- Time Indicator -->
+<div class="md:w-20 flex md:justify-end shrink-0 pt-1 relative">
+<!-- Desktop Dot -->
+<div class="hidden md:block absolute right-[-17px] top-[14px] w-3 h-3 rounded-full bg-surface-variant border-2 border-background z-10 group-hover:bg-primary transition-colors"></div>
+<span class="text-label-md font-label-md text-on-surface-variant">02:15 PM</span>
+</div>
+<!-- Content Card -->
+<div class="flex-1 bg-on-secondary rounded-lg p-lg shadow-[0_4px_12px_rgba(15,23,42,0.05)] border border-outline-variant/20 hover:shadow-[0_8px_24px_rgba(15,23,42,0.08)] transition-shadow relative">
+<div class="flex justify-between items-start mb-sm">
+<div>
+<h4 class="text-headline-md font-headline-md text-on-surface">閱讀心得：深度工作力</h4>
+<div class="mt-2 inline-flex items-center px-2 py-1 rounded bg-surface-container-high text-on-surface-variant text-label-sm font-label-sm">
+                                        個人反思
+                                    </div>
+</div>
+<!-- Actions -->
+<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="p-1 text-outline hover:text-error transition-colors">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</div>
+<p class="text-body-md font-body-md text-on-surface-variant line-clamp-3">
+                                嘗試實踐番茄鐘工作法，發現對於減少分心非常有效。下午專注了兩個90分鐘的時段，產出比平常一整個下午還要多。需要注意的是，休息時間不應該再滑手機，讓大腦真正放鬆。
+                            </p>
+</div>
+</div>
+</div>
+<!-- Date Group: Yesterday -->
+<div class="mb-xl relative pl-4 md:pl-0">
+<div class="sticky top-0 bg-background/95 backdrop-blur-sm py-xs mb-md z-10 flex items-center gap-sm">
+<h3 class="text-title-sm font-title-sm text-on-surface">10月23日, 2023</h3>
+<span class="text-label-sm font-label-sm text-outline px-2 py-1 bg-surface-container-low rounded-full">昨天</span>
+</div>
+<!-- Timeline line (Desktop) -->
+<div class="hidden md:block absolute left-24 top-12 bottom-0 w-[2px] bg-outline-variant/30"></div>
+<!-- Card 3 -->
+<div class="relative flex flex-col md:flex-row gap-md md:gap-xl mb-lg group">
+<!-- Time Indicator -->
+<div class="md:w-20 flex md:justify-end shrink-0 pt-1 relative">
+<!-- Desktop Dot -->
+<div class="hidden md:block absolute right-[-17px] top-[14px] w-3 h-3 rounded-full bg-surface-variant border-2 border-background z-10 group-hover:bg-primary transition-colors"></div>
+<span class="text-label-md font-label-md text-on-surface-variant">10:00 AM</span>
+</div>
+<!-- Content Card -->
+<div class="flex-1 bg-on-secondary rounded-lg p-lg shadow-[0_4px_12px_rgba(15,23,42,0.05)] border border-outline-variant/20 hover:shadow-[0_8px_24px_rgba(15,23,42,0.08)] transition-shadow relative">
+<div class="flex justify-between items-start mb-sm">
+<div>
+<h4 class="text-headline-md font-headline-md text-on-surface">團隊建立活動發想</h4>
+<div class="mt-2 inline-flex items-center px-2 py-1 rounded bg-secondary-fixed text-on-primary-fixed text-label-sm font-label-sm">
+                                        工作專案
+                                    </div>
+</div>
+<!-- Actions -->
+<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="p-1 text-outline hover:text-error transition-colors">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</div>
+<p class="text-body-md font-body-md text-on-surface-variant line-clamp-3">
+                                考量到最近專案壓力大，或許可以舉辦一次下午茶加輕桌遊的活動。目前想到的遊戲有：字串接龍、畫畫傳話等。需要調查一下大家的意願與可行的時間。
+                            </p>
+</div>
+</div>
+</div>
+<!-- Load More Button -->
+<div class="flex justify-center mt-xl mb-xl">
+<button class="px-6 py-3 border border-primary text-primary bg-transparent hover:bg-primary/5 rounded text-label-md font-label-md transition-colors">
+                        載入更多
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Mobile Bottom Navigation (Visible only on mobile) -->
+<nav class="md:hidden flex justify-around items-center w-full px-sm py-2 bg-surface border-t border-outline-variant fixed bottom-0 z-50">
+<a class="flex flex-col items-center gap-1 p-2 text-primary" href="#">
+<div class="bg-secondary-container px-4 py-1 rounded-full">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">timeline</span>
+</div>
+<span class="text-label-sm font-label-sm">時間軸</span>
+</a>
+<a class="flex flex-col items-center gap-1 p-2 text-on-surface-variant hover:text-primary transition-colors" href="#">
+<div class="px-4 py-1">
+<span class="material-symbols-outlined">calendar_month</span>
+</div>
+<span class="text-label-sm font-label-sm">月曆</span>
+</a>
+<a class="flex flex-col items-center gap-1 p-2 text-on-surface-variant hover:text-primary transition-colors" href="#">
+<div class="px-4 py-1">
+<span class="material-symbols-outlined">category</span>
+</div>
+<span class="text-label-sm font-label-sm">類別管理</span>
+</a>
+</nav>
+</body></html>

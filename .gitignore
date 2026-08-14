@@ -1,0 +1,28 @@
+# Node.js dependencies and build output
+node_modules/
+dist/
+gas-dist/
+
+# Python virtual environment
+.venv/
+__pycache__/
+*.py[cod]
+
+# Local deployment configuration and credentials
+.env
+.env.*
+!.env.example
+.clasp.json
+.gitconfig
+public/app-config.js
+
+# Tooling output
+coverage/
+*.tsbuildinfo
+.eslintcache
+
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>編輯記事 - Azure Chronicle</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-dim": "#d8dadc",
+                    "surface-bright": "#f7f9fb",
+                    "surface-container-high": "#e6e8ea",
+                    "surface-container": "#eceef0",
+                    "error": "#ba1a1a",
+                    "on-tertiary-fixed-variant": "#93000b",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed-dim": "#b7c8e1",
+                    "on-background": "#191c1e",
+                    "tertiary": "#ae0010",
+                    "secondary-container": "#d0e1fb",
+                    "on-error": "#ffffff",
+                    "tertiary-fixed": "#ffdad6",
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-container": "#ffecea",
+                    "on-primary-container": "#eeefff",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "on-secondary-fixed-variant": "#38485d",
+                    "on-secondary-fixed": "#0b1c30",
+                    "surface-container-highest": "#e0e3e5",
+                    "inverse-primary": "#b4c5ff",
+                    "surface-tint": "#0053db",
+                    "primary": "#004ac6",
+                    "outline": "#737686",
+                    "error-container": "#ffdad6",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary-fixed": "#00174b",
+                    "on-primary": "#ffffff",
+                    "primary-container": "#2563eb",
+                    "on-secondary-container": "#54647a",
+                    "primary-fixed": "#dbe1ff",
+                    "tertiary-fixed-dim": "#ffb4ab",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "surface-variant": "#e0e3e5",
+                    "on-surface-variant": "#434655",
+                    "on-surface": "#191c1e",
+                    "surface": "#f7f9fb",
+                    "inverse-on-surface": "#eff1f3",
+                    "outline-variant": "#c3c6d7",
+                    "surface-container-low": "#f2f4f6",
+                    "on-secondary": "#ffffff",
+                    "inverse-surface": "#2d3133",
+                    "on-tertiary-fixed": "#410002",
+                    "secondary": "#505f76",
+                    "tertiary-container": "#d52022",
+                    "secondary-fixed": "#d3e4fe",
+                    "background": "#f7f9fb"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "lg": "24px",
+                    "xs": "4px",
+                    "2xl": "48px",
+                    "sm": "8px",
+                    "container-max": "1200px",
+                    "gutter": "24px",
+                    "base": "4px",
+                    "xl": "32px",
+                    "md": "16px"
+            },
+            "fontFamily": {
+                    "body-md": [
+                            "Hanken Grotesk"
+                    ],
+                    "label-sm": [
+                            "Hanken Grotesk"
+                    ],
+                    "headline-md": [
+                            "Hanken Grotesk"
+                    ],
+                    "body-sm": [
+                            "Hanken Grotesk"
+                    ],
+                    "display-lg-mobile": [
+                            "Hanken Grotesk"
+                    ],
+                    "title-sm": [
+                            "Hanken Grotesk"
+                    ],
+                    "label-md": [
+                            "Hanken Grotesk"
+                    ],
+                    "display-lg": [
+                            "Hanken Grotesk"
+                    ]
+            },
+            "fontSize": {
+                    "body-md": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "label-sm": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "headline-md": [
+                            "20px",
+                            {
+                                    "lineHeight": "28px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "display-lg-mobile": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "title-sm": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "label-md": [
+                            "14px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "display-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+</head>
+<body class="bg-surface-dim font-body-md text-on-surface antialiased flex justify-center items-center min-h-screen p-md md:p-xl">
+<!-- Modal / Full Screen Overlay Container -->
+<main class="w-full max-w-4xl bg-surface-container-lowest rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] overflow-hidden flex flex-col max-h-[90vh]">
+<!-- Header -->
+<header class="flex items-center justify-between px-lg py-md border-b border-outline-variant bg-surface-container-lowest">
+<div class="flex items-center gap-md">
+<button class="p-2 rounded-full hover:bg-surface-container-highest transition-colors text-on-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-on-surface">編輯記事</h1>
+</div>
+<div class="flex items-center gap-sm">
+<button class="text-error hover:bg-error-container hover:text-on-error-container px-4 py-2 rounded-lg font-label-md text-label-md transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete">delete</span>
+                    刪除
+                </button>
+</div>
+</header>
+<!-- Scrollable Content Area -->
+<div class="flex-1 overflow-y-auto p-lg flex flex-col gap-lg">
+<!-- Top Controls Row: Date & Category -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
+<!-- Date Picker -->
+<div class="flex flex-col gap-sm">
+<label class="font-label-sm text-label-sm text-on-surface-variant">日期</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" data-icon="calendar_today">calendar_today</span>
+<input class="w-full pl-10 pr-3 py-2 border border-outline-variant rounded-lg bg-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md text-on-surface transition-all" type="date" value="2024-05-15"/>
+</div>
+</div>
+<!-- Category Dropdown -->
+<div class="flex flex-col gap-sm">
+<label class="font-label-sm text-label-sm text-on-surface-variant">分類</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" data-icon="folder">folder</span>
+<select class="w-full pl-10 pr-3 py-2 border border-outline-variant rounded-lg bg-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md text-on-surface appearance-none transition-all">
+<option value="work">工作日誌</option>
+<option selected="" value="personal">個人反思</option>
+<option value="ideas">靈感筆記</option>
+<option value="meeting">會議記錄</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" data-icon="arrow_drop_down">arrow_drop_down</span>
+</div>
+</div>
+</div>
+<!-- Title Input -->
+<div class="flex flex-col gap-sm">
+<input class="w-full px-0 py-2 border-0 border-b-2 border-transparent hover:border-outline-variant focus:border-primary bg-transparent outline-none font-display-lg text-display-lg text-on-surface placeholder:text-outline-variant transition-colors" placeholder="無標題記事" type="text" value="關於近期專案架構的重構想法與心智圖草稿"/>
+</div>
+<!-- Tag Chips -->
+<div class="flex flex-col gap-sm">
+<label class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="sell">sell</span> 標籤
+                </label>
+<div class="flex flex-wrap gap-sm items-center p-2 border border-outline-variant rounded-lg bg-surface">
+<!-- Chip -->
+<div class="flex items-center gap-1 bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full font-label-sm text-label-sm">
+                        架構設計
+                        <button class="hover:text-error transition-colors flex items-center justify-center rounded-full p-0.5">
+<span class="material-symbols-outlined text-[14px]" data-icon="close">close</span>
+</button>
+</div>
+<!-- Chip -->
+<div class="flex items-center gap-1 bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full font-label-sm text-label-sm">
+                        前端開發
+                        <button class="hover:text-error transition-colors flex items-center justify-center rounded-full p-0.5">
+<span class="material-symbols-outlined text-[14px]" data-icon="close">close</span>
+</button>
+</div>
+<!-- Input for new tag -->
+<input class="flex-1 min-w-[120px] bg-transparent border-none outline-none font-body-sm text-body-sm text-on-surface placeholder:text-outline p-1" placeholder="新增標籤..." type="text"/>
+</div>
+</div>
+<!-- Markdown / Rich Text Editor Area -->
+<div class="flex flex-col gap-sm flex-1 min-h-[300px]">
+<div class="flex items-center gap-xs p-2 border border-b-0 border-outline-variant rounded-t-lg bg-surface-container-low overflow-x-auto">
+<button class="p-1.5 rounded hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="粗體"><span class="material-symbols-outlined text-[20px]" data-icon="format_bold">format_bold</span></button>
+<button class="p-1.5 rounded hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="斜體"><span class="material-symbols-outlined text-[20px]" data-icon="format_italic">format_italic</span></button>
+<button class="p-1.5 rounded hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="底線"><span class="material-symbols-outlined text-[20px]" data-icon="format_underlined">format_underlined</span></button>
+<div class="w-px h-5 bg-outline-variant mx-1"></div>
+<button class="p-1.5 rounded hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="標題"><span class="material-symbols-outlined text-[20px]" data-icon="format_h1">format_h1</span></button>
+<button class="p-1.5 rounded hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="引言"><span class="material-symbols-outlined text-[20px]" data-icon="format_quote">format_quote</span></button>
+<button class="p-1.5 rounded hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="程式碼區塊"><span class="material-symbols-outlined text-[20px]" data-icon="code">code</span></button>
+<div class="w-px h-5 bg-outline-variant mx-1"></div>
+<button class="p-1.5 rounded hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="無序清單"><span class="material-symbols-outlined text-[20px]" data-icon="format_list_bulleted">format_list_bulleted</span></button>
+<button class="p-1.5 rounded hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="有序清單"><span class="material-symbols-outlined text-[20px]" data-icon="format_list_numbered">format_list_numbered</span></button>
+<div class="flex-1"></div>
+<button class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-container-highest hover:bg-surface-variant text-on-surface font-label-sm text-label-sm transition-colors">
+<span class="material-symbols-outlined text-[16px]" data-icon="visibility">visibility</span> 預覽
+                    </button>
+</div>
+<textarea class="w-full flex-1 p-4 border border-outline-variant rounded-b-lg bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md text-on-surface resize-none leading-relaxed transition-all" placeholder="開始撰寫內容...">今天花了一些時間重新審視目前的專案架構。發現有幾個模組的耦合度過高，導致在加入新功能時容易產生非預期的副作用。
+
+### 發現的問題點：
+1. **User Authentication Module**: 處理邏輯與 UI 元件綁得太緊。
+2. **Data Fetching Layer**: 缺乏統一的錯誤處理機制，各個頁面各自為政。
+
+### 預計改善方向：
+- 引入更嚴格的 Dependency Injection 模式。
+- 建立統一的 API Gateway class 來攔截與處理 HTTP errors。
+- 考慮將狀態管理逐步遷移至更輕量級的解決方案。
+
+需要與團隊討論這會不會影響目前的交付時程。可以先從小模組開始重構測試看看水溫。</textarea>
+</div>
+<!-- Reference Links Section -->
+<div class="flex flex-col gap-sm border-t border-outline-variant pt-lg mt-md">
+<div class="flex items-center justify-between">
+<label class="font-title-sm text-title-sm text-on-surface flex items-center gap-1">
+<span class="material-symbols-outlined" data-icon="link">link</span> 參考連結
+                    </label>
+<button class="text-primary hover:bg-primary-fixed hover:text-on-primary-fixed-variant px-3 py-1 rounded-lg font-label-sm text-label-sm transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="add">add</span> 新增連結
+                    </button>
+</div>
+<div class="flex flex-col gap-2">
+<!-- Link Item -->
+<div class="flex items-center gap-3 p-3 border border-outline-variant rounded-lg bg-surface hover:border-outline transition-colors group">
+<div class="bg-surface-container-highest p-2 rounded-md">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="article">article</span>
+</div>
+<div class="flex-1 min-w-0">
+<input class="w-full bg-transparent border-none outline-none font-body-sm text-body-sm text-on-surface p-0 focus:ring-0" type="text" value="Clean Architecture 實踐指南"/>
+<input class="w-full bg-transparent border-none outline-none font-label-sm text-label-sm text-secondary p-0 focus:ring-0 truncate" type="text" value="https://example.com/clean-architecture"/>
+</div>
+<button class="opacity-0 group-hover:opacity-100 text-outline hover:text-error p-2 rounded-full hover:bg-error-container transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="close">close</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Actions -->
+<footer class="flex items-center justify-end gap-md px-lg py-md border-t border-outline-variant bg-surface-container-lowest">
+<button class="px-6 py-2.5 rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+                取消
+            </button>
+<button class="px-6 py-2.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container hover:text-on-primary-container shadow-sm transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="save">save</span>
+                儲存變更
+            </button>
+</footer>
+</main>
+</body></html>

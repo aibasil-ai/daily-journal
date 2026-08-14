@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+
+<html class="light" lang="zh-TW"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>新增記事 - 每日記事</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary-fixed": "#410002",
+                    "secondary-fixed-dim": "#b7c8e1",
+                    "on-secondary-fixed-variant": "#38485d",
+                    "inverse-on-surface": "#eff1f3",
+                    "surface": "#f7f9fb",
+                    "secondary-fixed": "#d3e4fe",
+                    "surface-container-high": "#e6e8ea",
+                    "on-primary-fixed": "#00174b",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "outline-variant": "#c3c6d7",
+                    "primary-container": "#2563eb",
+                    "tertiary-container": "#d52022",
+                    "on-secondary-fixed": "#0b1c30",
+                    "surface-variant": "#e0e3e5",
+                    "inverse-primary": "#b4c5ff",
+                    "tertiary": "#ae0010",
+                    "on-error-container": "#93000a",
+                    "primary": "#004ac6",
+                    "on-secondary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#93000b",
+                    "surface-container-low": "#f2f4f6",
+                    "secondary-container": "#d0e1fb",
+                    "error-container": "#ffdad6",
+                    "surface-bright": "#f7f9fb",
+                    "on-surface": "#191c1e",
+                    "on-error": "#ffffff",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "surface-dim": "#d8dadc",
+                    "primary-fixed": "#dbe1ff",
+                    "on-surface-variant": "#434655",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-fixed-dim": "#ffb4ab",
+                    "on-primary-container": "#eeefff",
+                    "on-secondary-container": "#54647a",
+                    "outline": "#737686",
+                    "background": "#f7f9fb",
+                    "surface-container-highest": "#e0e3e5",
+                    "surface-container": "#eceef0",
+                    "on-tertiary-container": "#ffecea",
+                    "surface-tint": "#0053db",
+                    "secondary": "#505f76",
+                    "inverse-surface": "#2d3133",
+                    "on-primary": "#ffffff",
+                    "tertiary-fixed": "#ffdad6",
+                    "on-background": "#191c1e",
+                    "error": "#ba1a1a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "md": "16px",
+                    "2xl": "48px",
+                    "gutter": "24px",
+                    "xs": "4px",
+                    "container-max": "1200px",
+                    "sm": "8px",
+                    "lg": "24px",
+                    "xl": "32px",
+                    "base": "4px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Hanken Grotesk"],
+                    "display-lg": ["Hanken Grotesk"],
+                    "body-md": ["Hanken Grotesk"],
+                    "display-lg-mobile": ["Hanken Grotesk"],
+                    "title-sm": ["Hanken Grotesk"],
+                    "body-sm": ["Hanken Grotesk"],
+                    "label-sm": ["Hanken Grotesk"],
+                    "label-md": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "display-lg-mobile": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "title-sm": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Hanken Grotesk', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface-muted text-on-surface flex h-screen overflow-hidden">
+<!-- SideNavBar (Suppressed as this is a task-focused creation screen, departing from main nav flow) -->
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col h-screen overflow-y-auto w-full">
+<!-- Header -->
+<header class="w-full bg-surface-container-lowest px-lg py-md flex items-center border-b border-outline-variant/30 sticky top-0 z-10">
+<button class="mr-sm p-sm rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-on-surface">新增記事</h1>
+</header>
+<!-- Form Container -->
+<div class="flex-1 w-full max-w-[800px] mx-auto p-lg lg:p-xl space-y-lg pb-2xl">
+<div class="bg-surface-container-lowest rounded-lg p-lg shadow-[0_4px_12px_rgba(15,23,42,0.05)] border border-outline-variant/20 space-y-md">
+<!-- Row 1: Date & Category -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div class="space-y-sm">
+<label class="block font-label-md text-label-md text-on-surface-variant">記事日期</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline" style="font-variation-settings: 'FILL' 0;">calendar_month</span>
+<input class="w-full pl-10 pr-3 py-2 bg-surface-container-lowest border border-outline-variant rounded focus:border-primary focus:ring-2 focus:ring-primary/20 font-body-md text-body-md text-on-surface outline-none transition-all" type="date" value="2023-10-27"/>
+</div>
+</div>
+<div class="space-y-sm">
+<label class="block font-label-md text-label-md text-on-surface-variant">選擇分類</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline" style="font-variation-settings: 'FILL' 0;">category</span>
+<select class="w-full pl-10 pr-10 py-2 bg-surface-container-lowest border border-outline-variant rounded focus:border-primary focus:ring-2 focus:ring-primary/20 font-body-md text-body-md text-on-surface outline-none appearance-none transition-all">
+<option>工作專案</option>
+<option>個人反思</option>
+<option>閱讀筆記</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none" style="font-variation-settings: 'FILL' 0;">arrow_drop_down</span>
+</div>
+</div>
+</div>
+<!-- Row 2: Title -->
+<div class="space-y-sm">
+<label class="block font-label-md text-label-md text-on-surface-variant">記事標題</label>
+<input class="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded focus:border-primary focus:ring-2 focus:ring-primary/20 font-title-sm text-title-sm text-on-surface outline-none transition-all" placeholder="輸入引人入勝的標題..." type="text"/>
+</div>
+<!-- Row 3: Tags -->
+<div class="space-y-sm">
+<label class="block font-label-md text-label-md text-on-surface-variant">標籤</label>
+<div class="flex flex-wrap items-center gap-2 p-2 border border-outline-variant rounded bg-surface-container-lowest focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+<div class="flex items-center bg-secondary-fixed text-on-primary-fixed px-2 py-1 rounded-full font-label-sm text-label-sm">
+                            #設計系統
+                            <button class="ml-1 text-on-primary-fixed hover:text-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 0;">close</span>
+</button>
+</div>
+<div class="flex items-center bg-secondary-fixed text-on-primary-fixed px-2 py-1 rounded-full font-label-sm text-label-sm">
+                            #會議紀錄
+                            <button class="ml-1 text-on-primary-fixed hover:text-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 0;">close</span>
+</button>
+</div>
+<input class="flex-1 min-w-[150px] border-none bg-transparent p-0 font-body-sm text-body-sm text-on-surface focus:ring-0 outline-none" placeholder="新增標籤 (按 Enter)" type="text"/>
+</div>
+</div>
+<!-- Row 4: Content (Rich Text) -->
+<div class="space-y-sm pt-sm">
+<label class="block font-label-md text-label-md text-on-surface-variant">記事內容</label>
+<div class="border border-outline-variant rounded overflow-hidden flex flex-col focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all bg-surface-container-lowest">
+<!-- Toolbar -->
+<div class="flex items-center gap-1 p-2 bg-surface-container-low border-b border-outline-variant/50 overflow-x-auto">
+<button class="p-1 rounded hover:bg-surface-variant text-on-surface-variant transition-colors" title="Bold">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">format_bold</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-variant text-on-surface-variant transition-colors" title="Italic">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">format_italic</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-variant text-on-surface-variant transition-colors" title="Underline">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">format_underlined</span>
+</button>
+<div class="w-[1px] h-4 bg-outline-variant/50 mx-1"></div>
+<button class="p-1 rounded hover:bg-surface-variant text-on-surface-variant transition-colors" title="Bulleted List">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">format_list_bulleted</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-variant text-on-surface-variant transition-colors" title="Numbered List">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">format_list_numbered</span>
+</button>
+<div class="w-[1px] h-4 bg-outline-variant/50 mx-1"></div>
+<button class="p-1 rounded hover:bg-surface-variant text-on-surface-variant transition-colors" title="Insert Link">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">link</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-variant text-on-surface-variant transition-colors" title="Insert Image">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">image</span>
+</button>
+</div>
+<!-- Textarea -->
+<textarea class="w-full min-h-[240px] p-md bg-transparent border-none font-body-md text-body-md text-on-surface resize-y focus:ring-0 outline-none" placeholder="在此記錄您的想法..."></textarea>
+</div>
+</div>
+<!-- Row 5: Reference Links (Optional) -->
+<div class="space-y-sm pt-sm border-t border-outline-variant/20">
+<div class="flex items-center justify-between">
+<label class="block font-label-md text-label-md text-on-surface-variant">參考連結 (選填)</label>
+<button class="flex items-center gap-1 text-primary hover:text-primary-fixed-dim font-label-sm text-label-sm transition-colors">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 0;">add</span>
+                            新增連結
+                        </button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-sm">
+<input class="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded focus:border-primary focus:ring-2 focus:ring-primary/20 font-body-sm text-body-sm text-on-surface outline-none transition-all" placeholder="連結名稱 (例: 設計規範)" type="text"/>
+<input class="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded focus:border-primary focus:ring-2 focus:ring-primary/20 font-body-sm text-body-sm text-on-surface outline-none transition-all" placeholder="https://..." type="url"/>
+</div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex justify-end items-center gap-md pt-md">
+<button class="px-lg py-2 rounded font-label-md text-label-md text-secondary hover:bg-surface-container-high transition-colors">
+                    取消
+                </button>
+<button class="px-lg py-2 rounded bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-opacity flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">save</span>
+                    儲存記事
+                </button>
+</div>
+</div>
+</main>
+</body></html>
