@@ -8,6 +8,8 @@ export interface JournalStore {
   listEntries(filter?: EntryFilter): Entry[]
   getEntry(id: string): Entry | undefined
   saveEntry(entry: Entry): Entry
+  saveEntries(entries: Entry[]): Entry[]
   deleteEntry(id: string): void
+  deleteCategory(id: string): void
   getTimezone(): string
 }

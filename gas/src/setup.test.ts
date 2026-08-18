@@ -71,6 +71,44 @@ describe('initializeJournal', () => {
     expect(environment.waitLock).toHaveBeenCalledWith(10_000)
     expect(environment.releaseLock).toHaveBeenCalledTimes(1)
   })
+
+  it('可批次更新記事資料列並永久刪除指定類別資料列', () => {
+    initializeJournal('spreadsheet-id')
+    const store = new AppsScriptJournalStore()
+    const createdAt = '2026-08-04T12:00:00+08:00'
+    const updatedAt = '2026-08-18T10:00:00+08:00'
+    store.saveCategory({ id: 'work', name: '工作', isActive: true, createdAt, updatedAt: createdAt })
+    store.saveCategory({ id: 'life', name: '生活', isActive: true, createdAt, updatedAt: createdAt })
+    store.saveEntry({
+      id: 'entry-1', entryDate: '2026-08-04', title: '', content: '第一則', categoryId: 'work',
+      tags: [], links: [], createdAt, updatedAt: createdAt,
+    })
+    store.saveEntry({
+      id: 'entry-2', entryDate: '2026-08-05', title: '', content: '第二則', categoryId: 'work',
+      tags: [], links: [], createdAt, updatedAt: createdAt,
+    })
+
+    store.saveEntries([
+      {
+        id: 'entry-1', entryDate: '2026-08-04', title: '', content: '第一則', categoryId: 'life',
+        tags: [], links: [], createdAt, updatedAt,
+      },
+      {
+        id: 'entry-2', entryDate: '2026-08-05', title: '', content: '第二則', categoryId: 'life',
+        tags: [], links: [], createdAt, updatedAt,
+      },
+    ])
+    store.deleteCategory('work')
+
+    expect(environment.spreadsheet.getSheet('entries')?.values.slice(1)).toEqual([
+      ['entry-1', '2026-08-04', '', '第一則', 'life', '[]', '[]', createdAt, updatedAt],
+      ['entry-2', '2026-08-05', '', '第二則', 'life', '[]', '[]', createdAt, updatedAt],
+    ])
+    expect(environment.spreadsheet.getSheet('categories')?.values).toEqual([
+      CATEGORY_HEADERS,
+      ['life', '生活', true, createdAt, createdAt],
+    ])
+  })
 })
 
 type MockAppsScriptEnvironment = {

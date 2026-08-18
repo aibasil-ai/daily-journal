@@ -99,20 +99,30 @@ export class AppsScriptJournalStore implements JournalStore {
     return this.withWriteLock(() => {
       const sheet = this.requireSheet(ENTRY_SHEET_NAME, ENTRY_HEADERS)
       const rowIndex = this.findRowById(sheet, entry.id, ENTRY_SHEET_NAME)
-      const values: unknown[] = [
-        entry.id,
-        entry.entryDate,
-        entry.title,
-        entry.content,
-        entry.categoryId,
-        JSON.stringify(entry.tags),
-        JSON.stringify(entry.links),
-        entry.createdAt,
-        entry.updatedAt,
-      ]
-
-      this.writeRow(sheet, rowIndex ?? sheet.getLastRow() + 1, values)
+      this.writeRow(sheet, rowIndex ?? sheet.getLastRow() + 1, this.entryValues(entry))
       return cloneEntry(entry)
+    })
+  }
+
+  saveEntries(entries: Entry[]): Entry[] {
+    if (!entries.length) return []
+
+    return this.withWriteLock(() => {
+      const sheet = this.requireSheet(ENTRY_SHEET_NAME, ENTRY_HEADERS)
+      const rows = this.readRows(ENTRY_SHEET_NAME, ENTRY_HEADERS)
+      const rowsByIndex = new Map(rows.map((row) => [row.rowIndex, row]))
+      for (const entry of entries) {
+        const rowIndex = this.findRowById(sheet, entry.id, ENTRY_SHEET_NAME)
+        if (!rowIndex) {
+          throw new JournalError('NOT_FOUND', '找不到要更新的記事。')
+        }
+        rowsByIndex.get(rowIndex)!.values = this.entryValues(entry)
+      }
+      sheet
+        .getRange(2, 1, rows.length, ENTRY_HEADERS.length)
+        .setNumberFormat('@')
+        .setValues(rows.map((row) => row.values))
+      return entries.map(cloneEntry)
     })
   }
 
@@ -122,6 +132,17 @@ export class AppsScriptJournalStore implements JournalStore {
       const rowIndex = this.findRowById(sheet, id, ENTRY_SHEET_NAME)
       if (!rowIndex) {
         throw new JournalError('NOT_FOUND', '找不到要刪除的記事。')
+      }
+      sheet.deleteRow(rowIndex)
+    })
+  }
+
+  deleteCategory(id: string): void {
+    this.withWriteLock(() => {
+      const sheet = this.requireSheet(CATEGORY_SHEET_NAME, CATEGORY_HEADERS)
+      const rowIndex = this.findRowById(sheet, id, CATEGORY_SHEET_NAME)
+      if (!rowIndex) {
+        throw new JournalError('NOT_FOUND', '找不到要刪除的分類。')
       }
       sheet.deleteRow(rowIndex)
     })
@@ -396,6 +417,20 @@ export class AppsScriptJournalStore implements JournalStore {
       )
     }
     return matchingRows[0]?.rowIndex
+  }
+
+  private entryValues(entry: Entry): unknown[] {
+    return [
+      entry.id,
+      entry.entryDate,
+      entry.title,
+      entry.content,
+      entry.categoryId,
+      JSON.stringify(entry.tags),
+      JSON.stringify(entry.links),
+      entry.createdAt,
+      entry.updatedAt,
+    ]
   }
 
   private writeRow(

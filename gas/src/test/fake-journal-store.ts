@@ -53,12 +53,24 @@ export class FakeJournalStore implements JournalStore {
     return cloneEntry(copy)
   }
 
+  saveEntries(entries: Entry[]): Entry[] {
+    return entries.map((entry) => this.saveEntry(entry))
+  }
+
   deleteEntry(id: string): void {
     const index = this.entries.findIndex((item) => item.id === id)
     if (index === -1) {
       throw new JournalError('NOT_FOUND', '找不到要刪除的記事。')
     }
     this.entries.splice(index, 1)
+  }
+
+  deleteCategory(id: string): void {
+    const index = this.categories.findIndex((category) => category.id === id)
+    if (index === -1) {
+      throw new JournalError('NOT_FOUND', '找不到要刪除的分類。')
+    }
+    this.categories.splice(index, 1)
   }
 
   getTimezone(): string {

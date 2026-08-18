@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { executeAppRequest } from './dispatcher'
-import type { Category } from '../domain/journal'
+import type { Category, Entry } from '../domain/journal'
 import { FakeJournalStore } from '../test/fake-journal-store'
 import { JournalService } from '../services/journal-service'
 
@@ -34,7 +34,31 @@ describe('executeAppRequest', () => {
   it('允許類別管理讀取全部分類', () => {
     expect(executeAppRequest({ action: 'listCategories' }, service())).toEqual({
       ok: true,
-      data: [expect.objectContaining({ id: 'work' })],
+      data: {
+        categories: [expect.objectContaining({ id: 'work' })],
+        entryCounts: { work: 0 },
+      },
+    })
+  })
+
+  it('允許搬移記事，並拒絕空白選取與非空類別刪除', () => {
+    const journalService = migrationService()
+
+    expect(executeAppRequest({
+      action: 'moveEntries',
+      sourceCategoryId: 'work',
+      targetCategoryId: 'life',
+      entryIds: ['entry-1'],
+    }, journalService)).toEqual({ ok: true, data: { movedCount: 1 } })
+    expect(executeAppRequest({
+      action: 'moveEntries',
+      sourceCategoryId: 'work',
+      targetCategoryId: 'life',
+      entryIds: [],
+    }, migrationService())).toMatchObject({ ok: false, code: 'VALIDATION_ERROR' })
+    expect(executeAppRequest({ action: 'deleteCategory', id: 'work' }, migrationService())).toMatchObject({
+      ok: false,
+      code: 'CONFLICT',
     })
   })
 
@@ -120,6 +144,31 @@ function category(): Category {
     id: 'work',
     name: '工作',
     isActive: true,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  }
+}
+
+function migrationService(): JournalService {
+  return new JournalService(
+    new FakeJournalStore({
+      categories: [category(), { ...category(), id: 'life', name: '生活' }],
+      entries: [entry()],
+    }),
+    () => timestamp,
+    () => 'generated-id',
+  )
+}
+
+function entry(): Entry {
+  return {
+    id: 'entry-1',
+    entryDate: '2026-08-04',
+    title: '',
+    content: '內容',
+    categoryId: 'work',
+    tags: [],
+    links: [],
     createdAt: timestamp,
     updatedAt: timestamp,
   }

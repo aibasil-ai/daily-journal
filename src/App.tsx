@@ -48,6 +48,7 @@ export function App({ client }: AppProps) {
     error,
     timezone,
     categories,
+    categoryEntryCounts,
     tagSuggestions,
     entries,
     nextCursor,
@@ -64,6 +65,9 @@ export function App({ client }: AppProps) {
     saveCategory,
     deactivateCategory,
     activateCategory,
+    loadCategoryEntryPage,
+    moveEntries,
+    deleteCategory,
     exportEntries,
     handleRequestError,
   } = journal
@@ -196,11 +200,6 @@ export function App({ client }: AppProps) {
     setPage(getInitialPage())
   }
 
-  const entryCounts = new Map<string, number>()
-  for (const entry of entries) {
-    entryCounts.set(entry.categoryId, (entryCounts.get(entry.categoryId) ?? 0) + 1)
-  }
-
   if (selectedEntry) {
     return (
       <main className="focused-screen">
@@ -299,7 +298,10 @@ export function App({ client }: AppProps) {
           {page === 'categories' && (
             <CategoryManager
               categories={categories}
-              entryCounts={entryCounts}
+              entryCounts={categoryEntryCounts}
+              onLoadEntryPage={loadCategoryEntryPage}
+              onMoveEntries={moveEntries}
+              onDelete={deleteCategory}
               onSave={saveCategory}
               onDeactivate={deactivateCategory}
               onActivate={activateCategory}

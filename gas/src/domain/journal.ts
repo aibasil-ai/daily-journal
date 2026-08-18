@@ -56,6 +56,21 @@ export type EntryListData = {
   nextCursor: string | null
 }
 
+export type CategoryManagementData = {
+  categories: Category[]
+  entryCounts: Record<string, number>
+}
+
+export type MoveEntriesInput = {
+  sourceCategoryId: string
+  targetCategoryId: string
+  entryIds: string[]
+}
+
+export type MoveEntriesResult = {
+  movedCount: number
+}
+
 export type DailyEntryCount = {
   date: string
   count: number
@@ -83,6 +98,8 @@ export type ApiRequest =
   | { action: 'saveCategory'; category: CategoryInput }
   | { action: 'deactivateCategory'; id: string }
   | { action: 'activateCategory'; id: string }
+  | { action: 'moveEntries'; sourceCategoryId: string; targetCategoryId: string; entryIds: string[] }
+  | { action: 'deleteCategory'; id: string }
   | { action: 'exportEntries'; filter: EntryFilterCriteria }
 
 export type ApiResponse<T> =

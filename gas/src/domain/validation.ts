@@ -5,6 +5,7 @@ import type {
   EntryFilterCriteria,
   EntryInput,
   JournalLink,
+  MoveEntriesInput,
 } from './journal'
 
 export type ValidationIssue = {
@@ -117,6 +118,16 @@ export function parseCategoryInput(value: unknown): CategoryInput {
   const input: CategoryInput = { name: readString(value, 'name') }
   if (value.id !== undefined) input.id = readString(value, 'id')
   return input
+}
+
+export function parseMoveEntriesInput(value: unknown): MoveEntriesInput {
+  if (!isRecord(value)) throwInvalidRequest()
+
+  return {
+    sourceCategoryId: readString(value, 'sourceCategoryId'),
+    targetCategoryId: readString(value, 'targetCategoryId'),
+    entryIds: readStringArray(value.entryIds),
+  }
 }
 
 export function parseEntryFilter(value: unknown): EntryFilter {

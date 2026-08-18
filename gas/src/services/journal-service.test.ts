@@ -37,16 +37,77 @@ describe('JournalService', () => {
     })
   })
 
-  it('分類管理清單會保留停用分類並將啟用分類排在前面', () => {
+  it('分類管理摘要會保留停用分類、將啟用分類排在前面並提供完整記事數', () => {
     const service = createService({
       categories: [
         category({ id: 'old', name: '舊分類', isActive: false }),
         category({ id: 'life', name: '生活' }),
         category({ id: 'work', name: '工作' }),
       ],
+      entries: [entry({ id: 'one', categoryId: 'work' }), entry({ id: 'two', categoryId: 'work' })],
     })
 
-    expect(service.listCategories().map((item) => item.id)).toEqual(['work', 'life', 'old'])
+    expect(service.listCategories()).toMatchObject({
+      categories: [
+        expect.objectContaining({ id: 'work' }),
+        expect.objectContaining({ id: 'life' }),
+        expect.objectContaining({ id: 'old' }),
+      ],
+      entryCounts: { work: 2, life: 0, old: 0 },
+    })
+  })
+
+  it('只允許永久刪除空類別', () => {
+    const service = createService({
+      categories: [category({ id: 'work' }), category({ id: 'life', name: '生活' })],
+      entries: [entry({ id: 'one', categoryId: 'work' })],
+    })
+
+    expect(() => service.deleteCategory('work')).toThrow('類別仍有記事，請先搬移所有記事後再刪除。')
+    service.deleteCategory('life')
+    expect(service.listCategories().categories).not.toContainEqual(expect.objectContaining({ id: 'life' }))
+  })
+
+  it('搬移前驗證整批選取，成功時同時更新分類與 updatedAt', () => {
+    const store = new FakeJournalStore({
+      categories: [category({ id: 'work' }), category({ id: 'life', name: '生活' })],
+      entries: [entry({ id: 'one', categoryId: 'work' }), entry({ id: 'two', categoryId: 'work' })],
+    })
+    const service = new JournalService(store, () => '2026-08-18T10:00:00+08:00', () => 'unused')
+
+    expect(service.moveEntries({
+      sourceCategoryId: 'work',
+      targetCategoryId: 'life',
+      entryIds: ['one', 'two'],
+    })).toEqual({ movedCount: 2 })
+    expect(store.getEntry('one')).toMatchObject({ categoryId: 'life', updatedAt: '2026-08-18T10:00:00+08:00' })
+    expect(store.getEntry('two')).toMatchObject({ categoryId: 'life', updatedAt: '2026-08-18T10:00:00+08:00' })
+  })
+
+  it('遇到無效目的地、重複選取或非來源記事時不搬移任何記事', () => {
+    const store = new FakeJournalStore({
+      categories: [
+        category({ id: 'work' }),
+        category({ id: 'life', name: '生活' }),
+        category({ id: 'old', isActive: false }),
+      ],
+      entries: [
+        entry({ id: 'work-entry', categoryId: 'work' }),
+        entry({ id: 'life-entry', categoryId: 'life' }),
+      ],
+    })
+    const service = new JournalService(store, () => timestamp, () => 'unused')
+
+    expect(() => service.moveEntries({
+      sourceCategoryId: 'work', targetCategoryId: 'old', entryIds: ['work-entry'],
+    })).toThrow('搬移目的地必須是啟用中的類別。')
+    expect(() => service.moveEntries({
+      sourceCategoryId: 'work', targetCategoryId: 'life', entryIds: ['work-entry', 'life-entry'],
+    })).toThrow('其中一則記事已不屬於來源類別，請重新整理後再試。')
+    expect(() => service.moveEntries({
+      sourceCategoryId: 'work', targetCategoryId: 'life', entryIds: ['work-entry', 'work-entry'],
+    })).toThrow('請選擇至少一則不重複的記事進行搬移。')
+    expect(store.getEntry('work-entry')?.categoryId).toBe('work')
   })
 
   it('新增與更新記事時會正規化內容、保留建立時間', () => {

@@ -5,6 +5,7 @@ import {
   parseEntryFilter,
   parseEntryFilterCriteria,
   parseEntryInput,
+  parseMoveEntriesInput,
 } from '../domain/validation'
 import { createJournalService } from '../setup'
 import type { JournalService } from '../services/journal-service'
@@ -82,6 +83,15 @@ export function executeAppRequest(
         const id = readString(request, 'id')
         return { ok: true, data: getService().activateCategory(id) }
       }
+      case 'moveEntries': {
+        const input = parseMoveEntriesInput(request)
+        return { ok: true, data: getService().moveEntries(input) }
+      }
+      case 'deleteCategory': {
+        const id = readString(request, 'id')
+        getService().deleteCategory(id)
+        return { ok: true, data: null }
+      }
       case 'exportEntries': {
         const filter = parseEntryFilterCriteria(request.filter)
         return { ok: true, data: getService().exportEntries(filter) }
@@ -126,6 +136,8 @@ function isSupportedAction(action: string): action is ApiRequest['action'] {
     || action === 'saveCategory'
     || action === 'deactivateCategory'
     || action === 'activateCategory'
+    || action === 'moveEntries'
+    || action === 'deleteCategory'
     || action === 'exportEntries'
 }
 

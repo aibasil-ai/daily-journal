@@ -10,11 +10,22 @@ const bootstrap = {
   tagSuggestions: [],
 }
 
+const categoryManagement = {
+  categories: [{
+    id: 'work',
+    name: '工作',
+    isActive: true,
+    createdAt: '2026-08-04T00:00:00+08:00',
+    updatedAt: '2026-08-04T00:00:00+08:00',
+  }],
+  entryCounts: { work: 2 },
+}
+
 describe('useJournal', () => {
   test('有效 session 會自動 bootstrap 並載入首頁記事', async () => {
     const run = vi.fn(async (request: ApiRequest) => {
       if (request.action === 'bootstrap') return bootstrap
-      if (request.action === 'listCategories') return []
+      if (request.action === 'listCategories') return categoryManagement
       if (request.action === 'listEntries') return { items: [], nextCursor: null }
       throw new Error(`未預期的請求：${request.action}`)
     })
@@ -24,6 +35,53 @@ describe('useJournal', () => {
     await waitFor(() => expect(result.current.status).toBe('ready'))
     await waitFor(() => expect(run).toHaveBeenCalledWith(expect.objectContaining({ action: 'listEntries' })))
     expect(run).toHaveBeenCalledWith({ action: 'bootstrap' })
+    expect(result.current.categoryEntryCounts).toEqual({ work: 2 })
+  })
+
+  test('搬移成功後刷新類別摘要與目前主記事清單', async () => {
+    const run = vi.fn(async (request: ApiRequest) => {
+      if (request.action === 'bootstrap') return bootstrap
+      if (request.action === 'listCategories') return categoryManagement
+      if (request.action === 'listEntries') return { items: [], nextCursor: null }
+      if (request.action === 'moveEntries') return { movedCount: 2 }
+      throw new Error(`未預期的請求：${request.action}`)
+    })
+    const client = createClient({ run: run as JournalClient['run'] })
+    const { result } = renderHook(() => useJournal(client))
+
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    run.mockClear()
+    await act(async () => {
+      await result.current.moveEntries('work', 'life', ['one', 'two'])
+    })
+
+    expect(run).toHaveBeenCalledWith({
+      action: 'moveEntries',
+      sourceCategoryId: 'work',
+      targetCategoryId: 'life',
+      entryIds: ['one', 'two'],
+    })
+    expect(run).toHaveBeenCalledWith({ action: 'listCategories' })
+    expect(run).toHaveBeenCalledWith(expect.objectContaining({ action: 'listEntries' }))
+  })
+
+  test('搬移失敗時會將錯誤拋回呼叫端，並保留已知摘要', async () => {
+    const run = vi.fn(async (request: ApiRequest) => {
+      if (request.action === 'bootstrap') return bootstrap
+      if (request.action === 'listCategories') return categoryManagement
+      if (request.action === 'listEntries') return { items: [], nextCursor: null }
+      if (request.action === 'moveEntries') throw new Error('搬移失敗')
+      throw new Error(`未預期的請求：${request.action}`)
+    })
+    const client = createClient({ run: run as JournalClient['run'] })
+    const { result } = renderHook(() => useJournal(client))
+
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    await act(async () => {
+      await expect(result.current.moveEntries('work', 'life', ['one'])).rejects.toThrow('搬移失敗')
+    })
+
+    expect(result.current.categoryEntryCounts).toEqual({ work: 2 })
   })
 
   test('未登入時不會 bootstrap', async () => {

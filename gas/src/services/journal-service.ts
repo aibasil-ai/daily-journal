@@ -2,6 +2,7 @@ import { JournalError } from '../domain/errors'
 import type {
   BootstrapData,
   Category,
+  CategoryManagementData,
   CategoryInput,
   CsvExportData,
   DailyEntries,
@@ -11,6 +12,8 @@ import type {
   EntryFilterCriteria,
   EntryInput,
   EntryListData,
+  MoveEntriesInput,
+  MoveEntriesResult,
 } from '../domain/journal'
 import {
   assertEntryFilter,
@@ -50,11 +53,16 @@ export class JournalService {
   }
 
   /** 類別管理需同時顯示啟用與停用分類；新增記事仍只使用 bootstrap 的啟用分類。 */
-  listCategories(): Category[] {
-    return [...this.store.listCategories()].sort((left, right) => {
+  listCategories(): CategoryManagementData {
+    const categories = [...this.store.listCategories()].sort((left, right) => {
       if (left.isActive !== right.isActive) return left.isActive ? -1 : 1
       return left.name.localeCompare(right.name)
     })
+    const entryCounts = Object.fromEntries(categories.map((category) => [category.id, 0])) as Record<string, number>
+    for (const entry of this.store.listEntries()) {
+      if (entryCounts[entry.categoryId] !== undefined) entryCounts[entry.categoryId] += 1
+    }
+    return { categories, entryCounts }
   }
 
   saveCategory(input: CategoryInput): Category {
@@ -163,6 +171,67 @@ export class JournalService {
         throw new JournalError('NOT_FOUND', '找不到要刪除的記事。')
       }
       this.store.deleteEntry(id)
+    })
+  }
+
+  moveEntries(input: MoveEntriesInput): MoveEntriesResult {
+    return this.store.withWriteLock(() => {
+      const sourceCategoryId = input.sourceCategoryId.trim()
+      const targetCategoryId = input.targetCategoryId.trim()
+      const entryIds = input.entryIds.map((id) => id.trim())
+      if (!entryIds.length || entryIds.some((id) => !id) || new Set(entryIds).size !== entryIds.length) {
+        throw new JournalError('VALIDATION_ERROR', '請選擇至少一則不重複的記事進行搬移。')
+      }
+      if (!sourceCategoryId || !targetCategoryId) {
+        throw new JournalError('VALIDATION_ERROR', '請提供來源與目的地分類。')
+      }
+      if (sourceCategoryId === targetCategoryId) {
+        throw new JournalError('VALIDATION_ERROR', '不能將記事移至原本的類別。')
+      }
+
+      const categories = this.store.listCategories()
+      const source = categories.find((category) => category.id === sourceCategoryId)
+      const target = categories.find((category) => category.id === targetCategoryId)
+      if (!source) {
+        throw new JournalError('NOT_FOUND', '找不到要搬移的來源分類。')
+      }
+      if (!target) {
+        throw new JournalError('NOT_FOUND', '找不到搬移目的地分類。')
+      }
+      if (!target.isActive) {
+        throw new JournalError('VALIDATION_ERROR', '搬移目的地必須是啟用中的類別。')
+      }
+
+      const entriesById = new Map(this.store.listEntries().map((entry) => [entry.id, entry]))
+      const selectedEntries = entryIds.map((id) => {
+        const entry = entriesById.get(id)
+        if (!entry || entry.categoryId !== source.id) {
+          throw new JournalError('CONFLICT', '其中一則記事已不屬於來源類別，請重新整理後再試。')
+        }
+        return entry
+      })
+      const movedAt = this.now()
+      const movedEntries = selectedEntries.map((entry) => ({
+        ...entry,
+        categoryId: target.id,
+        updatedAt: movedAt,
+      }))
+      this.store.saveEntries(movedEntries)
+      return { movedCount: movedEntries.length }
+    })
+  }
+
+  deleteCategory(id: string): void {
+    this.store.withWriteLock(() => {
+      const categoryId = id.trim()
+      const category = this.store.listCategories().find((item) => item.id === categoryId)
+      if (!category) {
+        throw new JournalError('NOT_FOUND', '找不到要刪除的分類。')
+      }
+      if (this.store.listEntries().some((entry) => entry.categoryId === categoryId)) {
+        throw new JournalError('CONFLICT', '類別仍有記事，請先搬移所有記事後再刪除。')
+      }
+      this.store.deleteCategory(categoryId)
     })
   }
 
