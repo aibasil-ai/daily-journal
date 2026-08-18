@@ -14,25 +14,63 @@ export function ConnectionScreen({ status, error, onSignIn, onRetry }: Connectio
 
   return (
     <main className="connection-screen">
-      <section className="connection-card">
-        <span className="connection-card__mark"><Icon filled>edit_note</Icon></span>
-        <p className="connection-card__eyebrow">{zhTW.app.tagline}</p>
-        <h1>{zhTW.app.name}</h1>
-        <h2>{zhTW.connection.title}</h2>
-        <p>{error ?? zhTW.connection.description}</p>
+      <div className="connection-screen__orbits" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
+
+      <header className="connection-brand" aria-label={zhTW.accessibility.connectionBrand}>
+        <JournalMark variant="brand" />
+        <span className="connection-brand__text">
+          <span>{zhTW.app.tagline}</span>
+          <strong>{zhTW.app.name}</strong>
+        </span>
+      </header>
+
+      <section className="connection-card" aria-labelledby="connection-title">
+        <JournalMark variant="card" />
+        <p className="connection-card__identity">
+          <span>{zhTW.app.tagline}</span>
+          <strong>{zhTW.app.name}</strong>
+        </p>
+        <h1 id="connection-title">{zhTW.connection.title}</h1>
+        <p className={`connection-card__description${error ? ' connection-card__description--error' : ''}`} role={error ? 'alert' : undefined}>
+          {error ?? zhTW.connection.description}
+        </p>
         <div className="connection-card__actions">
           {status === 'error' && (
-            <button className="button button--secondary" type="button" onClick={onRetry} disabled={isLoading}>
+            <button className="button connection-card__retry" type="button" onClick={onRetry} disabled={isLoading}>
               <Icon>refresh</Icon>
               {zhTW.connection.retry}
             </button>
           )}
-          <button className="button button--primary" type="button" onClick={onSignIn} disabled={isLoading}>
-            <Icon filled>login</Icon>
+          <button className="button connection-card__google-button" type="button" onClick={onSignIn} disabled={isLoading}>
+            <GoogleMark />
             {isLoading ? zhTW.connection.connecting : status === 'error' ? zhTW.connection.reconnect : zhTW.connection.signIn}
           </button>
         </div>
       </section>
     </main>
+  )
+}
+
+function JournalMark({ variant }: { variant: 'brand' | 'card' }) {
+  return (
+    <span className={`journal-mark journal-mark--${variant}`} aria-hidden="true">
+      <Icon>description</Icon>
+      <Icon filled className="journal-mark__sparkle">auto_awesome</Icon>
+    </span>
+  )
+}
+
+function GoogleMark() {
+  return (
+    <svg className="google-mark" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#FFC107" d="M43.6 20H24v8h11.3c-1.7 4.8-6.2 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34.6 6.2 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-4Z" />
+      <path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34.6 6.2 29.6 4 24 4c-7.7 0-14.3 4.3-17.7 10.7Z" />
+      <path fill="#4CAF50" d="M24 44c5.4 0 10.2-2 13.8-5.3l-6.1-5.2C29.7 35.1 27 36 24 36c-5.1 0-9.4-3.2-11.1-7.7l-6.5 5C9.8 39.6 16.3 44 24 44Z" />
+      <path fill="#1976D2" d="M43.6 20H24v8h11.3c-.8 2.3-2.3 4.1-4.3 5.5l6.1 5.2C40.7 35.3 44 30.3 44 24c0-1.3-.1-2.7-.4-4Z" />
+    </svg>
   )
 }

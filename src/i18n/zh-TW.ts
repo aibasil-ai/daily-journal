@@ -10,6 +10,7 @@ export const zhTW = {
     primaryNavigation: '主要導覽',
     viewToggle: '檢視切換',
     sheetStorageNotice: '資料僅儲存於您的 Google Sheets',
+    connectionBrand: '每日記事品牌',
   },
   navigation: {
     timeline: '時間軸',
