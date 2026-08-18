@@ -1,12 +1,12 @@
-import { clearSessionCookie, readCookie, SESSION_COOKIE_NAME } from './_lib/cookies'
-import { jsonResponse, methodNotAllowed } from './_lib/function-response'
+import { clearSessionCookie, readCookie, SESSION_COOKIE_NAME } from './_lib/cookies.js'
+import { jsonResponse, methodNotAllowed } from './_lib/function-response.js'
 import {
   GoogleOAuthUpstreamError,
   InvalidRefreshTokenError,
   refreshAccessToken,
-} from './_lib/google-oauth'
-import { getServerConfig } from './_lib/server-config'
-import { decryptSession } from './_lib/session-crypto'
+} from './_lib/google-oauth.js'
+import { getServerConfig } from './_lib/server-config.js'
+import { decryptSession } from './_lib/session-crypto.js'
 
 const GAS_EXECUTION_API_URL = 'https://script.googleapis.com/v1/scripts/'
 

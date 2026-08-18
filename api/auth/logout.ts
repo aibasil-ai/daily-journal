@@ -1,5 +1,5 @@
-import { clearSessionCookie } from '../_lib/cookies'
-import { emptyResponse, methodNotAllowed } from '../_lib/function-response'
+import { clearSessionCookie } from '../_lib/cookies.js'
+import { emptyResponse, methodNotAllowed } from '../_lib/function-response.js'
 
 export function GET(): Response {
   return methodNotAllowed('POST')

@@ -1,4 +1,4 @@
-import type { ServerConfig } from './server-config'
+import type { ServerConfig } from './server-config.js'
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const GOOGLE_AUTHORIZATION_URL = 'https://accounts.google.com/o/oauth2/v2/auth'

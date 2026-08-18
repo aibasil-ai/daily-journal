@@ -1,9 +1,9 @@
 import { timingSafeEqual } from 'node:crypto'
-import { clearOAuthStateCookie, createSessionCookie, OAUTH_STATE_COOKIE_NAME, readCookie } from '../_lib/cookies'
-import { jsonResponse, redirectResponse } from '../_lib/function-response'
-import { exchangeAuthorizationCode } from '../_lib/google-oauth'
-import { getServerConfig } from '../_lib/server-config'
-import { encryptSession } from '../_lib/session-crypto'
+import { clearOAuthStateCookie, createSessionCookie, OAUTH_STATE_COOKIE_NAME, readCookie } from '../_lib/cookies.js'
+import { jsonResponse, redirectResponse } from '../_lib/function-response.js'
+import { exchangeAuthorizationCode } from '../_lib/google-oauth.js'
+import { getServerConfig } from '../_lib/server-config.js'
+import { encryptSession } from '../_lib/session-crypto.js'
 
 const SESSION_MAX_AGE_MILLISECONDS = 1000 * 60 * 60 * 24 * 30
 
