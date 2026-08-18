@@ -28,29 +28,35 @@ export function ConnectionScreen({ status, error, onSignIn, onRetry }: Connectio
         </span>
       </header>
 
-      <section className="connection-card" aria-labelledby="connection-title">
-        <JournalMark variant="card" />
-        <p className="connection-card__identity">
-          <span>{zhTW.app.tagline}</span>
-          <strong>{zhTW.app.name}</strong>
-        </p>
-        <h1 id="connection-title">{zhTW.connection.title}</h1>
-        <p className={`connection-card__description${error ? ' connection-card__description--error' : ''}`} role={error ? 'alert' : undefined}>
-          {error ?? zhTW.connection.description}
-        </p>
-        <div className="connection-card__actions">
-          {status === 'error' && (
-            <button className="button connection-card__retry" type="button" onClick={onRetry} disabled={isLoading}>
-              <Icon>refresh</Icon>
-              {zhTW.connection.retry}
+      <div className="connection-card-shell">
+        <span className="connection-card-shell__flare" aria-hidden="true" />
+        <section className="connection-card" aria-labelledby="connection-title">
+          <JournalMark variant="card" />
+          <p className="connection-card__identity">
+            <span>{zhTW.app.tagline}</span>
+            <strong>{zhTW.app.name}</strong>
+          </p>
+          <h1 id="connection-title">
+            <span>{zhTW.connection.title}</span>
+            <span className="connection-title-flare" aria-hidden="true" />
+          </h1>
+          <p className={`connection-card__description${error ? ' connection-card__description--error' : ''}`} role={error ? 'alert' : undefined}>
+            {error ?? zhTW.connection.description}
+          </p>
+          <div className="connection-card__actions">
+            {status === 'error' && (
+              <button className="button connection-card__retry" type="button" onClick={onRetry} disabled={isLoading}>
+                <Icon>refresh</Icon>
+                {zhTW.connection.retry}
+              </button>
+            )}
+            <button className="button connection-card__google-button" type="button" onClick={onSignIn} disabled={isLoading}>
+              <GoogleMark />
+              {isLoading ? zhTW.connection.connecting : status === 'error' ? zhTW.connection.reconnect : zhTW.connection.signIn}
             </button>
-          )}
-          <button className="button connection-card__google-button" type="button" onClick={onSignIn} disabled={isLoading}>
-            <GoogleMark />
-            {isLoading ? zhTW.connection.connecting : status === 'error' ? zhTW.connection.reconnect : zhTW.connection.signIn}
-          </button>
-        </div>
-      </section>
+          </div>
+        </section>
+      </div>
     </main>
   )
 }
