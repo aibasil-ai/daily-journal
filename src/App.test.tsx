@@ -20,7 +20,7 @@ test('登入後載入啟用分類並進入首頁', async () => {
       }
       if (request.action === 'listEntries') return { items: [], nextCursor: null }
       if (request.action === 'listCategories') return []
-      if (request.action === 'getMonthlyEntryCounts') return []
+      if (request.action === 'getMonthlyEntries') return []
       throw new Error(`未預期的請求：${request.action}`)
     })
   const client: JournalClient = {
@@ -49,6 +49,7 @@ test('GAS 省略空白分頁游標時仍可儲存記事', async () => {
     }
     if (request.action === 'listCategories') return [category]
     if (request.action === 'listEntries') return { items: [savedEntry] }
+    if (request.action === 'getMonthlyEntries') return []
     if (request.action === 'saveEntry') return savedEntry
     throw new Error(`未預期的請求：${request.action}`)
   })

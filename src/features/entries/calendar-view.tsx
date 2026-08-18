@@ -1,19 +1,25 @@
-import type { DailyEntryCount } from '../../domain/journal'
+import { useState } from 'react'
+import type { DailyEntries, Entry } from '../../domain/journal'
+import { ConfirmDialog } from '../../components/confirm-dialog'
 import { zhTW } from '../../i18n/zh-TW'
 import { getJournalMonth, monthParts } from '../../utils/date'
 import { Icon } from '../../components/icon'
 
+const VISIBLE_ENTRIES_PER_DAY = 2
+
 type CalendarViewProps = {
   month: string
-  counts: DailyEntryCount[]
+  days: DailyEntries[]
   timezone: string
   onMonthChange: (month: string) => void
   onSelectDate: (date: string) => void
+  onOpenEntry: (entry: Entry) => void
 }
 
-export function CalendarView({ month, counts, timezone, onMonthChange, onSelectDate }: CalendarViewProps) {
+export function CalendarView({ month, days, timezone, onMonthChange, onSelectDate, onOpenEntry }: CalendarViewProps) {
+  const [overflowDay, setOverflowDay] = useState<DailyEntries>()
   const { year, month: monthNumber } = monthParts(month)
-  const countByDate = new Map(counts.map((item) => [item.date, item.count]))
+  const entriesByDate = new Map(days.map((day) => [day.date, day.entries]))
   const gridCells = createMonthCells(year, monthNumber)
 
   return (
@@ -21,7 +27,7 @@ export function CalendarView({ month, counts, timezone, onMonthChange, onSelectD
       <header className="calendar-view__header">
         <div>
           <h2>{zhTW.calendar.monthTitle(year, monthNumber)}</h2>
-          <p>{zhTW.app.calendarDescription(counts.reduce((total, item) => total + item.count, 0))}</p>
+          <p>{zhTW.app.calendarDescription(days.reduce((total, day) => total + day.entries.length, 0))}</p>
         </div>
         <div className="calendar-view__controls">
           <button className="icon-button" type="button" aria-label={zhTW.actions.previousMonth} onClick={() => onMonthChange(previousMonth(month))}>
@@ -40,25 +46,108 @@ export function CalendarView({ month, counts, timezone, onMonthChange, onSelectD
         {gridCells.map((cell, index) => {
           if (!cell) return <div className="calendar-grid__cell calendar-grid__cell--empty" role="gridcell" key={`empty-${index}`} />
 
-          const count = countByDate.get(cell) ?? 0
+          const entries = entriesByDate.get(cell) ?? []
+          const count = entries.length
+          const visibleEntries = entries.slice(0, VISIBLE_ENTRIES_PER_DAY)
+          const hiddenEntryCount = entries.length - visibleEntries.length
           return (
-            <div className="calendar-grid__cell" role="gridcell" key={cell}>
+            <div
+              className={`calendar-grid__cell${count ? ' calendar-grid__cell--has-entries' : ''}`}
+              role="gridcell"
+              key={cell}
+              onClick={() => {
+                if (count) onSelectDate(cell)
+              }}
+            >
               <button
                 type="button"
                 className={`calendar-day${count ? ' calendar-day--has-entries' : ''}`}
                 aria-label={zhTW.calendar.selectDate(cell, count)}
                 disabled={count === 0}
-                onClick={() => onSelectDate(cell)}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onSelectDate(cell)
+                }}
               >
                 <span>{Number(cell.slice(-2))}</span>
-                {count > 0 && <small>{zhTW.calendar.entryCount(count)}</small>}
               </button>
+              {count > 0 && (
+                <div className="calendar-day__entries">
+                  {visibleEntries.map((entry) => {
+                    const title = entryTitle(entry)
+                    return (
+                      <button
+                        className="calendar-entry"
+                        type="button"
+                        key={entry.id}
+                        title={title}
+                        aria-label={`${zhTW.timeline.readEntry}：${title}`}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          onOpenEntry(entry)
+                        }}
+                      >
+                        {title}
+                      </button>
+                    )
+                  })}
+                  {hiddenEntryCount > 0 && (
+                    <button
+                      className="calendar-entry calendar-entry--more"
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        setOverflowDay({ date: cell, entries })
+                      }}
+                    >
+                      {zhTW.calendar.moreEntries(hiddenEntryCount)}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )
         })}
       </div>
+      {overflowDay && (
+        <ConfirmDialog labelledBy={`calendar-overflow-${overflowDay.date}`} onCancel={() => setOverflowDay(undefined)}>
+          <div className="calendar-entry-picker">
+            <span className="confirm-dialog__icon"><Icon>format_list_bulleted</Icon></span>
+            <h2 id={`calendar-overflow-${overflowDay.date}`}>{zhTW.calendar.chooseEntryTitle(overflowDay.date)}</h2>
+            <p>{zhTW.calendar.chooseEntryDescription}</p>
+            <div className="calendar-entry-picker__list">
+              {overflowDay.entries.map((entry) => {
+                const title = entryTitle(entry)
+                return (
+                  <button
+                    className="calendar-entry-picker__item"
+                    type="button"
+                    key={entry.id}
+                    onClick={() => {
+                      setOverflowDay(undefined)
+                      onOpenEntry(entry)
+                    }}
+                  >
+                    <span>{title}</span>
+                    <Icon>chevron_right</Icon>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="confirm-dialog__actions">
+              <button className="button button--secondary" type="button" data-dialog-initial-focus onClick={() => setOverflowDay(undefined)}>
+                {zhTW.actions.cancel}
+              </button>
+            </div>
+          </div>
+        </ConfirmDialog>
+      )}
     </section>
   )
+}
+
+function entryTitle(entry: Entry): string {
+  return entry.title || entry.content.slice(0, 48) || zhTW.timeline.untitled
 }
 
 function createMonthCells(year: number, month: number): Array<string | null> {

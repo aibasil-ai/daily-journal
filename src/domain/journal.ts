@@ -60,6 +60,11 @@ export type DailyEntryCount = {
   count: number
 }
 
+export type DailyEntries = {
+  date: string
+  entries: Entry[]
+}
+
 export type CsvExportData = {
   headers: string[]
   rows: string[][]
@@ -71,6 +76,7 @@ export type ApiRequest =
   | { action: 'listEntries'; filter: EntryFilter }
   | { action: 'getEntriesForDate'; date: string; filter: EntryFilterCriteria }
   | { action: 'getMonthlyEntryCounts'; year: number; month: number; filter: EntryFilterCriteria }
+  | { action: 'getMonthlyEntries'; year: number; month: number; filter: EntryFilterCriteria }
   | { action: 'saveEntry'; entry: EntryInput }
   | { action: 'deleteEntry'; id: string }
   | { action: 'saveCategory'; category: CategoryInput }

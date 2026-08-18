@@ -38,6 +38,18 @@ describe('executeAppRequest', () => {
     })
   })
 
+  it('回傳月曆顯示所需的每日記事', () => {
+    expect(executeAppRequest({
+      action: 'getMonthlyEntries',
+      year: 2026,
+      month: 8,
+      filter: { query: '', from: null, to: null, categoryId: null, tag: null },
+    }, service())).toEqual({
+      ok: true,
+      data: [],
+    })
+  })
+
   it('將輸入驗證與領域錯誤轉為可操作的繁中訊息', () => {
     const invalidPayload = executeAppRequest({
       action: 'saveEntry',

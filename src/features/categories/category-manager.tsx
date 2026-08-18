@@ -13,15 +13,21 @@ type CategoryManagerProps = {
 
 export function CategoryManager({ categories, entryCounts, onSave, onDeactivate }: CategoryManagerProps) {
   const [name, setName] = useState('')
-  const [editing, setEditing] = useState<Category>()
+  const [editing, setEditing] = useState<Category | null>()
   const [pendingDeactivate, setPendingDeactivate] = useState<Category>()
   const [isSaving, setIsSaving] = useState(false)
   const [isDeactivating, setIsDeactivating] = useState(false)
   const [error, setError] = useState<string>()
 
-  const startEditing = (category?: Category) => {
+  const startEditing = (category: Category | null) => {
     setEditing(category)
     setName(category?.name ?? '')
+    setError(undefined)
+  }
+
+  const closeEditor = () => {
+    setEditing(undefined)
+    setName('')
     setError(undefined)
   }
 
@@ -31,8 +37,7 @@ export function CategoryManager({ categories, entryCounts, onSave, onDeactivate 
     setError(undefined)
     try {
       await onSave(name, editing?.id)
-      setName('')
-      setEditing(undefined)
+      closeEditor()
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : zhTW.errors.category)
     } finally {
@@ -61,18 +66,19 @@ export function CategoryManager({ categories, entryCounts, onSave, onDeactivate 
           <h2 id="category-manager-title">{zhTW.navigation.categories}</h2>
           <p>{zhTW.app.categoryDescription}</p>
         </div>
-        <button className="button button--primary" type="button" onClick={() => startEditing()}>
+        <button className="button button--primary" type="button" onClick={() => startEditing(null)}>
           <Icon filled>add</Icon>
           {zhTW.actions.addCategory}
         </button>
       </header>
 
-      {(editing || !categories.length) && (
+      {(editing !== undefined || !categories.length) && (
         <section className="category-editor" aria-label={editing ? zhTW.categories.editTitle : zhTW.categories.addTitle}>
           <label className="field-group" htmlFor="category-name">
             <span>{zhTW.categories.categoryName}</span>
             <input
               id="category-name"
+              aria-label={zhTW.categories.categoryName}
               value={name}
               placeholder={zhTW.categories.categoryNamePlaceholder}
               onChange={(event) => setName(event.target.value)}
@@ -83,7 +89,7 @@ export function CategoryManager({ categories, entryCounts, onSave, onDeactivate 
             />
           </label>
           <div className="category-editor__actions">
-            {editing && <button className="button button--secondary" type="button" disabled={isSaving} onClick={() => startEditing(undefined)}>{zhTW.actions.cancel}</button>}
+            {editing !== undefined && <button className="button button--secondary" type="button" disabled={isSaving} onClick={closeEditor}>{zhTW.actions.cancel}</button>}
             <button className="button button--primary" type="button" disabled={isSaving || !name.trim()} onClick={() => void handleSave()}>
               {isSaving ? zhTW.connection.connecting : zhTW.categories.save}
             </button>

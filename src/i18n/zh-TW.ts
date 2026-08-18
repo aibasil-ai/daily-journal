@@ -94,6 +94,9 @@ export const zhTW = {
     monthTitle: (year: number, month: number) => `${year}年 ${month}月`,
     monthLabel: (year: number, month: number) => `${year}年${month}月`,
     selectedDateTitle: (date: string) => `${date} 的記事`,
+    moreEntries: (count: number) => `還有 ${count} 則記事`,
+    chooseEntryTitle: (date: string) => `${date} 的記事`,
+    chooseEntryDescription: '請選擇要閱讀的記事。',
   },
   detail: {
     links: '參考連結',

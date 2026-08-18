@@ -203,6 +203,10 @@ describe('JournalService', () => {
       { date: '2026-08-04', count: 2 },
       { date: '2026-08-05', count: 1 },
     ])
+    expect(service.getMonthlyEntries(2026, 8, emptyCriteria)).toEqual([
+      { date: '2026-08-04', entries: [expect.objectContaining({ id: 'two' }), expect.objectContaining({ id: 'one' })] },
+      { date: '2026-08-05', entries: [expect.objectContaining({ id: 'three' })] },
+    ])
     expect(service.listTagSuggestions()).toEqual(['學習', '會議', '閱讀'])
 
     const csv = service.exportEntries(emptyCriteria)

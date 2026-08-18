@@ -52,6 +52,15 @@ export function executeAppRequest(
           data: getService().getMonthlyEntryCounts(year, month, filter),
         }
       }
+      case 'getMonthlyEntries': {
+        const year = readNumber(request, 'year')
+        const month = readNumber(request, 'month')
+        const filter = parseEntryFilterCriteria(request.filter)
+        return {
+          ok: true,
+          data: getService().getMonthlyEntries(year, month, filter),
+        }
+      }
       case 'saveEntry': {
         const entry = parseEntryInput(request.entry)
         return { ok: true, data: getService().saveEntry(entry) }
@@ -107,6 +116,7 @@ function isSupportedAction(action: string): action is ApiRequest['action'] {
     || action === 'listEntries'
     || action === 'getEntriesForDate'
     || action === 'getMonthlyEntryCounts'
+    || action === 'getMonthlyEntries'
     || action === 'saveEntry'
     || action === 'deleteEntry'
     || action === 'saveCategory'

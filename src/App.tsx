@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Category, DailyEntryCount, Entry, EntryInput } from './domain/journal'
+import type { Category, DailyEntries, Entry, EntryInput } from './domain/journal'
 import { toFilterCriteria } from './domain/journal'
 import { loadRuntimeConfig } from './config/runtime-config'
 import { Icon } from './components/icon'
@@ -39,7 +39,7 @@ export function App({ client }: AppProps) {
   const journal = useJournal(setup.connection ?? null)
   const [page, setPage] = useState<Page>(() => getInitialPage())
   const [calendarMonth, setCalendarMonth] = useState(() => getLocalDate().slice(0, 7))
-  const [calendarCounts, setCalendarCounts] = useState<DailyEntryCount[]>([])
+  const [calendarDays, setCalendarDays] = useState<DailyEntries[]>([])
   const [calendarError, setCalendarError] = useState<string>()
   const [isCalendarLoading, setIsCalendarLoading] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string>()
@@ -84,16 +84,16 @@ export function App({ client }: AppProps) {
     const { year, month } = monthParts(calendarMonth)
     setIsCalendarLoading(true)
     setCalendarError(undefined)
-    void setup.connection.client.run<DailyEntryCount[]>({
-      action: 'getMonthlyEntryCounts',
+    void setup.connection.client.run<DailyEntries[]>({
+      action: 'getMonthlyEntries',
       year,
       month,
       filter: toFilterCriteria(filter),
     }).then((counts) => {
-      if (!cancelled) setCalendarCounts(counts)
+      if (!cancelled) setCalendarDays(counts)
     }).catch((loadError: unknown) => {
       if (!cancelled) {
-        setCalendarCounts([])
+        setCalendarDays([])
         setCalendarError(toErrorMessage(loadError))
         handleRequestError(loadError)
       }
@@ -251,7 +251,14 @@ export function App({ client }: AppProps) {
             <>
               {calendarError && <p className="form-error" role="alert">{calendarError}</p>}
               {isCalendarLoading && <p className="loading-note" role="status">{zhTW.connection.connecting}</p>}
-              <CalendarView month={calendarMonth} counts={calendarCounts} timezone={journalTimezone} onMonthChange={setCalendarMonth} onSelectDate={handleSelectDate} />
+              <CalendarView
+                month={calendarMonth}
+                days={calendarDays}
+                timezone={journalTimezone}
+                onMonthChange={setCalendarMonth}
+                onSelectDate={handleSelectDate}
+                onOpenEntry={setSelectedEntry}
+              />
             </>
           )}
 

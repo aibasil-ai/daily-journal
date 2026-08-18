@@ -4,6 +4,7 @@ import type {
   Category,
   CategoryInput,
   CsvExportData,
+  DailyEntries,
   DailyEntryCount,
   Entry,
   EntryFilter,
@@ -177,6 +178,13 @@ export class JournalService {
   }
 
   getMonthlyEntryCounts(year: number, month: number, filter: EntryFilterCriteria): DailyEntryCount[] {
+    return this.getMonthlyEntries(year, month, filter).map(({ date, entries }) => ({
+      date,
+      count: entries.length,
+    }))
+  }
+
+  getMonthlyEntries(year: number, month: number, filter: EntryFilterCriteria): DailyEntries[] {
     assertEntryFilterCriteria(filter)
     if (!Number.isInteger(year) || year < 1 || year > 9999) {
       throw new JournalError('VALIDATION_ERROR', '年份必須是正整數。')
@@ -186,14 +194,16 @@ export class JournalService {
     }
 
     const prefix = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-`
-    const counts = new Map<string, number>()
+    const entriesByDate = new Map<string, Entry[]>()
     for (const entry of this.filteredEntries(filter)) {
       if (!entry.entryDate.startsWith(prefix)) continue
-      counts.set(entry.entryDate, (counts.get(entry.entryDate) ?? 0) + 1)
+      const entries = entriesByDate.get(entry.entryDate) ?? []
+      entries.push(entry)
+      entriesByDate.set(entry.entryDate, entries)
     }
 
-    return [...counts.entries()]
-      .map(([date, count]) => ({ date, count }))
+    return [...entriesByDate.entries()]
+      .map(([date, entries]) => ({ date, entries }))
       .sort((left, right) => left.date.localeCompare(right.date))
   }
 
