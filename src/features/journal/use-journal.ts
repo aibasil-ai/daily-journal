@@ -56,13 +56,11 @@ export function useJournal(connection: JournalConnection | null) {
     const requestId = ++listRequestId.current
     setIsLoadingEntries(true)
     try {
-      const result = await connection.client.run<EntryListData>({
+      const response = await connection.client.run<unknown>({
         action: 'listEntries',
         filter: requestedFilter,
       })
-      if (!Array.isArray(result.items) || (result.nextCursor !== null && typeof result.nextCursor !== 'string')) {
-        throw new Error(zhTW.errors.invalidServiceResponse)
-      }
+      const result = toEntryListData(response)
       if (requestId !== listRequestId.current) return
       setEntries((current) => append ? [...current, ...result.items] : result.items)
       setNextCursor(result.nextCursor)
@@ -236,4 +234,25 @@ export function useJournal(connection: JournalConnection | null) {
 
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : zhTW.errors.generic
+}
+
+function toEntryListData(value: unknown): EntryListData {
+  if (!isRecord(value) || !Array.isArray(value.items)) {
+    throw new Error(zhTW.errors.invalidServiceResponse)
+  }
+
+  const nextCursor = value.nextCursor
+  if (nextCursor !== undefined && nextCursor !== null && typeof nextCursor !== 'string') {
+    throw new Error(zhTW.errors.invalidServiceResponse)
+  }
+
+  // Apps Script API 可能省略值為 null 的物件欄位；缺少游標等同沒有下一頁。
+  return {
+    items: value.items as Entry[],
+    nextCursor: typeof nextCursor === 'string' ? nextCursor : null,
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
