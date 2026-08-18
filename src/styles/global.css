@@ -1177,10 +1177,41 @@ p {
   white-space: nowrap;
 }
 
-.category-card__delete-blocked {
-  margin-top: 0.5rem;
-  color: var(--error);
-  line-height: 1.45;
+.category-action-tooltip {
+  position: relative;
+  display: inline-flex;
+}
+
+.category-action-tooltip__content {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  right: calc(100% + 0.5rem);
+  width: max-content;
+  max-width: min(16rem, calc(100vw - 2rem));
+  padding: 0.5rem 0.625rem;
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 0.5rem;
+  background: var(--ink);
+  color: var(--on-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+  pointer-events: none;
+  text-align: left;
+  white-space: normal;
+  opacity: 0;
+  transform: translate(0.25rem, -50%);
+  visibility: hidden;
+  box-shadow: var(--shadow-raised);
+  transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease;
+}
+
+.category-action-tooltip:hover .category-action-tooltip__content,
+.category-action-tooltip:focus-within .category-action-tooltip__content {
+  opacity: 1;
+  transform: translate(0, -50%);
+  visibility: visible;
 }
 
 .category-move-overlay {

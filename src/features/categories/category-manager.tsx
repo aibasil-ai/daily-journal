@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import type { Category, EntryListData } from '../../domain/journal'
 import { Icon } from '../../components/icon'
 import { ConfirmDialog } from '../../components/confirm-dialog'
@@ -146,6 +147,9 @@ export function CategoryManager({
         <div className="category-grid">
           {categories.map((category) => {
             const entryCount = entryCounts[category.id] ?? 0
+            const editTooltipId = `category-tooltip-edit-${category.id}`
+            const statusTooltipId = `category-tooltip-status-${category.id}`
+            const deleteTooltipId = `category-tooltip-delete-${category.id}`
             return (
               <article className={`category-card${category.isActive ? '' : ' category-card--inactive'}`} key={category.id}>
                 <div className="category-card__icon"><Icon>{category.isActive ? 'folder' : 'inventory_2'}</Icon></div>
@@ -155,7 +159,6 @@ export function CategoryManager({
                     {!category.isActive && <span className="date-badge">{zhTW.categories.deactivated}</span>}
                   </div>
                   <p>{zhTW.categories.entryCount(entryCount)}</p>
-                  {entryCount > 0 && <p className="category-card__delete-blocked" id={`delete-blocked-${category.id}`}>{zhTW.categories.deleteBlocked}</p>}
                 </div>
                 <div className="category-card__actions">
                   {entryCount > 0 && (
@@ -164,34 +167,43 @@ export function CategoryManager({
                       {zhTW.categories.moveEntries}
                     </button>
                   )}
-                  <button className="icon-button" type="button" aria-label={zhTW.categories.editCategory(category.name)} onClick={() => startEditing(category)}>
-                    <Icon>edit</Icon>
-                  </button>
+                  <CategoryActionTooltip id={editTooltipId} content={zhTW.categories.editHint(category.name)}>
+                    <button className="icon-button" type="button" aria-label={zhTW.categories.editCategory(category.name)} aria-describedby={editTooltipId} onClick={() => startEditing(category)}>
+                      <Icon>edit</Icon>
+                    </button>
+                  </CategoryActionTooltip>
                   {category.isActive ? (
-                    <button className="icon-button icon-button--danger" type="button" aria-label={zhTW.categories.deactivate(category.name)} onClick={() => setPendingDeactivate(category)}>
-                      <Icon>block</Icon>
-                    </button>
+                    <CategoryActionTooltip id={statusTooltipId} content={zhTW.categories.deactivateHint(category.name)}>
+                      <button className="icon-button icon-button--danger" type="button" aria-label={zhTW.categories.deactivate(category.name)} aria-describedby={statusTooltipId} onClick={() => setPendingDeactivate(category)}>
+                        <Icon>block</Icon>
+                      </button>
+                    </CategoryActionTooltip>
                   ) : (
-                    <button
-                      className="icon-button"
-                      type="button"
-                      aria-label={zhTW.categories.activate(category.name)}
-                      disabled={activatingCategoryId === category.id}
-                      onClick={() => void handleActivate(category.id)}
-                    >
-                      <Icon>restart_alt</Icon>
-                    </button>
+                    <CategoryActionTooltip id={statusTooltipId} content={zhTW.categories.activateHint(category.name)}>
+                      <button
+                        className="icon-button"
+                        type="button"
+                        aria-label={zhTW.categories.activate(category.name)}
+                        aria-describedby={statusTooltipId}
+                        disabled={activatingCategoryId === category.id}
+                        onClick={() => void handleActivate(category.id)}
+                      >
+                        <Icon>restart_alt</Icon>
+                      </button>
+                    </CategoryActionTooltip>
                   )}
-                  <button
-                    className="icon-button icon-button--danger"
-                    type="button"
-                    aria-label={zhTW.categories.deleteCategory(category.name)}
-                    aria-describedby={entryCount > 0 ? `delete-blocked-${category.id}` : undefined}
-                    disabled={entryCount > 0}
-                    onClick={() => setPendingDelete(category)}
-                  >
-                    <Icon>delete</Icon>
-                  </button>
+                  <CategoryActionTooltip id={deleteTooltipId} content={entryCount > 0 ? zhTW.categories.deleteBlocked : zhTW.categories.deleteCategory(category.name)}>
+                    <button
+                      className="icon-button icon-button--danger"
+                      type="button"
+                      aria-label={zhTW.categories.deleteCategory(category.name)}
+                      aria-describedby={deleteTooltipId}
+                      disabled={entryCount > 0}
+                      onClick={() => setPendingDelete(category)}
+                    >
+                      <Icon>delete</Icon>
+                    </button>
+                  </CategoryActionTooltip>
                 </div>
               </article>
             )
@@ -250,5 +262,18 @@ export function CategoryManager({
         />
       )}
     </section>
+  )
+}
+
+function CategoryActionTooltip({ id, content, children }: {
+  id: string
+  content: string
+  children: ReactNode
+}) {
+  return (
+    <span className="category-action-tooltip">
+      {children}
+      <span className="category-action-tooltip__content" id={id} role="tooltip">{content}</span>
+    </span>
   )
 }
