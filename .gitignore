@@ -19,7 +19,6 @@ __pycache__/
 coverage/
 *.tsbuildinfo
 .eslintcache
-.worktrees/
 
 # Operating system and editor files
 .DS_Store
