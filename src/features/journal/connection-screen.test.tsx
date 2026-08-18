@@ -10,8 +10,9 @@ test('顯示品牌登入頁並啟動 Google 登入', async () => {
   render(<ConnectionScreen status="signed-out" onSignIn={onSignIn} onRetry={vi.fn()} />)
 
   expect(screen.getByLabelText('每日記事品牌')).toBeInTheDocument()
-  expect(screen.getByRole('heading', { name: '連線至您的每日記事' })).toBeInTheDocument()
-  expect(screen.getByText('使用 Google 帳號安全存取您的個人 Google Sheets 記事。')).toBeInTheDocument()
+  expect(screen.getAllByText('書寫此刻・珍藏日常')).toHaveLength(2)
+  expect(screen.getByRole('heading', { name: '把今天，寫進時光裡' })).toBeInTheDocument()
+  expect(screen.getByText('透過 Google 帳號安全登入，讓每段日常都收藏在您的個人 Google Sheets。')).toBeInTheDocument()
 
   await userEvent.click(screen.getByRole('button', { name: '使用 Google 帳號登入' }))
   expect(onSignIn).toHaveBeenCalledOnce()

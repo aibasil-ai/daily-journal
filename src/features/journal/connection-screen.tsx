@@ -23,7 +23,7 @@ export function ConnectionScreen({ status, error, onSignIn, onRetry }: Connectio
       <header className="connection-brand" aria-label={zhTW.accessibility.connectionBrand}>
         <JournalMark variant="brand" />
         <span className="connection-brand__text">
-          <span>{zhTW.app.tagline}</span>
+          <span>{zhTW.connection.eyebrow}</span>
           <strong>{zhTW.app.name}</strong>
         </span>
       </header>
@@ -33,7 +33,7 @@ export function ConnectionScreen({ status, error, onSignIn, onRetry }: Connectio
         <section className="connection-card" aria-labelledby="connection-title">
           <JournalMark variant="card" />
           <p className="connection-card__identity">
-            <span>{zhTW.app.tagline}</span>
+            <span>{zhTW.connection.eyebrow}</span>
             <strong>{zhTW.app.name}</strong>
           </p>
           <h1 id="connection-title">

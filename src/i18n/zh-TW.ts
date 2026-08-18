@@ -21,8 +21,9 @@ export const zhTW = {
     support: '支援',
   },
   connection: {
-    title: '連線至您的每日記事',
-    description: '使用 Google 帳號安全存取您的個人 Google Sheets 記事。',
+    eyebrow: '書寫此刻・珍藏日常',
+    title: '把今天，寫進時光裡',
+    description: '透過 Google 帳號安全登入，讓每段日常都收藏在您的個人 Google Sheets。',
     signIn: '使用 Google 帳號登入',
     reconnect: '重新登入',
     retry: '重新嘗試',
