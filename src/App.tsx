@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { Category, DailyEntries, Entry, EntryInput } from './domain/journal'
 import { toFilterCriteria } from './domain/journal'
-import { loadRuntimeConfig } from './config/runtime-config'
 import { Icon } from './components/icon'
 import { zhTW } from './i18n/zh-TW'
-import { GoogleOAuth } from './services/google-oauth'
-import { ExecutionClient } from './services/execution-client'
+import { JournalApiClient } from './services/journal-api-client'
 import { CategoryManager } from './features/categories/category-manager'
 import { CalendarView } from './features/entries/calendar-view'
 import { downloadCsv, createCsvBlob } from './features/entries/csv-download'
@@ -14,7 +12,7 @@ import { EntryForm } from './features/entries/entry-form'
 import { FilterBar } from './features/entries/filter-bar'
 import { Timeline } from './features/entries/timeline'
 import { ConnectionScreen } from './features/journal/connection-screen'
-import { useJournal, type JournalClient, type JournalConnection } from './features/journal/use-journal'
+import { useJournal, type JournalClient } from './features/journal/use-journal'
 import {
   getInitialView,
   readViewPreference,
@@ -30,13 +28,9 @@ type AppProps = {
 
 type Page = JournalView | 'categories' | 'export'
 
-type ConnectionSetup =
-  | { connection: JournalConnection; error?: never }
-  | { connection?: never; error: string }
-
 export function App({ client }: AppProps) {
-  const [setup] = useState<ConnectionSetup>(() => createConnection(client))
-  const journal = useJournal(setup.connection ?? null)
+  const [journalClient] = useState<JournalClient>(() => client ?? new JournalApiClient())
+  const journal = useJournal(journalClient)
   const [page, setPage] = useState<Page>(() => getInitialPage())
   const [calendarMonth, setCalendarMonth] = useState(() => getLocalDate().slice(0, 7))
   const [calendarDays, setCalendarDays] = useState<DailyEntries[]>([])
@@ -62,6 +56,7 @@ export function App({ client }: AppProps) {
     revision,
     signIn,
     retry,
+    signOut,
     updateFilter,
     loadMore,
     saveEntry,
@@ -79,13 +74,26 @@ export function App({ client }: AppProps) {
   }, [timezone])
 
   useEffect(() => {
-    if (status !== 'ready' || page !== 'calendar' || !setup.connection) return
+    if (status !== 'signed-out') return
+    setCalendarDays([])
+    setCalendarError(undefined)
+    setIsCalendarLoading(false)
+    setSelectedDate(undefined)
+    setSelectedDateEntries([])
+    setSelectedEntry(undefined)
+    setEditingEntry(undefined)
+    setIsExporting(undefined)
+    setExportError(undefined)
+  }, [status])
+
+  useEffect(() => {
+    if (status !== 'ready' || page !== 'calendar') return
 
     let cancelled = false
     const { year, month } = monthParts(calendarMonth)
     setIsCalendarLoading(true)
     setCalendarError(undefined)
-    void setup.connection.client.run<DailyEntries[]>({
+    void journalClient.run<DailyEntries[]>({
       action: 'getMonthlyEntries',
       year,
       month,
@@ -105,15 +113,15 @@ export function App({ client }: AppProps) {
     return () => {
       cancelled = true
     }
-  }, [calendarMonth, filter, handleRequestError, page, revision, setup.connection, status])
+  }, [calendarMonth, filter, handleRequestError, journalClient, page, revision, status])
 
   useEffect(() => {
-    if (status !== 'ready' || page !== 'calendar' || !selectedDate || !setup.connection) return
+    if (status !== 'ready' || page !== 'calendar' || !selectedDate) return
 
     let cancelled = false
     setIsCalendarLoading(true)
     setCalendarError(undefined)
-    void setup.connection.client.run<Entry[]>({
+    void journalClient.run<Entry[]>({
       action: 'getEntriesForDate',
       date: selectedDate,
       filter: toFilterCriteria(filter),
@@ -132,18 +140,14 @@ export function App({ client }: AppProps) {
     return () => {
       cancelled = true
     }
-  }, [filter, handleRequestError, page, revision, selectedDate, setup.connection, status])
-
-  if (setup.error) {
-    return <ConnectionScreen status="configuration-error" error={setup.error} onSignIn={() => undefined} onRetry={() => undefined} />
-  }
+  }, [filter, handleRequestError, journalClient, page, revision, selectedDate, status])
 
   if (status !== 'ready') {
     return (
       <ConnectionScreen
         status={status}
         error={error}
-        onSignIn={() => void signIn()}
+        onSignIn={signIn}
         onRetry={() => void retry()}
       />
     )
@@ -187,6 +191,11 @@ export function App({ client }: AppProps) {
     }
   }
 
+  const handleSignOut = () => {
+    signOut()
+    setPage(getInitialPage())
+  }
+
   const entryCounts = new Map<string, number>()
   for (const entry of entries) {
     entryCounts.set(entry.categoryId, (entryCounts.get(entry.categoryId) ?? 0) + 1)
@@ -210,9 +219,9 @@ export function App({ client }: AppProps) {
 
   return (
     <div className="app-shell">
-      <DesktopNavigation page={page} onNavigate={navigate} onCreate={() => setEditingEntry(null)} />
+      <DesktopNavigation page={page} onNavigate={navigate} onCreate={() => setEditingEntry(null)} onSignOut={handleSignOut} />
       <div className="app-shell__workspace">
-        <MobileHeader onCreate={() => setEditingEntry(null)} />
+        <MobileHeader onCreate={() => setEditingEntry(null)} onSignOut={handleSignOut} />
         <main className="app-main">
           {(page === 'timeline' || page === 'calendar') && (
             <>
@@ -351,7 +360,12 @@ function renderEditor(
   )
 }
 
-function DesktopNavigation({ page, onNavigate, onCreate }: { page: Page; onNavigate: (page: Page) => void; onCreate: () => void }) {
+function DesktopNavigation({ page, onNavigate, onCreate, onSignOut }: {
+  page: Page
+  onNavigate: (page: Page) => void
+  onCreate: () => void
+  onSignOut: () => void
+}) {
   const items: Array<{ page: Page; label: string; icon: string }> = [
     { page: 'timeline', label: zhTW.navigation.timeline, icon: 'timeline' },
     { page: 'calendar', label: zhTW.navigation.calendar, icon: 'calendar_month' },
@@ -375,16 +389,22 @@ function DesktopNavigation({ page, onNavigate, onCreate }: { page: Page; onNavig
       </nav>
       <div className="desktop-nav__footer">
         <span><Icon>lock</Icon>{zhTW.accessibility.sheetStorageNotice}</span>
+        <button className="button button--text desktop-nav__sign-out" type="button" onClick={onSignOut}>
+          <Icon>logout</Icon>{zhTW.actions.signOut}
+        </button>
       </div>
     </aside>
   )
 }
 
-function MobileHeader({ onCreate }: { onCreate: () => void }) {
+function MobileHeader({ onCreate, onSignOut }: { onCreate: () => void; onSignOut: () => void }) {
   return (
     <header className="mobile-header">
       <div><strong>{zhTW.app.name}</strong><small>{zhTW.app.tagline}</small></div>
-      <button className="icon-button" type="button" aria-label={zhTW.actions.addEntry} onClick={onCreate}><Icon filled>add</Icon></button>
+      <div className="mobile-header__actions">
+        <button className="icon-button" type="button" aria-label={zhTW.actions.signOut} onClick={onSignOut}><Icon>logout</Icon></button>
+        <button className="icon-button" type="button" aria-label={zhTW.actions.addEntry} onClick={onCreate}><Icon filled>add</Icon></button>
+      </div>
     </header>
   )
 }
@@ -415,27 +435,6 @@ function ViewToggle({ page, onNavigate }: { page: Page; onNavigate: (page: Page)
       <button type="button" aria-pressed={page === 'calendar'} onClick={() => onNavigate('calendar')}><Icon filled={page === 'calendar'}>calendar_month</Icon><span>{zhTW.navigation.calendar}</span></button>
     </div>
   )
-}
-
-function createConnection(client?: JournalClient): ConnectionSetup {
-  if (client) {
-    return { connection: { client, authorize: async () => undefined } }
-  }
-
-  try {
-    const config = loadRuntimeConfig()
-    const oauth = new GoogleOAuth(config)
-    return {
-      connection: {
-        client: new ExecutionClient(config, oauth),
-        authorize: async (prompt) => {
-          await oauth.getAccessToken(prompt)
-        },
-      },
-    }
-  } catch (configurationError) {
-    return { error: toErrorMessage(configurationError) }
-  }
 }
 
 function getInitialPage(): JournalView {

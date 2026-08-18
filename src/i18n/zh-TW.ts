@@ -26,7 +26,6 @@ export const zhTW = {
     reconnect: '重新登入',
     retry: '重新嘗試',
     connecting: '連線中...',
-    configurationTitle: '部署設定有誤',
   },
   actions: {
     addEntry: '新增記事',
@@ -45,6 +44,7 @@ export const zhTW = {
     nextMonth: '下一個月',
     today: '今天',
     close: '關閉',
+    signOut: '登出',
   },
   filters: {
     title: '篩選記事',
@@ -137,13 +137,11 @@ export const zhTW = {
     delete: '無法刪除記事，請稍後再試。',
     category: '無法更新類別，請稍後再試。',
     export: '無法匯出資料，請稍後再試。',
-    configuration: '找不到部署設定。請設定 APP_GOOGLE_CLIENT_ID 與 APP_GAS_DEPLOYMENT_ID，或建立 public/app-config.js。',
     invalidServiceResponse: '記事服務回傳的資料格式無效，請稍後再試。',
     network: '無法連線至記事服務，請確認網路後再試。',
     service: '記事服務發生錯誤，請稍後再試。',
     authentication: '登入已過期或沒有 GAS 使用權限，請重新登入。',
     googleAuthorization: 'Google 登入或授權未完成。',
-    googleNotLoaded: 'Google 登入服務尚未載入，請稍後重新嘗試。',
   },
   validation: {
     entryDate: '請選擇記錄日期。',

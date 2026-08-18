@@ -11,10 +11,12 @@
 
 ## 登入與初始化
 
-- [ ] 未設定部署變數時顯示明確設定錯誤。
-- [ ] 首次登入可完成 Google OAuth 並載入啟用中的分類。
-- [ ] 取消登入後顯示可重試訊息。
-- [ ] 權杖過期或 GAS 權限不足時可重新登入。
+- [ ] Vercel Production 已設定 `GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`、`SESSION_ENCRYPTION_KEY`、`GAS_DEPLOYMENT_ID`，且沒有 `APP_GOOGLE_CLIENT_ID` 或 `APP_GAS_DEPLOYMENT_ID`。
+- [ ] OAuth Web Client 的授權重新導向 URI 包含正式網址 `/api/auth/callback`。
+- [ ] 清除網站 Cookie 後首次登入可完成 Google 授權並回到首頁。
+- [ ] 刷新 Production 網站後可直接載入記事，沒有 Google 帳號選擇或同意畫面。
+- [ ] 點選登出後刷新網站仍顯示登入畫面，且 Google Sheets 資料未被刪除。
+- [ ] 撤銷 Google 授權後刷新網站顯示登入畫面；重新授權後 CRUD 與 CSV 匯出正常。
 - [ ] 空白 Sheet 執行 `initializeJournal()` 後建立三張工作表及正確欄位。
 
 ## 記事與分類
@@ -36,6 +38,5 @@
 
 ## 正式部署
 
-- [ ] Vercel 正式網域已加入 OAuth 授權 JavaScript 來源，正式登入與 CRUD 可用。
-- [ ] Cloudflare Pages、Netlify、GitHub Pages 或一般靜態主機至少擇一完成相同驗證。
+- [ ] Vercel 正式網域以 HTTPS 提供網站、`/api/session` 與 `/api/journal`。
 - [ ] 未將 Sheet ID、GAS Script ID、OAuth Client ID、帳號資料或存取權杖提交至 Git。

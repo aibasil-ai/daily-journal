@@ -7,7 +7,7 @@ import type { JournalClient } from './features/journal/use-journal'
 
 afterEach(cleanup)
 
-test('登入後載入啟用分類並進入首頁', async () => {
+test('恢復有效 session 後載入啟用分類並進入首頁', async () => {
   const run = vi.fn(async (request: ApiRequest) => {
       if (request.action === 'bootstrap') {
         return {
@@ -24,12 +24,15 @@ test('登入後載入啟用分類並進入首頁', async () => {
       throw new Error(`未預期的請求：${request.action}`)
     })
   const client: JournalClient = {
+    restoreSession: async () => true,
+    beginSignIn: vi.fn(),
+    signOut: vi.fn(),
     run: run as JournalClient['run'],
   }
 
   render(<App client={client} />)
-  await userEvent.click(screen.getByRole('button', { name: '使用 Google 帳號登入' }))
 
+  await waitFor(() => expect(run).toHaveBeenCalledWith({ action: 'bootstrap' }))
   expect(await screen.findByRole('heading', { name: '每日記事' })).toBeInTheDocument()
   expect(run).toHaveBeenCalledWith({ action: 'bootstrap' })
 })
@@ -54,8 +57,12 @@ test('GAS 省略空白分頁游標時仍可儲存記事', async () => {
     throw new Error(`未預期的請求：${request.action}`)
   })
 
-  render(<App client={{ run: run as JournalClient['run'] }} />)
-  await user.click(screen.getByRole('button', { name: '使用 Google 帳號登入' }))
+  render(<App client={{
+    restoreSession: async () => true,
+    beginSignIn: vi.fn(),
+    signOut: vi.fn(),
+    run: run as JournalClient['run'],
+  }} />)
   await screen.findByRole('heading', { name: '每日記事' })
   await user.click(screen.getAllByRole('button', { name: '新增記事' })[0])
   await user.type(screen.getByLabelText('記事內容'), savedEntry.content)
@@ -63,4 +70,43 @@ test('GAS 省略空白分頁游標時仍可儲存記事', async () => {
 
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(run).toHaveBeenCalledWith(expect.objectContaining({ action: 'saveEntry' }))
+})
+
+test('登入按鈕只啟動伺服器端 OAuth 流程', async () => {
+  const beginSignIn = vi.fn()
+  const run = vi.fn()
+  render(<App client={{
+    restoreSession: async () => false,
+    beginSignIn,
+    signOut: vi.fn(),
+    run: run as JournalClient['run'],
+  }} />)
+
+  await userEvent.click(await screen.findByRole('button', { name: '使用 Google 帳號登入' }))
+
+  expect(beginSignIn).toHaveBeenCalledOnce()
+  expect(run).not.toHaveBeenCalled()
+})
+
+test('登出立即清除畫面並呼叫 server session 登出', async () => {
+  const user = userEvent.setup()
+  const signOut = vi.fn()
+  const run = vi.fn(async (request: ApiRequest) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [], tagSuggestions: [] }
+    if (request.action === 'listCategories') return []
+    if (request.action === 'listEntries') return { items: [], nextCursor: null }
+    throw new Error(`未預期的請求：${request.action}`)
+  })
+  render(<App client={{
+    restoreSession: async () => true,
+    beginSignIn: vi.fn(),
+    signOut,
+    run: run as JournalClient['run'],
+  }} />)
+
+  await waitFor(() => expect(run).toHaveBeenCalledWith({ action: 'bootstrap' }))
+  await user.click(screen.getAllByRole('button', { name: '登出' })[0])
+
+  expect(signOut).toHaveBeenCalledOnce()
+  expect(await screen.findByRole('button', { name: '使用 Google 帳號登入' })).toBeInTheDocument()
 })

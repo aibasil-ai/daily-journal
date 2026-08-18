@@ -1,6 +1,6 @@
 # 每日記事
 
-可自行部署的繁體中文個人記事網站。資料保留在部署者自己的 Google Sheets，前端透過 Google OAuth 與 Google Apps Script Execution API 存取，不會直接讀寫試算表。
+可自行部署的繁體中文個人記事網站。資料保留在部署者自己的 Google Sheets；Vercel Functions 代管 Google OAuth 與 Apps Script API，瀏覽器不會取得 Google access token 或 refresh token。
 
 ## 功能
 
@@ -10,22 +10,24 @@
 - 時間軸與月曆檢視；手機預設時間軸，平板與桌面預設月曆。
 - 分類新增、重新命名與停用；歷史記事會保留已停用分類。
 - 將目前篩選結果或全部記事下載為含 UTF-8 BOM 的 CSV。
-- 適用於 Vercel、Cloudflare Pages、Netlify、GitHub Pages 與一般靜態主機。
+- 首次授權後，30 天內刷新網站可自動恢復登入；可從網站安全登出。
+- 使用 Vercel 部署前端與 serverless API。
 
 ## 架構
 
 ```text
 React + TypeScript + Vite
           |
-          | Google OAuth access token
+          | 同網域 /api 與 HttpOnly Cookie
           v
-Google Apps Script Execution API
+Vercel Functions -- Google OAuth refresh token --> Google API
           |
           v
-Google Apps Script + Google Sheets
+Google Apps Script Execution API --> Google Sheets
 ```
 
 - `src/`：React 前端、狀態、驗證與響應式介面。
+- `api/`：Vercel Functions、OAuth 授權碼流程、加密工作階段與 GAS proxy。
 - `gas/src/`：可打包至 Apps Script 的領域服務、Sheets 儲存庫與受限 API 分派器。
 - `docs/sample_pages/`：本專案採用的視覺與操作樣稿。
 
@@ -38,14 +40,22 @@ npm install
 npm run dev
 ```
 
-建立 `.env` 並填入公開的部署設定：
+建立未追蹤的 `.env` 並填入 server-only 設定：
 
 ```ini
-APP_GOOGLE_CLIENT_ID=
-APP_GAS_DEPLOYMENT_ID=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+SESSION_ENCRYPTION_KEY=
+GAS_DEPLOYMENT_ID=
 ```
 
-也可以建立未追蹤的 `public/app-config.js`，內容可參考 `public/app-config.example.js`。詳細的 Google Cloud、GAS 與靜態主機設定請見 [部署文件](docs/deployment.md)。
+可用下列指令產生 `SESSION_ENCRYPTION_KEY`：
+
+```bash
+node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
+```
+
+使用 Vercel CLI 的 `vercel dev` 可在本機同時提供前端與 `/api` Functions。詳細的 Google Cloud、GAS 與 Vercel 設定請見 [部署文件](docs/deployment.md)。
 
 ## 品質檢查
 
@@ -62,8 +72,8 @@ npm run check
 ## 安全界線
 
 - `SPREADSHEET_ID` 只存於 GAS Script Properties，絕不傳到前端。
-- Google access token 只保存在瀏覽器記憶體，不寫入 `localStorage`。
-- `.env`、`.clasp.json`、`public/app-config.js`、建置產物與虛擬環境均已列入 `.gitignore`。
+- Google refresh token 僅存在由 `SESSION_ENCRYPTION_KEY` 加密的 HttpOnly Cookie；短效 access token 僅存在 Vercel Function 的單次上游請求中。
+- `.env`、`.clasp.json`、建置產物與虛擬環境均已列入 `.gitignore`。
 - GAS API Executable 應設為「僅我自己」存取。
 
 ## 第一版不支援

@@ -292,6 +292,11 @@ p {
   font-size: 0.6875rem;
 }
 
+.mobile-header__actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
 .app-main {
   width: min(100%, 78rem);
   margin: 0 auto;
@@ -1499,6 +1504,15 @@ p {
   .desktop-nav__footer span {
     display: flex;
     gap: 0.375rem;
+  }
+
+  .desktop-nav__sign-out {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0.375rem;
+    margin-top: 0.75rem;
+    color: var(--ink-muted);
+    font-size: 0.75rem;
   }
 
   .desktop-nav__footer .material-symbols-outlined {
