@@ -99,7 +99,7 @@ describe('JournalService', () => {
     }))).toThrow('每個連結都需要名稱與有效的 http 或 https 網址。')
   })
 
-  it('可新增、改名及停用分類，但不會重新啟用已停用分類', () => {
+  it('可新增、改名、停用及重新啟用分類，改名不會改變啟用狀態', () => {
     const service = createService({
       categories: [category({ id: 'work', name: '工作' }), category({ id: 'old', name: '舊分類', isActive: false })],
     })
@@ -110,6 +110,7 @@ describe('JournalService', () => {
       name: '歷史分類',
       isActive: false,
     })
+    expect(service.activateCategory('old')).toMatchObject({ id: 'old', isActive: true })
     expect(service.deactivateCategory('work')).toMatchObject({ id: 'work', isActive: false })
   })
 

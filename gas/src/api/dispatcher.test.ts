@@ -50,6 +50,16 @@ describe('executeAppRequest', () => {
     })
   })
 
+  it('允許重新啟用停用分類', () => {
+    const journalService = service()
+    journalService.deactivateCategory('work')
+
+    expect(executeAppRequest({ action: 'activateCategory', id: 'work' }, journalService)).toEqual({
+      ok: true,
+      data: expect.objectContaining({ id: 'work', isActive: true }),
+    })
+  })
+
   it('將輸入驗證與領域錯誤轉為可操作的繁中訊息', () => {
     const invalidPayload = executeAppRequest({
       action: 'saveEntry',

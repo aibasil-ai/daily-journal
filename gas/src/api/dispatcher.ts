@@ -78,6 +78,10 @@ export function executeAppRequest(
         const id = readString(request, 'id')
         return { ok: true, data: getService().deactivateCategory(id) }
       }
+      case 'activateCategory': {
+        const id = readString(request, 'id')
+        return { ok: true, data: getService().activateCategory(id) }
+      }
       case 'exportEntries': {
         const filter = parseEntryFilterCriteria(request.filter)
         return { ok: true, data: getService().exportEntries(filter) }
@@ -121,6 +125,7 @@ function isSupportedAction(action: string): action is ApiRequest['action'] {
     || action === 'deleteEntry'
     || action === 'saveCategory'
     || action === 'deactivateCategory'
+    || action === 'activateCategory'
     || action === 'exportEntries'
 }
 

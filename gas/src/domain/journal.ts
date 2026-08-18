@@ -82,6 +82,7 @@ export type ApiRequest =
   | { action: 'deleteEntry'; id: string }
   | { action: 'saveCategory'; category: CategoryInput }
   | { action: 'deactivateCategory'; id: string }
+  | { action: 'activateCategory'; id: string }
   | { action: 'exportEntries'; filter: EntryFilterCriteria }
 
 export type ApiResponse<T> =

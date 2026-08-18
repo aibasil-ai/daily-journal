@@ -19,6 +19,7 @@ test('點選新增類別會開啟類別名稱表單', async () => {
       entryCounts={new Map()}
       onSave={vi.fn().mockResolvedValue(undefined)}
       onDeactivate={vi.fn().mockResolvedValue(undefined)}
+      onActivate={vi.fn().mockResolvedValue(undefined)}
     />,
   )
 
@@ -26,4 +27,28 @@ test('點選新增類別會開啟類別名稱表單', async () => {
 
   expect(screen.getByRole('region', { name: '新增類別' })).toBeInTheDocument()
   expect(screen.getByRole('textbox', { name: '類別名稱' })).toHaveFocus()
+})
+
+test('可重新啟用停用中的類別', async () => {
+  const user = userEvent.setup()
+  const onActivate = vi.fn().mockResolvedValue(undefined)
+  render(
+    <CategoryManager
+      categories={[{
+        id: 'archived',
+        name: '舊分類',
+        isActive: false,
+        createdAt: '2026-08-04T00:00:00+08:00',
+        updatedAt: '2026-08-04T00:00:00+08:00',
+      }]}
+      entryCounts={new Map()}
+      onSave={vi.fn().mockResolvedValue(undefined)}
+      onDeactivate={vi.fn().mockResolvedValue(undefined)}
+      onActivate={onActivate}
+    />,
+  )
+
+  await user.click(screen.getByRole('button', { name: '重新啟用 舊分類' }))
+
+  expect(onActivate).toHaveBeenCalledWith('archived')
 })

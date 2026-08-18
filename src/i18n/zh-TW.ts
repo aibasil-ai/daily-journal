@@ -112,6 +112,7 @@ export const zhTW = {
     save: '儲存類別',
     editCategory: (name: string) => `編輯 ${name}`,
     deactivate: (name: string) => `停用 ${name}`,
+    activate: (name: string) => `重新啟用 ${name}`,
     deactivated: '已停用',
     entryCount: (count: number) => `${count} 則記事`,
     deactivateTitle: '停用類別確認',

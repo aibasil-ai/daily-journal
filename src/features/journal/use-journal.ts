@@ -148,11 +148,7 @@ export function useJournal(connection: JournalConnection | null) {
         action: 'saveCategory',
         category: { id, name },
       })
-      setCategories((current) => {
-        const currentIndex = current.findIndex((item) => item.id === category.id)
-        if (currentIndex === -1) return [...current, category].sort((left, right) => left.name.localeCompare(right.name))
-        return current.map((item) => item.id === category.id ? category : item)
-      })
+      setCategories((current) => upsertCategory(current, category))
       setRevision((current) => current + 1)
       return category
     } catch (categoryError) {
@@ -165,7 +161,20 @@ export function useJournal(connection: JournalConnection | null) {
     if (!connection) throw new Error(zhTW.errors.category)
     try {
       const category = await connection.client.run<Category>({ action: 'deactivateCategory', id })
-      setCategories((current) => current.map((item) => item.id === id ? category : item))
+      setCategories((current) => upsertCategory(current, category))
+      setRevision((current) => current + 1)
+      return category
+    } catch (categoryError) {
+      handleRequestError(categoryError)
+      throw categoryError
+    }
+  }
+
+  const activateCategory = async (id: string): Promise<Category> => {
+    if (!connection) throw new Error(zhTW.errors.category)
+    try {
+      const category = await connection.client.run<Category>({ action: 'activateCategory', id })
+      setCategories((current) => upsertCategory(current, category))
       setRevision((current) => current + 1)
       return category
     } catch (categoryError) {
@@ -225,6 +234,7 @@ export function useJournal(connection: JournalConnection | null) {
     deleteEntry,
     saveCategory,
     deactivateCategory,
+    activateCategory,
     getMonthlyEntryCounts,
     getEntriesForDate,
     exportEntries,
@@ -255,4 +265,16 @@ function toEntryListData(value: unknown): EntryListData {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function upsertCategory(categories: Category[], category: Category): Category[] {
+  const index = categories.findIndex((item) => item.id === category.id)
+  const nextCategories = index === -1
+    ? [...categories, category]
+    : categories.map((item) => item.id === category.id ? category : item)
+
+  return nextCategories.sort((left, right) => {
+    if (left.isActive !== right.isActive) return left.isActive ? -1 : 1
+    return left.name.localeCompare(right.name)
+  })
 }

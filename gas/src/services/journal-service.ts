@@ -115,6 +115,22 @@ export class JournalService {
     })
   }
 
+  activateCategory(id: string): Category {
+    return this.store.withWriteLock(() => {
+      const category = this.store.listCategories().find((item) => item.id === id)
+      if (!category) {
+        throw new JournalError('NOT_FOUND', '找不到要重新啟用的分類。')
+      }
+      if (category.isActive) return { ...category }
+
+      return this.store.saveCategory({
+        ...category,
+        isActive: true,
+        updatedAt: this.now(),
+      })
+    })
+  }
+
   saveEntry(input: EntryInput): Entry {
     return this.store.withWriteLock(() => {
       const normalized = normalizeEntryInput(input)

@@ -68,6 +68,7 @@ export function App({ client }: AppProps) {
     deleteEntry,
     saveCategory,
     deactivateCategory,
+    activateCategory,
     exportEntries,
     handleRequestError,
   } = journal
@@ -292,6 +293,7 @@ export function App({ client }: AppProps) {
               entryCounts={entryCounts}
               onSave={saveCategory}
               onDeactivate={deactivateCategory}
+              onActivate={activateCategory}
             />
           )}
 

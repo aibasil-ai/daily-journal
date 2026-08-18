@@ -9,14 +9,16 @@ type CategoryManagerProps = {
   entryCounts: Map<string, number>
   onSave: (name: string, id?: string) => Promise<unknown>
   onDeactivate: (id: string) => Promise<unknown>
+  onActivate: (id: string) => Promise<unknown>
 }
 
-export function CategoryManager({ categories, entryCounts, onSave, onDeactivate }: CategoryManagerProps) {
+export function CategoryManager({ categories, entryCounts, onSave, onDeactivate, onActivate }: CategoryManagerProps) {
   const [name, setName] = useState('')
   const [editing, setEditing] = useState<Category | null>()
   const [pendingDeactivate, setPendingDeactivate] = useState<Category>()
   const [isSaving, setIsSaving] = useState(false)
   const [isDeactivating, setIsDeactivating] = useState(false)
+  const [activatingCategoryId, setActivatingCategoryId] = useState<string>()
   const [error, setError] = useState<string>()
 
   const startEditing = (category: Category | null) => {
@@ -56,6 +58,18 @@ export function CategoryManager({ categories, entryCounts, onSave, onDeactivate 
       setError(deactivateError instanceof Error ? deactivateError.message : zhTW.errors.category)
     } finally {
       setIsDeactivating(false)
+    }
+  }
+
+  const handleActivate = async (id: string) => {
+    setActivatingCategoryId(id)
+    setError(undefined)
+    try {
+      await onActivate(id)
+    } catch (activateError) {
+      setError(activateError instanceof Error ? activateError.message : zhTW.errors.category)
+    } finally {
+      setActivatingCategoryId(undefined)
     }
   }
 
@@ -114,9 +128,19 @@ export function CategoryManager({ categories, entryCounts, onSave, onDeactivate 
                 <button className="icon-button" type="button" aria-label={zhTW.categories.editCategory(category.name)} onClick={() => startEditing(category)}>
                   <Icon>edit</Icon>
                 </button>
-                {category.isActive && (
+                {category.isActive ? (
                   <button className="icon-button icon-button--danger" type="button" aria-label={zhTW.categories.deactivate(category.name)} onClick={() => setPendingDeactivate(category)}>
                     <Icon>block</Icon>
+                  </button>
+                ) : (
+                  <button
+                    className="icon-button"
+                    type="button"
+                    aria-label={zhTW.categories.activate(category.name)}
+                    disabled={activatingCategoryId === category.id}
+                    onClick={() => void handleActivate(category.id)}
+                  >
+                    <Icon>restart_alt</Icon>
                   </button>
                 )}
               </div>
