@@ -11,11 +11,3 @@ export function executeAppRequest(request: ApiRequest): ApiResponse<unknown> {
 export function initializeJournal(spreadsheetId?: string): void {
   setupJournal(spreadsheetId)
 }
-
-const appsScriptGlobal = globalThis as typeof globalThis & {
-  executeAppRequest: typeof executeAppRequest
-  initializeJournal: typeof initializeJournal
-}
-
-appsScriptGlobal.executeAppRequest = executeAppRequest
-appsScriptGlobal.initializeJournal = initializeJournal

@@ -36,9 +36,9 @@ clasp push
 ```
 
 5. 在 Apps Script 專案設定的「Script Properties」新增 `SPREADSHEET_ID`，值為第 1 步的 Sheet ID。
-6. 在 Apps Script 編輯器選擇並手動執行無參數的 `initializeJournal()`，完成授權與工作表初始化。
+6. 推送後重新整理 Apps Script 編輯器。在上方函式選單選擇無參數的 `initializeJournal`，按「執行」完成授權與工作表初始化。
 
-> 進階用途：本機測試或程式碼中也可傳入 `initializeJournal('Sheet ID')`。正式部署建議以 Script Properties 保存 ID，再從編輯器執行無參數版本。
+> 打包產物會保留 Apps Script 可辨識的頂層 `initializeJournal()` 與 `executeAppRequest(request)`。請一律使用 `npm run build:gas` 後的 `clasp push` 推送，勿直接將 TypeScript 原始碼貼入 Apps Script 編輯器。
 
 ## 4. 部署 API Executable
 
@@ -46,6 +46,8 @@ clasp push
 2. 類型選擇 **API Executable**。
 3. 存取權設定為 **僅我自己**，並確認 `gas/appsscript.json` 的 `executionApi.access` 為 `MYSELF`。
 4. 記下產生的 Deployment ID；它是前端的 `APP_GAS_DEPLOYMENT_ID`。
+
+> 第一次建立 API Executable 必須透過 Apps Script 編輯器完成；`clasp deploy` 無法指定部署類型。日後可用 `clasp redeploy <Deployment ID>` 更新已存在的 API Executable 版本。
 
 ## 5. 建置靜態前端
 
@@ -86,6 +88,7 @@ GitHub Pages 的專案站點通常位於 `https://<owner>.github.io/<repository-
 | `origin_mismatch` | 將目前網站的協定、網域與連接埠完整加入 OAuth 用戶端的「授權 JavaScript 來源」。重新部署後再登入。 |
 | Apps Script API 未啟用 | 確認 OAuth 用戶端、GAS 專案關聯的是同一個標準 Cloud 專案，並在該專案啟用 Google Apps Script API。 |
 | GAS access denied | 確認 API Executable 部署為「僅我自己」，目前登入 Google 帳號與部署者相同，且 OAuth scope 已重新授權。 |
+| `Script function not found` | 尚未建立 API Executable 部署。請在 Apps Script 選擇「部署 > 新增部署」，類型選擇「API Executable」。 |
 | 找不到 `SPREADSHEET_ID` | 到 GAS 專案設定新增 Script Property `SPREADSHEET_ID`，填入正確的 Sheet ID，再執行 `initializeJournal()`。 |
 | Sheets 時區不正確 | 在 Google Sheets 的「檔案 > 設定」調整時區，然後重新整理網站。所有建立時間由試算表時區產生。 |
 | 找不到部署設定 | 檢查 `APP_GOOGLE_CLIENT_ID`、`APP_GAS_DEPLOYMENT_ID` 是否在建置時存在，或確認 `public/app-config.js` 已在站點根目錄提供。 |

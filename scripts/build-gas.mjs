@@ -7,9 +7,21 @@ await build({
   entryPoints: ['gas/src/index.ts'],
   bundle: true,
   format: 'iife',
+  globalName: 'JournalApp',
   platform: 'browser',
   target: ['es2019'],
   outfile: 'gas-dist/Code.js',
+  footer: {
+    js: `
+function executeAppRequest(request) {
+  return JournalApp.executeAppRequest(request)
+}
+
+function initializeJournal() {
+  return JournalApp.initializeJournal()
+}
+`,
+  },
   logLevel: 'info',
 })
 
