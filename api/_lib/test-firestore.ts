@@ -77,7 +77,7 @@ export class FakeCollectionReference {
 export class FakeWriteBatch {
   private operations: Array<() => void> = []
 
-  constructor(private readonly store: InMemoryFirestoreData) {}
+  constructor(_store?: InMemoryFirestoreData) {}
 
   set(docRef: FakeDocumentReference, data: Record<string, unknown>): this {
     this.operations.push(() => docRef.set(data))
@@ -155,7 +155,7 @@ export class InMemoryFirestoreData {
     const col = this.collections.get(collectionName)
     if (!col) return new FakeQuerySnapshot([])
 
-    let docs: FakeDocumentSnapshot[] = []
+    const docs: FakeDocumentSnapshot[] = []
     for (const [id, data] of col.entries()) {
       let match = true
       for (const filter of filters) {

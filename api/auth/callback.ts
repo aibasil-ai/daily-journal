@@ -62,7 +62,7 @@ export async function GET(request: Request): Promise<Response> {
     })
     const activeConnection = await connectionStore.findActiveConnection(user.id)
 
-    let encryptedToken = tokenResult.refreshToken
+    const encryptedToken = tokenResult.refreshToken
       ? encryptRefreshToken(tokenResult.refreshToken, config.tokenEncryptionKey, config.tokenEncryptionKeyVersion)
       : activeConnection?.encryptedRefreshToken
 

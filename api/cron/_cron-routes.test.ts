@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { GET as cleanupGet, POST as cleanupPost } from './cleanup'
 import { createFakeFirestore } from '../_lib/test-firestore'
 import * as firestoreModule from '../_lib/firestore'
-import { SessionStore } from '../_lib/session-store'
 import { ConnectionStore } from '../_lib/connection-store'
 
 const sessionKey = Buffer.alloc(32, 5)
@@ -32,7 +31,6 @@ describe('Cron cleanup route', () => {
   })
 
   test('成功清理過期工作階段與過期 attempts', async () => {
-    const sessionStore = new SessionStore(fakeFirestore)
     const connStore = new ConnectionStore(fakeFirestore)
 
     // Create an expired session

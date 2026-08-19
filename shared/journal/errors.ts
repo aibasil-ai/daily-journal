@@ -6,6 +6,7 @@ export type JournalErrorCode =
   | 'LOCK_TIMEOUT'
   | 'NOT_FOUND'
   | 'VALIDATION_ERROR'
+  | 'SCHEMA_MISMATCH'
 
 /** 可安全回傳給前端的預期錯誤。 */
 export class JournalError extends Error {

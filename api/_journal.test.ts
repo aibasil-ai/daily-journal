@@ -39,7 +39,7 @@ describe('journal endpoint', () => {
   })
 
   test('成功執行 bootstrap 讀取請求並回傳領域資料', async () => {
-    const { sessionId, sessionCookie } = await setupUserWithConnection()
+    const { sessionCookie } = await setupUserWithConnection()
 
     const fetchMock = vi.fn(async (url: string) => {
       if (url.includes('oauth2.googleapis.com/token')) {
@@ -248,7 +248,7 @@ async function setupUserWithConnection(): Promise<{ userId: string; sessionId: s
   })
 
   const sessionCookie = encryptSession({ sessionId, expiresAt }, sessionKey)
-  return { userId: user.id, sessionId, sessionCookie }
+  return { userId: user.id, sessionCookie }
 }
 
 function authenticatedRequest(body: Record<string, unknown>, sessionCookie: string): Request {

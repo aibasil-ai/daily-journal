@@ -28,8 +28,10 @@ export async function verifyGoogleIdToken(
 
   try {
     const verifier = verifyJwtImpl ?? jwtVerify
-    const keySet = verifyJwtImpl ? (async () => ({} as any)) : getGoogleJwks()
-    const { payload } = await verifier(idToken, keySet as any, {
+    const keySet = verifyJwtImpl
+      ? (async () => ({} as unknown as Parameters<typeof jwtVerify>[1]))
+      : getGoogleJwks()
+    const { payload } = await verifier(idToken, keySet as Parameters<typeof jwtVerify>[1], {
       issuer: GOOGLE_ISSUERS,
       audience: config.googleClientId,
     })

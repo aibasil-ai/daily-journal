@@ -25,7 +25,7 @@ describe('verifyGoogleIdToken', () => {
         picture: 'https://example.com/avatar.png',
       },
       protectedHeader: { alg: 'RS256' },
-    })) as any
+    })) as unknown as typeof jwtVerify
 
     await expect(verifyGoogleIdToken('valid-token', fakeConfig, verifyJwt)).resolves.toEqual({
       sub: 'google-sub-123',
@@ -43,7 +43,7 @@ describe('verifyGoogleIdToken', () => {
   test('拒絕驗證失敗或無效 audience', async () => {
     const verifyJwt = vi.fn(async () => {
       throw new Error('jwt audience invalid')
-    }) as any
+    }) as unknown as typeof jwtVerify
 
     await expect(verifyGoogleIdToken('bad-aud', fakeConfig, verifyJwt))
       .rejects.toThrow('Google 身分驗證失敗')
@@ -53,7 +53,7 @@ describe('verifyGoogleIdToken', () => {
     const verifyJwt = vi.fn(async () => ({
       payload: { sub: '' },
       protectedHeader: { alg: 'RS256' },
-    })) as any
+    })) as unknown as typeof jwtVerify
 
     await expect(verifyGoogleIdToken('token', fakeConfig, verifyJwt))
       .rejects.toThrow('Google 身分驗證失敗：缺少 sub 識別碼')

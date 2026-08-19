@@ -13,7 +13,7 @@ import { encryptSession } from '../_lib/session-crypto'
 const sessionKey = Buffer.alloc(32, 1)
 const tokenKey = Buffer.alloc(32, 2)
 
-let fakeFirestore: any
+let fakeFirestore: ReturnType<typeof createFakeFirestore>
 
 beforeEach(() => {
   fakeFirestore = createFakeFirestore()

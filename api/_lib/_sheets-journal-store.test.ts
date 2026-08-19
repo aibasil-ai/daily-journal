@@ -5,8 +5,8 @@ import { JournalError } from '../../shared/journal/errors'
 
 describe('SheetsJournalStore', () => {
   test('ensureSchema 建立缺失的工作表並寫入標題列與 schemaVersion', async () => {
-    let requestsSent: unknown[] = []
-    let valuesUpdated: unknown[] = []
+    const requestsSent: unknown[] = []
+    const valuesUpdated: unknown[] = []
 
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (url.includes('/values:batchUpdate')) {

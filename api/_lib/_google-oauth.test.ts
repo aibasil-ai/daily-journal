@@ -1,7 +1,5 @@
 import { describe, expect, test, vi } from 'vitest'
 import {
-  GOOGLE_SCOPES,
-  GoogleOAuthUpstreamError,
   InvalidRefreshTokenError,
   buildAuthorizationUrl,
   createPkcePair,
