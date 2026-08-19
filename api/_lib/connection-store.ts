@@ -537,6 +537,46 @@ export class ConnectionStore {
 
     await this.firestore.collection('users').doc(userId).delete()
   }
+
+  async cleanupExpired(now: number = Date.now()): Promise<{
+    attempts: number
+    leases: number
+  }> {
+    const expiredAttempts = await this.firestore
+      .collection('oauth_attempts')
+      .where('expiresAt', '<=', now)
+      .get()
+
+    const expiredProvAttempts = await this.firestore
+      .collection('provisioning_attempts')
+      .where('expiresAt', '<=', now)
+      .get()
+
+    const expiredTokens = await this.firestore
+      .collection('sheet_selection_tokens')
+      .where('expiresAt', '<=', now)
+      .get()
+
+    const batch = this.firestore.batch()
+    for (const doc of expiredAttempts.docs) batch.delete(doc.ref)
+    for (const doc of expiredProvAttempts.docs) batch.delete(doc.ref)
+    for (const doc of expiredTokens.docs) batch.delete(doc.ref)
+    await batch.commit()
+
+    const expiredLeases = await this.firestore
+      .collection('sheet_write_leases')
+      .where('expiresAt', '<=', now)
+      .get()
+
+    const leaseBatch = this.firestore.batch()
+    for (const doc of expiredLeases.docs) leaseBatch.delete(doc.ref)
+    await leaseBatch.commit()
+
+    return {
+      attempts: expiredAttempts.size + expiredProvAttempts.size + expiredTokens.size,
+      leases: expiredLeases.size,
+    }
+  }
 }
 
 export function hashSpreadsheetId(id: string): string {

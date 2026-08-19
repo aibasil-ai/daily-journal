@@ -47,4 +47,20 @@ export class RateLimiter {
       })
     })
   }
+
+  async cleanupExpired(now: number = Date.now()): Promise<number> {
+    const querySnapshot = await this.firestore
+      .collection('rate_limits')
+      .where('expiresAt', '<=', now)
+      .get()
+
+    if (querySnapshot.empty) return 0
+
+    const batch = this.firestore.batch()
+    for (const doc of querySnapshot.docs) {
+      batch.delete(doc.ref)
+    }
+    await batch.commit()
+    return querySnapshot.size
+  }
 }
