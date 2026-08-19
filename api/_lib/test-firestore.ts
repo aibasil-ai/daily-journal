@@ -19,7 +19,7 @@ export class FakeDocumentSnapshot {
 export class FakeDocumentReference {
   constructor(
     public readonly id: string,
-    private readonly collection: FakeCollectionReference,
+    public readonly collection: FakeCollectionReference,
   ) {}
 
   async get(): Promise<FakeDocumentSnapshot> {
@@ -107,17 +107,17 @@ export class FakeTransaction {
   }
 
   set(docRef: FakeDocumentReference, data: Record<string, unknown>): this {
-    docRef.set(data)
+    this.store.setDoc(docRef.collection.name, docRef.id, data)
     return this
   }
 
   update(docRef: FakeDocumentReference, data: Record<string, unknown>): this {
-    docRef.update(data)
+    this.store.updateDoc(docRef.collection.name, docRef.id, data)
     return this
   }
 
   delete(docRef: FakeDocumentReference): this {
-    docRef.delete()
+    this.store.deleteDoc(docRef.collection.name, docRef.id)
     return this
   }
 }
