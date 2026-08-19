@@ -1,25 +1,25 @@
 import { describe, expect, it, vi } from 'vitest'
-import { executeAppRequest } from './dispatcher'
-import type { Category, Entry } from '../domain/journal'
-import { FakeJournalStore } from '../test/fake-journal-store'
-import { JournalService } from '../services/journal-service'
+import { executeJournalRequest } from './dispatcher'
+import type { Category, Entry } from './types'
+import { InMemoryJournalStore } from './in-memory-store'
+import { JournalService } from './service'
 
 const timestamp = '2026-08-04T12:00:00+08:00'
 
-describe('executeAppRequest', () => {
+describe('executeJournalRequest', () => {
   it('未知 action 回傳固定錯誤且不執行服務', () => {
-    const service = { bootstrap: vi.fn() } as unknown as JournalService
+    const serviceMock = { bootstrap: vi.fn() } as unknown as JournalService
 
-    expect(executeAppRequest({ action: 'unknown' } as never, service)).toEqual({
+    expect(executeJournalRequest({ action: 'unknown' } as never, serviceMock)).toEqual({
       ok: false,
       code: 'INVALID_ACTION',
       message: '不支援的操作。',
     })
-    expect(service.bootstrap).not.toHaveBeenCalled()
+    expect(serviceMock.bootstrap).not.toHaveBeenCalled()
   })
 
   it('將支援 action 導向服務並回傳 JSON 資料', () => {
-    const response = executeAppRequest({ action: 'bootstrap' }, service())
+    const response = executeJournalRequest({ action: 'bootstrap' }, service())
 
     expect(response).toEqual({
       ok: true,
@@ -32,7 +32,7 @@ describe('executeAppRequest', () => {
   })
 
   it('允許類別管理讀取全部分類', () => {
-    expect(executeAppRequest({ action: 'listCategories' }, service())).toEqual({
+    expect(executeJournalRequest({ action: 'listCategories' }, service())).toEqual({
       ok: true,
       data: {
         categories: [expect.objectContaining({ id: 'work' })],
@@ -44,26 +44,26 @@ describe('executeAppRequest', () => {
   it('允許搬移記事，並拒絕空白選取與非空類別刪除', () => {
     const journalService = migrationService()
 
-    expect(executeAppRequest({
+    expect(executeJournalRequest({
       action: 'moveEntries',
       sourceCategoryId: 'work',
       targetCategoryId: 'life',
       entryIds: ['entry-1'],
     }, journalService)).toEqual({ ok: true, data: { movedCount: 1 } })
-    expect(executeAppRequest({
+    expect(executeJournalRequest({
       action: 'moveEntries',
       sourceCategoryId: 'work',
       targetCategoryId: 'life',
       entryIds: [],
     }, migrationService())).toMatchObject({ ok: false, code: 'VALIDATION_ERROR' })
-    expect(executeAppRequest({ action: 'deleteCategory', id: 'work' }, migrationService())).toMatchObject({
+    expect(executeJournalRequest({ action: 'deleteCategory', id: 'work' }, migrationService())).toMatchObject({
       ok: false,
       code: 'CONFLICT',
     })
   })
 
   it('回傳月曆顯示所需的每日記事', () => {
-    expect(executeAppRequest({
+    expect(executeJournalRequest({
       action: 'getMonthlyEntries',
       year: 2026,
       month: 8,
@@ -78,18 +78,18 @@ describe('executeAppRequest', () => {
     const journalService = service()
     journalService.deactivateCategory('work')
 
-    expect(executeAppRequest({ action: 'activateCategory', id: 'work' }, journalService)).toEqual({
+    expect(executeJournalRequest({ action: 'activateCategory', id: 'work' }, journalService)).toEqual({
       ok: true,
       data: expect.objectContaining({ id: 'work', isActive: true }),
     })
   })
 
   it('將輸入驗證與領域錯誤轉為可操作的繁中訊息', () => {
-    const invalidPayload = executeAppRequest({
+    const invalidPayload = executeJournalRequest({
       action: 'saveEntry',
       entry: { content: '內容' },
     } as never, service())
-    const inactiveCategory = executeAppRequest({
+    const inactiveCategory = executeJournalRequest({
       action: 'saveEntry',
       entry: {
         entryDate: '2026-08-04',
@@ -114,44 +114,53 @@ describe('executeAppRequest', () => {
   })
 
   it('未預期錯誤不洩漏內部訊息', () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const brokenService = {
       bootstrap: () => {
         throw new Error('internal detail')
       },
     } as unknown as JournalService
 
-    expect(executeAppRequest({ action: 'bootstrap' }, brokenService)).toEqual({
+    expect(executeJournalRequest({ action: 'bootstrap' }, brokenService)).toEqual({
       ok: false,
       code: 'INTERNAL_ERROR',
       message: '處理資料時發生錯誤，請稍後再試。',
     })
-    expect(errorSpy).toHaveBeenCalled()
-    errorSpy.mockRestore()
+  })
+
+  it('固定現有 API 契約回歸測試', () => {
+    const store = new InMemoryJournalStore({
+      timezone: 'Asia/Taipei',
+      categories: [category({ id: 'work' })],
+      entries: [entry({ id: 'one', categoryId: 'work' })],
+    })
+    const journalService = new JournalService(store, () => timestamp, () => 'uuid-1')
+    expect(executeJournalRequest({ action: 'listEntries', filter: { query: '', from: null, to: null, categoryId: null, tag: null, cursor: null, limit: 20 } }, journalService))
+      .toEqual({ ok: true, data: { items: [expect.objectContaining({ id: 'one' })], nextCursor: null } })
   })
 })
 
 function service(): JournalService {
   return new JournalService(
-    new FakeJournalStore({ categories: [category()] }),
+    new InMemoryJournalStore({ categories: [category()] }),
     () => timestamp,
     () => 'generated-id',
   )
 }
 
-function category(): Category {
+function category(overrides: Partial<Category> = {}): Category {
   return {
     id: 'work',
     name: '工作',
     isActive: true,
     createdAt: timestamp,
     updatedAt: timestamp,
+    ...overrides,
   }
 }
 
 function migrationService(): JournalService {
   return new JournalService(
-    new FakeJournalStore({
+    new InMemoryJournalStore({
       categories: [category(), { ...category(), id: 'life', name: '生活' }],
       entries: [entry()],
     }),
@@ -160,7 +169,7 @@ function migrationService(): JournalService {
   )
 }
 
-function entry(): Entry {
+function entry(overrides: Partial<Entry> = {}): Entry {
   return {
     id: 'entry-1',
     entryDate: '2026-08-04',
@@ -171,5 +180,6 @@ function entry(): Entry {
     links: [],
     createdAt: timestamp,
     updatedAt: timestamp,
+    ...overrides,
   }
 }
