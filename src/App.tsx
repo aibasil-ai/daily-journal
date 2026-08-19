@@ -12,6 +12,7 @@ import { EntryForm } from './features/entries/entry-form'
 import { FilterBar } from './features/entries/filter-bar'
 import { Timeline } from './features/entries/timeline'
 import { ConnectionScreen } from './features/journal/connection-screen'
+import { SettingsView } from './features/settings/settings-view'
 import { useJournal, type JournalClient } from './features/journal/use-journal'
 import {
   getInitialView,
@@ -26,7 +27,7 @@ type AppProps = {
   client?: JournalClient
 }
 
-type Page = JournalView | 'categories' | 'export'
+type Page = JournalView | 'categories' | 'export' | 'settings'
 
 export function App({ client }: AppProps) {
   const [journalClient] = useState<JournalClient>(() => client ?? new JournalApiClient())
@@ -46,6 +47,10 @@ export function App({ client }: AppProps) {
   const {
     status,
     error,
+    user,
+    sheetConnection,
+    candidates,
+    isLoadingCandidates,
     timezone,
     categories,
     categoryEntryCounts,
@@ -58,6 +63,11 @@ export function App({ client }: AppProps) {
     signIn,
     retry,
     signOut,
+    selectSheet,
+    createSheet,
+    switchSheet,
+    repairSheet,
+    deleteAccount,
     updateFilter,
     loadMore,
     saveEntry,
@@ -151,8 +161,13 @@ export function App({ client }: AppProps) {
       <ConnectionScreen
         status={status}
         error={error}
+        user={user}
+        candidates={candidates}
+        isLoadingCandidates={isLoadingCandidates}
         onSignIn={signIn}
         onRetry={() => void retry()}
+        onSelectSheet={selectSheet}
+        onCreateSheet={createSheet}
       />
     )
   }
@@ -167,12 +182,12 @@ export function App({ client }: AppProps) {
   const handleSaveEntry = async (input: EntryInput) => {
     const saved = await saveEntry(input)
     setEditingEntry(undefined)
-    setSelectedEntry((current) => current?.id === saved.id ? saved : current)
+    setSelectedEntry((current) => (current?.id === saved.id ? saved : current))
   }
 
   const handleDeleteEntry = async (id: string) => {
     await deleteEntry(id)
-    setSelectedEntry((current) => current?.id === id ? undefined : current)
+    setSelectedEntry((current) => (current?.id === id ? undefined : current))
     setSelectedDateEntries((current) => current.filter((entry) => entry.id !== id))
   }
 
@@ -326,6 +341,16 @@ export function App({ client }: AppProps) {
               </div>
             </section>
           )}
+
+          {page === 'settings' && (
+            <SettingsView
+              user={user}
+              sheetConnection={sheetConnection}
+              onSwitchSheet={switchSheet}
+              onRepairSheet={repairSheet}
+              onDeleteAccount={deleteAccount}
+            />
+          )}
         </main>
         {(page === 'timeline' || page === 'calendar') && (
           <button className="mobile-fab" type="button" aria-label={zhTW.actions.addEntry} onClick={() => setEditingEntry(null)}>
@@ -373,6 +398,7 @@ function DesktopNavigation({ page, onNavigate, onCreate, onSignOut }: {
     { page: 'calendar', label: zhTW.navigation.calendar, icon: 'calendar_month' },
     { page: 'categories', label: zhTW.navigation.categories, icon: 'category' },
     { page: 'export', label: zhTW.navigation.export, icon: 'ios_share' },
+    { page: 'settings', label: zhTW.navigation.settings, icon: 'settings' },
   ]
 
   return (
@@ -417,6 +443,7 @@ function MobileNavigation({ page, onNavigate }: { page: Page; onNavigate: (page:
     { page: 'calendar', label: zhTW.navigation.calendar, icon: 'calendar_month' },
     { page: 'categories', label: zhTW.navigation.categories, icon: 'category' },
     { page: 'export', label: zhTW.navigation.export, icon: 'ios_share' },
+    { page: 'settings', label: zhTW.navigation.settings, icon: 'settings' },
   ]
   return (
     <nav className="mobile-nav" aria-label={zhTW.accessibility.primaryNavigation}>
@@ -446,3 +473,4 @@ function getInitialPage(): JournalView {
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : zhTW.errors.generic
 }
+

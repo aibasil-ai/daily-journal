@@ -1,16 +1,209 @@
+import { useState } from 'react'
 import type { JournalStatus } from './use-journal'
 import { Icon } from '../../components/icon'
 import { zhTW } from '../../i18n/zh-TW'
+import type { CandidateSpreadsheet, UserProfile } from '../../services/journal-api-client'
 
 type ConnectionScreenProps = {
   status: JournalStatus
   error?: string
+  user?: UserProfile
+  candidates?: CandidateSpreadsheet[]
+  isLoadingCandidates?: boolean
   onSignIn: () => void
   onRetry: () => void
+  onSelectSheet?: (spreadsheetId: string, spreadsheetName?: string) => Promise<void>
+  onCreateSheet?: (name?: string) => Promise<void>
 }
 
-export function ConnectionScreen({ status, error, onSignIn, onRetry }: ConnectionScreenProps) {
+export function ConnectionScreen({
+  status,
+  error,
+  user,
+  candidates = [],
+  isLoadingCandidates = false,
+  onSignIn,
+  onRetry,
+  onSelectSheet,
+  onCreateSheet,
+}: ConnectionScreenProps) {
   const isLoading = status === 'loading' || status === 'checking-session'
+  const isProvisioning = status === 'provisioning'
+
+  const [mode, setMode] = useState<'candidates' | 'create' | 'manual'>('candidates')
+  const [newSheetName, setNewSheetName] = useState('每日記事')
+  const [manualSheetId, setManualSheetId] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [actionError, setActionError] = useState<string>()
+
+  const handleSelect = async (id: string, name?: string) => {
+    if (!onSelectSheet) return
+    setIsSubmitting(true)
+    setActionError(undefined)
+    try {
+      await onSelectSheet(id, name)
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : zhTW.errors.generic)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!onCreateSheet) return
+    setIsSubmitting(true)
+    setActionError(undefined)
+    try {
+      await onCreateSheet(newSheetName.trim() || '每日記事')
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : zhTW.errors.generic)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleManualSelect = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!manualSheetId.trim()) return
+    await handleSelect(manualSheetId.trim(), '自訂試算表')
+  }
+
+  if (isProvisioning) {
+    return (
+      <main className="connection-screen">
+        <header className="connection-brand" aria-label={zhTW.accessibility.connectionBrand}>
+          <JournalMark variant="brand" />
+          <span className="connection-brand__text">
+            <span>{user?.email ?? zhTW.connection.eyebrow}</span>
+            <strong>{zhTW.app.name}</strong>
+          </span>
+        </header>
+
+        <div className="connection-card-shell" style={{ maxWidth: 540 }}>
+          <section className="connection-card" aria-labelledby="onboarding-title">
+            <h1 id="onboarding-title" style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>
+              <span>{zhTW.onboarding.title}</span>
+            </h1>
+            <p className="connection-card__description">
+              {zhTW.onboarding.description}
+            </p>
+
+            {(error || actionError) && (
+              <p className="connection-card__description connection-card__description--error" role="alert">
+                {actionError || error}
+              </p>
+            )}
+
+            <div style={{ display: 'flex', gap: '0.5rem', margin: '1rem 0', width: '100%' }}>
+              <button
+                type="button"
+                className={`button ${mode === 'candidates' ? 'button--primary' : 'button--secondary'}`}
+                style={{ flex: 1, fontSize: '0.85rem' }}
+                onClick={() => setMode('candidates')}
+              >
+                {zhTW.onboarding.chooseExisting}
+              </button>
+              <button
+                type="button"
+                className={`button ${mode === 'create' ? 'button--primary' : 'button--secondary'}`}
+                style={{ flex: 1, fontSize: '0.85rem' }}
+                onClick={() => setMode('create')}
+              >
+                {zhTW.onboarding.createNew}
+              </button>
+              <button
+                type="button"
+                className={`button ${mode === 'manual' ? 'button--primary' : 'button--secondary'}`}
+                style={{ flex: 1, fontSize: '0.85rem' }}
+                onClick={() => setMode('manual')}
+              >
+                {zhTW.onboarding.enterId}
+              </button>
+            </div>
+
+            {mode === 'candidates' && (
+              <div style={{ width: '100%', maxHeight: 240, overflowY: 'auto' }}>
+                {isLoadingCandidates && (
+                  <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                    {zhTW.onboarding.loadingCandidates}
+                  </p>
+                )}
+                {!isLoadingCandidates && candidates.length === 0 && (
+                  <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                    {zhTW.onboarding.noCandidates}
+                  </p>
+                )}
+                {candidates.map((sheet) => (
+                  <div
+                    key={sheet.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.5rem 0.75rem',
+                      borderBottom: '1px solid var(--color-border)',
+                    }}
+                  >
+                    <div>
+                      <strong style={{ display: 'block', fontSize: '0.9rem' }}>{sheet.name}</strong>
+                      <small style={{ color: 'var(--color-text-secondary)' }}>{sheet.id}</small>
+                    </div>
+                    <button
+                      type="button"
+                      className="button button--secondary"
+                      disabled={isSubmitting}
+                      onClick={() => void handleSelect(sheet.id, sheet.name)}
+                    >
+                      {zhTW.onboarding.selectButton}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {mode === 'create' && (
+              <form onSubmit={handleCreate} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label>
+                  <span style={{ fontSize: '0.85rem', display: 'block', marginBottom: '0.25rem' }}>{zhTW.onboarding.sheetName}</span>
+                  <input
+                    type="text"
+                    value={newSheetName}
+                    onChange={(e) => setNewSheetName(e.target.value)}
+                    placeholder={zhTW.onboarding.sheetNamePlaceholder}
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: 4, border: '1px solid var(--color-border)' }}
+                    required
+                  />
+                </label>
+                <button type="submit" className="button button--primary" disabled={isSubmitting} style={{ marginTop: '0.5rem' }}>
+                  {isSubmitting ? zhTW.connection.connecting : zhTW.onboarding.createButton}
+                </button>
+              </form>
+            )}
+
+            {mode === 'manual' && (
+              <form onSubmit={handleManualSelect} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label>
+                  <span style={{ fontSize: '0.85rem', display: 'block', marginBottom: '0.25rem' }}>{zhTW.onboarding.sheetId}</span>
+                  <input
+                    type="text"
+                    value={manualSheetId}
+                    onChange={(e) => setManualSheetId(e.target.value)}
+                    placeholder={zhTW.onboarding.sheetIdPlaceholder}
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: 4, border: '1px solid var(--color-border)' }}
+                    required
+                  />
+                </label>
+                <button type="submit" className="button button--primary" disabled={isSubmitting} style={{ marginTop: '0.5rem' }}>
+                  {isSubmitting ? zhTW.connection.connecting : zhTW.onboarding.selectButton}
+                </button>
+              </form>
+            )}
+          </section>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className="connection-screen">

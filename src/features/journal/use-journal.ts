@@ -13,20 +13,42 @@ import type {
 } from '../../domain/journal'
 import { DEFAULT_ENTRY_FILTER, toFilterCriteria } from '../../domain/journal'
 import { zhTW } from '../../i18n/zh-TW'
-import { AuthenticationError } from '../../services/journal-api-client'
+import {
+  AuthenticationError,
+  type CandidateSpreadsheet,
+  type SessionStateResult,
+  type SheetConnectionInfo,
+  type UserProfile,
+} from '../../services/journal-api-client'
 
-export type JournalStatus = 'checking-session' | 'signed-out' | 'loading' | 'ready' | 'error'
+export type JournalStatus =
+  | 'checking-session'
+  | 'signed-out'
+  | 'provisioning'
+  | 'loading'
+  | 'ready'
+  | 'error'
 
 export interface JournalClient {
-  restoreSession(): Promise<boolean>
+  restoreSession(): Promise<SessionStateResult | boolean>
   beginSignIn(): void
   signOut(): void
+  getCandidates?(): Promise<CandidateSpreadsheet[]>
+  selectSheet?(spreadsheetId: string, spreadsheetName?: string): Promise<void>
+  createSheet?(name?: string): Promise<void>
+  switchSheet?(targetSpreadsheetId: string, expectedOriginalVersion: number): Promise<void>
+  repairSheet?(): Promise<void>
+  deleteAccount?(): Promise<void>
   run<T>(request: ApiRequest): Promise<T>
 }
 
 export function useJournal(client: JournalClient) {
   const [status, setStatus] = useState<JournalStatus>('checking-session')
   const [error, setError] = useState<string>()
+  const [user, setUser] = useState<UserProfile>()
+  const [sheetConnection, setSheetConnection] = useState<SheetConnectionInfo>()
+  const [candidates, setCandidates] = useState<CandidateSpreadsheet[]>([])
+  const [isLoadingCandidates, setIsLoadingCandidates] = useState(false)
   const [timezone, setTimezone] = useState<string>()
   const [categories, setCategories] = useState<Category[]>([])
   const [categoryEntryCounts, setCategoryEntryCounts] = useState<Record<string, number>>({})
@@ -63,6 +85,19 @@ export function useJournal(client: JournalClient) {
     setError(toErrorMessage(requestError))
   }, [clearData])
 
+  const loadCandidates = useCallback(async (): Promise<void> => {
+    if (!client.getCandidates) return
+    setIsLoadingCandidates(true)
+    try {
+      const items = await client.getCandidates()
+      setCandidates(items)
+    } catch (err) {
+      setError(toErrorMessage(err))
+    } finally {
+      setIsLoadingCandidates(false)
+    }
+  }, [client])
+
   const loadEntries = useCallback(async (
     requestedFilter: EntryFilter,
     append = false,
@@ -77,7 +112,7 @@ export function useJournal(client: JournalClient) {
       })
       const result = toEntryListData(response)
       if (expectedEpoch !== requestEpoch.current || requestId !== listRequestId.current) return
-      setEntries((current) => append ? [...current, ...result.items] : result.items)
+      setEntries((current) => (append ? [...current, ...result.items] : result.items))
       setNextCursor(result.nextCursor)
       setError(undefined)
     } finally {
@@ -127,12 +162,32 @@ export function useJournal(client: JournalClient) {
     const expectedEpoch = ++requestEpoch.current
     clearData('checking-session')
     try {
-      const authenticated = await client.restoreSession()
+      const sessionResult = await client.restoreSession()
       if (expectedEpoch !== requestEpoch.current) return
-      if (!authenticated) {
+
+      if (typeof sessionResult === 'boolean') {
+        if (!sessionResult) {
+          clearData('signed-out', consumeOAuthError())
+          return
+        }
+        await loadBootstrap(expectedEpoch)
+        return
+      }
+
+      setUser(sessionResult.user)
+      setSheetConnection(sessionResult.connection)
+
+      if (sessionResult.state === 'provisioning') {
+        setStatus('provisioning')
+        void loadCandidates()
+        return
+      }
+
+      if (sessionResult.state !== 'authenticated') {
         clearData('signed-out', consumeOAuthError())
         return
       }
+
       await loadBootstrap(expectedEpoch)
     } catch (restoreError) {
       if (expectedEpoch !== requestEpoch.current) return
@@ -143,7 +198,7 @@ export function useJournal(client: JournalClient) {
       }
       clearData('error', toErrorMessage(restoreError))
     }
-  }, [clearData, client, loadBootstrap])
+  }, [clearData, client, loadBootstrap, loadCandidates])
 
   useEffect(() => {
     void restoreSession()
@@ -160,9 +215,71 @@ export function useJournal(client: JournalClient) {
 
   const signOut = useCallback((): void => {
     requestEpoch.current += 1
+    setUser(undefined)
+    setSheetConnection(undefined)
     clearData('signed-out')
     client.signOut()
   }, [clearData, client])
+
+  const selectSheet = async (spreadsheetId: string, spreadsheetName?: string): Promise<void> => {
+    if (!client.selectSheet) return
+    setError(undefined)
+    try {
+      await client.selectSheet(spreadsheetId, spreadsheetName)
+      await restoreSession()
+    } catch (err) {
+      setError(toErrorMessage(err))
+      throw err
+    }
+  }
+
+  const createSheet = async (name?: string): Promise<void> => {
+    if (!client.createSheet) return
+    setError(undefined)
+    try {
+      await client.createSheet(name)
+      await restoreSession()
+    } catch (err) {
+      setError(toErrorMessage(err))
+      throw err
+    }
+  }
+
+  const switchSheet = async (targetSpreadsheetId: string): Promise<void> => {
+    if (!client.switchSheet) return
+    setError(undefined)
+    try {
+      const version = sheetConnection?.connectionVersion ?? 1
+      await client.switchSheet(targetSpreadsheetId, version)
+      await restoreSession()
+    } catch (err) {
+      setError(toErrorMessage(err))
+      throw err
+    }
+  }
+
+  const repairSheet = async (): Promise<void> => {
+    if (!client.repairSheet) return
+    setError(undefined)
+    try {
+      await client.repairSheet()
+    } catch (err) {
+      setError(toErrorMessage(err))
+      throw err
+    }
+  }
+
+  const deleteAccount = async (): Promise<void> => {
+    if (!client.deleteAccount) return
+    setError(undefined)
+    try {
+      await client.deleteAccount()
+      signOut()
+    } catch (err) {
+      setError(toErrorMessage(err))
+      throw err
+    }
+  }
 
   const updateFilter = async (changes: Partial<EntryFilter>): Promise<void> => {
     const nextFilter = { ...filter, ...changes, cursor: null }
@@ -336,6 +453,10 @@ export function useJournal(client: JournalClient) {
   return {
     status,
     error,
+    user,
+    sheetConnection,
+    candidates,
+    isLoadingCandidates,
     timezone,
     categories,
     categoryEntryCounts,
@@ -348,6 +469,12 @@ export function useJournal(client: JournalClient) {
     signIn,
     retry,
     signOut,
+    selectSheet,
+    createSheet,
+    switchSheet,
+    repairSheet,
+    deleteAccount,
+    loadCandidates,
     updateFilter,
     loadMore,
     saveEntry,
@@ -420,7 +547,7 @@ function upsertCategory(categories: Category[], category: Category): Category[] 
   const index = categories.findIndex((item) => item.id === category.id)
   const nextCategories = index === -1
     ? [...categories, category]
-    : categories.map((item) => item.id === category.id ? category : item)
+    : categories.map((item) => (item.id === category.id ? category : item))
 
   return nextCategories.sort((left, right) => {
     if (left.isActive !== right.isActive) return left.isActive ? -1 : 1

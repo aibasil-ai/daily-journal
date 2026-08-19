@@ -38,6 +38,19 @@ describe('useJournal', () => {
     expect(result.current.categoryEntryCounts).toEqual({ work: 2 })
   })
 
+  test('進入 provisioning 狀態時會載入候選試算表', async () => {
+    const getCandidates = vi.fn(async () => [{ id: 'sheet-1', name: '我的日記', modifiedTime: '2026-08-19' }])
+    const client = createClient({
+      restoreSession: async () => ({ state: 'provisioning', user: { name: 'New User' } }),
+      getCandidates,
+    })
+    const { result } = renderHook(() => useJournal(client))
+
+    await waitFor(() => expect(result.current.status).toBe('provisioning'))
+    await waitFor(() => expect(result.current.candidates).toEqual([{ id: 'sheet-1', name: '我的日記', modifiedTime: '2026-08-19' }]))
+    expect(result.current.user?.name).toBe('New User')
+  })
+
   test('搬移成功後刷新類別摘要與目前主記事清單', async () => {
     const run = vi.fn(async (request: ApiRequest) => {
       if (request.action === 'bootstrap') return bootstrap
@@ -139,3 +152,4 @@ function createClient(overrides: Partial<JournalClient> = {}): JournalClient {
     ...overrides,
   }
 }
+
