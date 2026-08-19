@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { decryptSession, encryptSession } from './session-crypto'
 
 const key = Buffer.alloc(32, 3)
-const session = { refreshToken: 'refresh-token', expiresAt: 1_000_000 }
+const session = { sessionId: 'random-session-id-123', expiresAt: 1_000_000 }
 
 describe('工作階段加密', () => {
   test('以 AES-GCM 加密後可還原原始工作階段', () => {

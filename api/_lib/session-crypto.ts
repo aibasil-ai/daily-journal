@@ -1,14 +1,16 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 
-export type SessionPayload = {
-  refreshToken: string
+export type SessionCookiePayload = {
+  sessionId: string
   expiresAt: number
 }
+
+export type SessionPayload = SessionCookiePayload
 
 const IV_BYTES = 12
 const AUTH_TAG_BYTES = 16
 
-export function encryptSession(session: SessionPayload, key: Buffer): string {
+export function encryptSession(session: SessionCookiePayload, key: Buffer): string {
   const iv = randomBytes(IV_BYTES)
   const cipher = createCipheriv('aes-256-gcm', key, iv)
   const ciphertext = Buffer.concat([
@@ -20,7 +22,7 @@ export function encryptSession(session: SessionPayload, key: Buffer): string {
   return [iv, authTag, ciphertext].map((part) => part.toString('base64url')).join('.')
 }
 
-export function decryptSession(value: string, key: Buffer, now: number = Date.now()): SessionPayload | undefined {
+export function decryptSession(value: string, key: Buffer, now: number = Date.now()): SessionCookiePayload | undefined {
   const parts = value.split('.')
   if (parts.length !== 3 || parts.some((part) => !/^[A-Za-z0-9_-]+$/.test(part))) return undefined
 
@@ -32,19 +34,20 @@ export function decryptSession(value: string, key: Buffer, now: number = Date.no
     decipher.setAuthTag(authTag)
     const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8')
     const payload = JSON.parse(plaintext) as unknown
-    if (!isSessionPayload(payload) || now >= payload.expiresAt) return undefined
+    if (!isSessionCookiePayload(payload) || now >= payload.expiresAt) return undefined
     return payload
   } catch {
     return undefined
   }
 }
 
-function isSessionPayload(value: unknown): value is SessionPayload {
+function isSessionCookiePayload(value: unknown): value is SessionCookiePayload {
   return typeof value === 'object'
     && value !== null
     && !Array.isArray(value)
-    && typeof (value as SessionPayload).refreshToken === 'string'
-    && Boolean((value as SessionPayload).refreshToken)
-    && typeof (value as SessionPayload).expiresAt === 'number'
-    && Number.isFinite((value as SessionPayload).expiresAt)
+    && typeof (value as SessionCookiePayload).sessionId === 'string'
+    && Boolean((value as SessionCookiePayload).sessionId)
+    && typeof (value as SessionCookiePayload).expiresAt === 'number'
+    && Number.isFinite((value as SessionCookiePayload).expiresAt)
 }
+
