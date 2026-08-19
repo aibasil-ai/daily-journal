@@ -15,6 +15,6 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["api/**/*.ts"],
-  "exclude": ["api/**/*.test.ts"]
+  "include": ["api/**/*.ts", "shared/**/*.ts"],
+  "exclude": ["api/**/*.test.ts", "shared/**/*.test.ts"]
 }

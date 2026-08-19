@@ -292,8 +292,8 @@ describe('JournalService', () => {
   })
 })
 
-function createService(options: ConstructorParameters<typeof FakeJournalStore>[0] = {}): JournalService {
-  return new JournalService(new FakeJournalStore(options), () => timestamp, () => 'generated-id')
+function createService(options: ConstructorParameters<typeof InMemoryJournalStore>[0] = {}): JournalService {
+  return new JournalService(new InMemoryJournalStore(options), () => timestamp, () => 'generated-id')
 }
 
 function category(overrides: Partial<Category> = {}): Category {

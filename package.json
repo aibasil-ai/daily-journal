@@ -13,6 +13,8 @@
     "check": "npm run lint && npm run test:run && npm run build && npm run build:gas"
   },
   "dependencies": {
+    "@google-cloud/firestore": "^9.0.0",
+    "jose": "^6.2.9",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

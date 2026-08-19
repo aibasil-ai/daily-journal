@@ -11,10 +11,16 @@ test('環境變數範例只含 server-only 設定鍵', async () => {
   expect(keys).toEqual([
     'GOOGLE_CLIENT_ID',
     'GOOGLE_CLIENT_SECRET',
+    'APP_ORIGIN',
     'SESSION_ENCRYPTION_KEY',
-    'GAS_DEPLOYMENT_ID',
+    'TOKEN_ENCRYPTION_KEY',
+    'TOKEN_ENCRYPTION_KEY_VERSION',
+    'FIRESTORE_PROJECT_ID',
+    'FIRESTORE_SERVICE_ACCOUNT_JSON',
+    'LEGACY_MIGRATION_SECRET',
+    'CRON_SECRET',
   ])
-  expect(content).not.toMatch(/APP_|SPREADSHEET_ID|ACCESS_TOKEN|REFRESH_TOKEN/)
+  expect(content).not.toMatch(/VITE_|SPREADSHEET_ID|ACCESS_TOKEN|REFRESH_TOKEN|GAS_DEPLOYMENT_ID/)
 })
 
 test('前端不再嵌入 Google OAuth 設定，Vercel 提供 SPA fallback', async () => {
