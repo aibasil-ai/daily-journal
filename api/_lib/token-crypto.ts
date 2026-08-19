@@ -32,13 +32,13 @@ export function encryptRefreshToken(
 
 export function decryptRefreshToken(
   value: EncryptedToken,
-  keys: Map<string, Buffer>,
+  keys: Map<string, Buffer> | Buffer,
 ): string | undefined {
   if (!value || typeof value.ciphertext !== 'string' || typeof value.keyVersion !== 'string') {
     return undefined
   }
 
-  const key = keys.get(value.keyVersion)
+  const key = keys instanceof Map ? keys.get(value.keyVersion) : keys
   if (!key) return undefined
 
   const parts = value.ciphertext.split('.')
