@@ -539,6 +539,6 @@ export class ConnectionStore {
   }
 }
 
-function hashSpreadsheetId(id: string): string {
+export function hashSpreadsheetId(id: string): string {
   return createHash('sha256').update(id.trim()).digest('hex')
 }
