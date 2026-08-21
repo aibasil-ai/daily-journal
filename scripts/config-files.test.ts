@@ -41,9 +41,8 @@ test('前端不再嵌入 Google OAuth 設定，Vercel 以 filesystem-first 提�
   expect(viteEnvironment).not.toMatch(/JOURNAL_CONFIG|BUILD_JOURNAL_CONFIG/)
   expect(JSON.parse(vercelConfig)).toEqual({
     $schema: 'https://openapi.vercel.sh/vercel.json',
-    routes: [
-      { handle: 'filesystem' },
-      { src: '/(.*)', dest: '/index.html' },
+    rewrites: [
+      { source: '/(.*)', destination: '/index.html' },
     ],
     crons: [
       { path: '/api/internal/cleanup', schedule: '0 0 * * *' },
