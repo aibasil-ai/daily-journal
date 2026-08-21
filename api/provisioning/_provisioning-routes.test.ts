@@ -1,10 +1,10 @@
 import { describe, expect, test, vi } from 'vitest'
 import { PROVISIONING_COOKIE_NAME, SESSION_COOKIE_NAME } from '../_lib/cookies.js'
 import { ProvisioningServiceError, type JournalProvisioningContext, type ProvisioningSessionContext } from '../_lib/provisioning-service.js'
-import { createProvisioningCreateHandler, GET as createGet } from './create.js'
-import { createProvisioningSheetsHandler, POST as sheetsPost } from './sheets.js'
-import { createStartChangeHandler, GET as startChangeGet } from './start-change.js'
-import { createProvisioningStatusHandler, POST as statusPost } from './status.js'
+import { createProvisioningCreateHandler, GET as createGet } from './_create.js'
+import { createProvisioningSheetsHandler, POST as sheetsPost } from './_sheets.js'
+import { createStartChangeHandler, GET as startChangeGet } from './_start-change.js'
+import { createProvisioningStatusHandler, POST as statusPost } from './_status.js'
 
 const config = {
   appOrigin: 'https://journal.example',

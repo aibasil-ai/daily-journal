@@ -12,7 +12,7 @@ import {
 } from '../_lib/provisioning-service.js'
 import { RateLimiter } from '../_lib/rate-limit.js'
 import { getServerConfig, type ServerConfig } from '../_lib/server-config.js'
-import { provisionedResponse } from './create.js'
+import { provisionedResponse } from './_create.js'
 
 export type ProvisioningConfirmHandlerDependencies = {
   config: Pick<ServerConfig, 'appOrigin'>
