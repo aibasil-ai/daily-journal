@@ -52,6 +52,20 @@ test('前端不再嵌入 Google OAuth 設定，Vercel 以 filesystem-first 提�
   await expect(access('public/app-config.example.js')).rejects.toThrow()
 })
 
+test('根 TypeScript 設定讓 Vercel Functions 使用 ES2022 strict 編譯', async () => {
+  const config = JSON.parse(await readFile('tsconfig.json', 'utf8'))
+
+  expect(config.compilerOptions).toMatchObject({
+    target: 'ES2022',
+    lib: ['ES2022'],
+    strict: true,
+    skipLibCheck: true,
+    module: 'NodeNext',
+    moduleResolution: 'NodeNext',
+    types: ['node'],
+  })
+})
+
 test('部署與法務文件說明多使用者隔離、遷移與 Google Sheet 資料處理界線', async () => {
   const [readme, deployment, checklist, privacyPolicy, terms] = await Promise.all([
     readFile('README.md', 'utf8'),
