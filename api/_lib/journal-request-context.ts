@@ -183,8 +183,9 @@ export function createJournalRequestContextResolver(
     }
 
     const replacement = nonEmptyString(credentials.refreshToken)
+    const scopesChanged = credentials.scopes !== undefined && !areScopesEqual(connection.scopes, credentials.scopes)
     let resolvedConnection = connection
-    if (replacement || credentials.scopes !== undefined) {
+    if (replacement || scopesChanged) {
       if (dependencies.connections.updateActiveConnectionCredentialsIfCurrent) {
         const updated = await dependencies.connections.updateActiveConnectionCredentialsIfCurrent({
           userId: user.id,
@@ -231,6 +232,12 @@ export async function requireJournalRequestContext(request: Request): Promise<Jo
     sessionStore: new SessionStore(firestore),
     connections: new FirestoreConnectionStore(firestore),
   })(request)
+}
+
+function areScopesEqual(current: string[], next: string[]): boolean {
+  if (current.length !== next.length) return false
+  const currentSet = new Set(current)
+  return next.every((scope) => currentSet.has(scope))
 }
 
 function nonEmptyString(value: unknown): string | undefined {
