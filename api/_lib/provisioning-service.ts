@@ -587,11 +587,16 @@ export class ProvisioningService {
     target: VerifiedTarget,
     createdByService: boolean,
   ): Promise<ProvisioningActionResult> {
+    const expectedStatus = target.attempt.status
+    if (expectedStatus !== 'creating' && expectedStatus !== 'verifying') {
+      throw new ProvisioningServiceError('connection_conflict', 409)
+    }
+
     if (target.attempt.mode === 'change') {
       const attempt = await this.dependencies.connections.updateClaimedProvisioningAttempt({
         attemptId: target.attempt.id,
         userId: target.attempt.userId,
-        expectedStatus: 'verifying',
+        expectedStatus,
         status: 'ready_to_confirm',
         selectedSpreadsheetId: target.spreadsheetId,
         selectedSpreadsheetName: target.spreadsheetName,
@@ -604,10 +609,6 @@ export class ProvisioningService {
     }
 
     try {
-      const expectedStatus = target.attempt.status
-      if (expectedStatus !== 'creating' && expectedStatus !== 'verifying') {
-        throw new ProvisioningServiceError('connection_conflict', 409)
-      }
       const verifiedAttempt = await this.dependencies.connections.updateClaimedProvisioningAttempt({
         attemptId: target.attempt.id,
         userId: target.attempt.userId,

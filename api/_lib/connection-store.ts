@@ -1457,7 +1457,7 @@ function isAllowedProvisioningUpdateTransition(
   if (to === 'completed') return false
   if (from === 'initial_choice') return to === 'initial_choice' || to === 'candidate_selection' || to === 'failed'
   if (from === 'candidate_selection') return to === 'candidate_selection' || to === 'failed'
-  if (from === 'creating') return to === 'creating' || to === 'failed'
+  if (from === 'creating') return to === 'creating' || to === 'ready_to_confirm' || to === 'failed'
   if (from === 'verifying') {
     return to === 'verifying' || to === 'candidate_selection' || to === 'ready_to_confirm' || to === 'failed'
   }

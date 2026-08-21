@@ -130,6 +130,19 @@ describe('ProvisioningService', () => {
     expect(JSON.stringify(result)).not.toContain('sealed-alice')
   })
 
+  test('更換資料表時建立新 Sheet 會進入 ready_to_confirm 狀態供使用者確認切換', async () => {
+    const system = createSystem()
+    const alice = system.createProvisioning('alice', 'change')
+
+    const result = await system.service.createSheet(alice)
+
+    expect(result.status).toMatchObject({
+      phase: 'ready_to_confirm',
+      sheetName: '每日記事',
+    })
+    expect(system.attempts.get(alice.attempt.id)?.status).toBe('ready_to_confirm')
+  })
+
   test('同一 attempt 並行建立與網址選擇時，只有取得 phase claim 的動作可呼叫外部服務', async () => {
     const system = createSystem()
     const alice = system.createProvisioning('alice')
