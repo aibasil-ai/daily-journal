@@ -1409,7 +1409,7 @@ function applyProvisioningAttemptUpdate(
   const changesTarget = update.selectedSpreadsheetId !== undefined
     || update.selectedSpreadsheetName !== undefined
   if (changesTarget && !(
-    (current.status === 'creating' && nextStatus === 'creating')
+    (current.status === 'creating' && (nextStatus === 'creating' || nextStatus === 'ready_to_confirm'))
     || (current.status === 'verifying' && (nextStatus === 'verifying' || nextStatus === 'ready_to_confirm'))
   )) {
     return undefined

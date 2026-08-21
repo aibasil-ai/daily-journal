@@ -507,6 +507,38 @@ describe('ConnectionStore', () => {
     expect(await store.getProvisioningAttempt(attempt.id)).toMatchObject({ status: 'ready_to_confirm' })
   })
 
+  test('換表流程中可由 creating 轉移至 ready_to_confirm', async () => {
+    const firestore = new FakeFirestore()
+    const store = new ConnectionStore(firestore, () => 1_000_000)
+    const user = await createUser(store, 'change-create-ready')
+    const attempt = await store.createProvisioningAttempt({
+      userId: user.id,
+      mode: 'change',
+      originalConnectionVersion: 1,
+      tempEncryptedRefreshToken: encryptedToken,
+      ttlMs: 60_000,
+    })
+    await store.claimProvisioningAttemptAction({
+      attemptId: attempt.id,
+      userId: user.id,
+      nextStatus: 'creating',
+    })
+    const updated = await store.updateClaimedProvisioningAttempt({
+      attemptId: attempt.id,
+      userId: user.id,
+      expectedStatus: 'creating',
+      status: 'ready_to_confirm',
+      selectedSpreadsheetId: 'sheet-new-created',
+      selectedSpreadsheetName: '每日記事',
+      createdByService: true,
+    })
+    expect(updated).toMatchObject({
+      status: 'ready_to_confirm',
+      selectedSpreadsheetId: 'sheet-new-created',
+      selectedSpreadsheetName: '每日記事',
+    })
+  })
+
   test('中斷連線必須比對 user、active connection ID 與版本，換表後不會標記舊封存連線', async () => {
     const firestore = new FakeFirestore()
     const store = new ConnectionStore(firestore, () => 1_000_000)
