@@ -28,7 +28,7 @@ test('環境變數範例只含 server-only 設定鍵', async () => {
   expect(content).not.toMatch(/(?:LEGACY_MIGRATION_SECRET|CRON_SECRET)=.+/)
 })
 
-test('前端不再嵌入 Google OAuth 設定，Vercel 以 filesystem-first 提供 API、SPA 與 cleanup cron', async () => {
+test('前端不再嵌入 Google OAuth 設定，Vercel 以 filesystem-first 提供 API、SPA 與每日 cleanup cron', async () => {
   const [indexHtml, viteConfig, viteEnvironment, vercelConfig] = await Promise.all([
     readFile('index.html', 'utf8'),
     readFile('vite.config.ts', 'utf8'),
@@ -46,7 +46,7 @@ test('前端不再嵌入 Google OAuth 設定，Vercel 以 filesystem-first 提�
       { src: '/(.*)', dest: '/index.html' },
     ],
     crons: [
-      { path: '/api/internal/cleanup', schedule: '*/5 * * * *' },
+      { path: '/api/internal/cleanup', schedule: '0 0 * * *' },
     ],
   })
   await expect(access('public/app-config.example.js')).rejects.toThrow()
@@ -71,7 +71,7 @@ test('部署與法務文件說明多使用者隔離、遷移與 Google Sheet 資
     expect(content).toContain('至少 32 個字元')
     expect(content).toContain('randomBytes(32)')
     expect(content).toContain('不同')
-    expect(content).toContain('*/5 * * * *')
+    expect(content).toContain('0 0 * * *')
     expect(content).toContain('Hobby')
     expect(content).toContain('每日一次')
     expect(content).toContain('每小時精度')

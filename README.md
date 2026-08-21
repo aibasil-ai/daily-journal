@@ -78,8 +78,8 @@ Google 將 Sheets 或 Drive scope 視為敏感權限時，必須完成 OAuth 同
 - refresh token 在寫入 Firestore 前以獨立的 `TOKEN_ENCRYPTION_KEY` 加密；短效 access token 只存在單次 Vercel Function 記憶體。
 - 瀏覽器只保存 `HttpOnly`、`Secure`、`SameSite=Lax` 的不透明 session Cookie。
 - Vercel 使用的 Firestore 服務帳號只應授予最小必要的 **Cloud Datastore User** 權限，不應持有 Google Drive、Google Sheets、Owner 或 Editor 廣泛權限。
-- `vercel.json` 先以 filesystem 路由 `/api/*`，再將其餘路徑回退至 Vite SPA，並保留 `*/5 * * * *` 排程，每 5 分鐘執行受 `CRON_SECRET` 保護的過期資料清理。
-- Vercel Cron 使用 UTC 的標準 cron 表達式。依 Vercel 方案限制，Hobby 僅允許每日一次執行且只有每小時精度，設定更頻繁的排程會使部署失敗；此每 5 分鐘排程必須使用 Pro 或 Enterprise，兩者才有每分鐘精度。
+- `vercel.json` 先以 filesystem 路由 `/api/*`，再將其餘路徑回退至 Vite SPA，並保留 `0 0 * * *` 排程，每日執行受 `CRON_SECRET` 保護的過期資料清理。
+- Vercel Cron 使用 UTC 的標準 cron 表達式。Hobby 僅允許每日一次執行，且只有每小時精度；此每日排程預計在 UTC 00:00（台灣約 08:00）所在小時執行，不保證精確分鐘。若升級為 Pro 或 Enterprise，才可改回 `*/5 * * * *` 的每 5 分鐘清理。過期 session 與設定流程在每次請求時仍會檢查到期時間，不依賴 cron 才失效。
 - Vercel Production 與 Preview 必須使用不同的 Firestore 資料庫、服務帳號、加密金鑰與 OAuth 設定；Preview 絕不可使用 Production refresh token 或資料庫。
 
 ## 舊個人 Sheet 遷移

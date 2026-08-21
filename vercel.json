@@ -5,6 +5,6 @@
     { "src": "/(.*)", "dest": "/index.html" }
   ],
   "crons": [
-    { "path": "/api/internal/cleanup", "schedule": "*/5 * * * *" }
+    { "path": "/api/internal/cleanup", "schedule": "0 0 * * *" }
   ]
 }

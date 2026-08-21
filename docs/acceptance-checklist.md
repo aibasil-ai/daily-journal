@@ -20,7 +20,7 @@
 - [ ] OAuth Web Client 的 callback URI 是固定正式網址 `/api/auth/callback`，沒有把不固定 Preview 網址加入 Production Client。
 - [ ] OAuth 同意畫面正確宣告 `openid`、`email`、`profile`、Sheets、`drive.metadata.readonly` 與 `drive.file` scopes，並在需要時完成 Google 驗證。
 - [ ] OAuth 同意畫面已設定正式網域、支援聯絡資訊、隱私權政策 URL 與服務條款 URL。
-- [ ] `vercel.json` 以 filesystem-first 處理 `/api/*`，其餘路徑才回退至 SPA，並以 5 分鐘 cron 呼叫受 `CRON_SECRET` 保護的 cleanup API。
+- [ ] `vercel.json` 以 filesystem-first 處理 `/api/*`，其餘路徑才回退至 SPA，並以每日 `0 0 * * *` cron 呼叫受 `CRON_SECRET` 保護的 cleanup API。
 
 ## 登入、設定與隔離
 
