@@ -11,6 +11,7 @@ type ConnectionScreenProps = {
 
 export function ConnectionScreen({ status, error, onSignIn, onRetry }: ConnectionScreenProps) {
   const isLoading = status === 'loading' || status === 'checking-session'
+  const needsReconnect = status === 'error' || Boolean(error)
 
   return (
     <main className="connection-screen">
@@ -43,6 +44,7 @@ export function ConnectionScreen({ status, error, onSignIn, onRetry }: Connectio
           <p className={`connection-card__description${error ? ' connection-card__description--error' : ''}`} role={error ? 'alert' : undefined}>
             {error ?? zhTW.connection.description}
           </p>
+          {needsReconnect && <p className="connection-card__hint">{zhTW.connection.reconnectHint}</p>}
           <div className="connection-card__actions">
             {status === 'error' && (
               <button className="button connection-card__retry" type="button" onClick={onRetry} disabled={isLoading}>
@@ -55,6 +57,11 @@ export function ConnectionScreen({ status, error, onSignIn, onRetry }: Connectio
               {isLoading ? zhTW.connection.connecting : status === 'error' ? zhTW.connection.reconnect : zhTW.connection.signIn}
             </button>
           </div>
+          <p style={{ marginTop: '1.25rem', color: '#adb4c0', fontSize: '0.75rem', lineHeight: 1.6, textAlign: 'center' }}>
+            <a href="/privacy-policy.html">{zhTW.connection.privacyPolicy}</a>
+            <span aria-hidden="true"> | </span>
+            <a href="/terms-of-service.html">{zhTW.connection.termsOfService}</a>
+          </p>
         </section>
       </div>
     </main>

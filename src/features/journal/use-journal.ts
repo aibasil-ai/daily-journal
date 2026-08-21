@@ -13,14 +13,14 @@ import type {
 } from '../../domain/journal'
 import { DEFAULT_ENTRY_FILTER, toFilterCriteria } from '../../domain/journal'
 import { zhTW } from '../../i18n/zh-TW'
-import { AuthenticationError } from '../../services/journal-api-client'
+import { AuthenticationError, type SessionState } from '../../services/journal-api-client'
 
-export type JournalStatus = 'checking-session' | 'signed-out' | 'loading' | 'ready' | 'error'
+export type JournalStatus = 'checking-session' | 'signed-out' | 'provisioning' | 'loading' | 'ready' | 'error'
 
 export interface JournalClient {
-  restoreSession(): Promise<boolean>
+  restoreSession(): Promise<SessionState>
   beginSignIn(): void
-  signOut(): void
+  signOut(): Promise<void>
   run<T>(request: ApiRequest): Promise<T>
 }
 
@@ -38,6 +38,7 @@ export function useJournal(client: JournalClient) {
   const [revision, setRevision] = useState(0)
   const listRequestId = useRef(0)
   const requestEpoch = useRef(0)
+  const signOutRetryRequired = useRef(false)
 
   const clearData = useCallback((nextStatus: JournalStatus, nextError?: string) => {
     listRequestId.current += 1
@@ -54,7 +55,8 @@ export function useJournal(client: JournalClient) {
     setError(nextError)
   }, [])
 
-  const handleRequestError = useCallback((requestError: unknown) => {
+  const handleRequestError = useCallback((requestError: unknown, expectedEpoch: number = requestEpoch.current) => {
+    if (expectedEpoch !== requestEpoch.current) return
     if (requestError instanceof AuthenticationError) {
       requestEpoch.current += 1
       clearData('signed-out', zhTW.errors.authentication)
@@ -110,7 +112,7 @@ export function useJournal(client: JournalClient) {
       setFilter(initialFilter)
       setStatus('ready')
       void loadEntries(initialFilter, false, expectedEpoch).catch((requestError: unknown) => {
-        if (expectedEpoch === requestEpoch.current) handleRequestError(requestError)
+        handleRequestError(requestError, expectedEpoch)
       })
     } catch (bootstrapError) {
       if (expectedEpoch !== requestEpoch.current) return
@@ -127,10 +129,14 @@ export function useJournal(client: JournalClient) {
     const expectedEpoch = ++requestEpoch.current
     clearData('checking-session')
     try {
-      const authenticated = await client.restoreSession()
+      const sessionState = await client.restoreSession()
       if (expectedEpoch !== requestEpoch.current) return
-      if (!authenticated) {
+      if (sessionState === 'signed-out') {
         clearData('signed-out', consumeOAuthError())
+        return
+      }
+      if (sessionState === 'provisioning') {
+        clearData('provisioning')
         return
       }
       await loadBootstrap(expectedEpoch)
@@ -156,36 +162,56 @@ export function useJournal(client: JournalClient) {
     client.beginSignIn()
   }, [client])
 
-  const retry = restoreSession
+  const replaceDataSource = useCallback((): Promise<void> => restoreSession(), [restoreSession])
 
-  const signOut = useCallback((): void => {
+  const clearSession = useCallback((): void => {
     requestEpoch.current += 1
     clearData('signed-out')
-    client.signOut()
+  }, [clearData])
+
+  const signOut = useCallback(async (): Promise<void> => {
+    const expectedEpoch = ++requestEpoch.current
+    signOutRetryRequired.current = true
+    clearData('checking-session')
+    try {
+      await client.signOut()
+      if (expectedEpoch !== requestEpoch.current) return
+      signOutRetryRequired.current = false
+      clearData('signed-out')
+    } catch {
+      if (expectedEpoch !== requestEpoch.current) return
+      clearData('error', zhTW.errors.signOut)
+    }
   }, [clearData, client])
 
+  const retry = useCallback((): Promise<void> => (
+    signOutRetryRequired.current ? signOut() : restoreSession()
+  ), [restoreSession, signOut])
+
   const updateFilter = async (changes: Partial<EntryFilter>): Promise<void> => {
+    const expectedEpoch = requestEpoch.current
     const nextFilter = { ...filter, ...changes, cursor: null }
     setFilter(nextFilter)
     try {
-      await loadEntries(nextFilter, false, requestEpoch.current)
+      await loadEntries(nextFilter, false, expectedEpoch)
     } catch (loadError) {
-      handleRequestError(loadError)
+      handleRequestError(loadError, expectedEpoch)
     }
   }
 
   const loadMore = async (): Promise<void> => {
     if (nextCursor === null) return
+    const expectedEpoch = requestEpoch.current
     try {
-      await loadEntries({ ...filter, cursor: nextCursor }, true, requestEpoch.current)
+      await loadEntries({ ...filter, cursor: nextCursor }, true, expectedEpoch)
     } catch (loadError) {
-      handleRequestError(loadError)
+      handleRequestError(loadError, expectedEpoch)
     }
   }
 
   const saveEntry = async (input: EntryInput): Promise<Entry> => {
+    const expectedEpoch = requestEpoch.current
     try {
-      const expectedEpoch = requestEpoch.current
       const saved = await client.run<Entry>({ action: 'saveEntry', entry: input })
       if (expectedEpoch !== requestEpoch.current) throw new RequestInvalidatedError()
       setTagSuggestions((current) => [...new Set([...current, ...saved.tags])].sort())
@@ -194,28 +220,28 @@ export function useJournal(client: JournalClient) {
       setRevision((current) => current + 1)
       return saved
     } catch (saveError) {
-      if (!(saveError instanceof RequestInvalidatedError)) handleRequestError(saveError)
+      if (!(saveError instanceof RequestInvalidatedError)) handleRequestError(saveError, expectedEpoch)
       throw saveError
     }
   }
 
   const deleteEntry = async (id: string): Promise<void> => {
+    const expectedEpoch = requestEpoch.current
     try {
-      const expectedEpoch = requestEpoch.current
       await client.run<null>({ action: 'deleteEntry', id })
       if (expectedEpoch !== requestEpoch.current) return
       await loadCategoryManagement(expectedEpoch)
       await loadEntries({ ...filter, cursor: null }, false, expectedEpoch)
       setRevision((current) => current + 1)
     } catch (deleteError) {
-      handleRequestError(deleteError)
+      handleRequestError(deleteError, expectedEpoch)
       throw deleteError
     }
   }
 
   const saveCategory = async (name: string, id?: string): Promise<Category> => {
+    const expectedEpoch = requestEpoch.current
     try {
-      const expectedEpoch = requestEpoch.current
       const category = await client.run<Category>({
         action: 'saveCategory',
         category: { id, name },
@@ -226,14 +252,14 @@ export function useJournal(client: JournalClient) {
       setRevision((current) => current + 1)
       return category
     } catch (categoryError) {
-      if (!(categoryError instanceof RequestInvalidatedError)) handleRequestError(categoryError)
+      if (!(categoryError instanceof RequestInvalidatedError)) handleRequestError(categoryError, expectedEpoch)
       throw categoryError
     }
   }
 
   const deactivateCategory = async (id: string): Promise<Category> => {
+    const expectedEpoch = requestEpoch.current
     try {
-      const expectedEpoch = requestEpoch.current
       const category = await client.run<Category>({ action: 'deactivateCategory', id })
       if (expectedEpoch !== requestEpoch.current) throw new RequestInvalidatedError()
       setCategories((current) => upsertCategory(current, category))
@@ -241,14 +267,14 @@ export function useJournal(client: JournalClient) {
       setRevision((current) => current + 1)
       return category
     } catch (categoryError) {
-      if (!(categoryError instanceof RequestInvalidatedError)) handleRequestError(categoryError)
+      if (!(categoryError instanceof RequestInvalidatedError)) handleRequestError(categoryError, expectedEpoch)
       throw categoryError
     }
   }
 
   const activateCategory = async (id: string): Promise<Category> => {
+    const expectedEpoch = requestEpoch.current
     try {
-      const expectedEpoch = requestEpoch.current
       const category = await client.run<Category>({ action: 'activateCategory', id })
       if (expectedEpoch !== requestEpoch.current) throw new RequestInvalidatedError()
       setCategories((current) => upsertCategory(current, category))
@@ -256,14 +282,14 @@ export function useJournal(client: JournalClient) {
       setRevision((current) => current + 1)
       return category
     } catch (categoryError) {
-      if (!(categoryError instanceof RequestInvalidatedError)) handleRequestError(categoryError)
+      if (!(categoryError instanceof RequestInvalidatedError)) handleRequestError(categoryError, expectedEpoch)
       throw categoryError
     }
   }
 
   const exportEntries = async (scope: 'filtered' | 'all'): Promise<CsvExportData> => {
+    const expectedEpoch = requestEpoch.current
     try {
-      const expectedEpoch = requestEpoch.current
       const result = await client.run<CsvExportData>({
         action: 'exportEntries',
         filter: scope === 'filtered' ? toFilterCriteria(filter) : toFilterCriteria(DEFAULT_ENTRY_FILTER),
@@ -271,7 +297,7 @@ export function useJournal(client: JournalClient) {
       if (expectedEpoch !== requestEpoch.current) throw new RequestInvalidatedError()
       return result
     } catch (exportError) {
-      if (!(exportError instanceof RequestInvalidatedError)) handleRequestError(exportError)
+      if (!(exportError instanceof RequestInvalidatedError)) handleRequestError(exportError, expectedEpoch)
       throw exportError
     }
   }
@@ -280,20 +306,30 @@ export function useJournal(client: JournalClient) {
     sourceCategoryId: string,
     cursor: string | null,
   ): Promise<EntryListData> => {
-    const value = await client.run<unknown>({
-      action: 'listEntries',
-      filter: { ...DEFAULT_ENTRY_FILTER, categoryId: sourceCategoryId, cursor },
-    })
-    return toEntryListData(value)
-  }, [client])
+    const expectedEpoch = requestEpoch.current
+    try {
+      const value = await client.run<unknown>({
+        action: 'listEntries',
+        filter: { ...DEFAULT_ENTRY_FILTER, categoryId: sourceCategoryId, cursor },
+      })
+      if (expectedEpoch !== requestEpoch.current) throw new RequestInvalidatedError()
+      return toEntryListData(value)
+    } catch (loadError) {
+      if (expectedEpoch !== requestEpoch.current) throw new RequestInvalidatedError()
+      if (!(loadError instanceof RequestInvalidatedError)) {
+        handleRequestError(loadError, expectedEpoch)
+      }
+      throw loadError
+    }
+  }, [client, handleRequestError])
 
   const moveEntries = async (
     sourceCategoryId: string,
     targetCategoryId: string,
     entryIds: string[],
   ): Promise<void> => {
+    const expectedEpoch = requestEpoch.current
     try {
-      const expectedEpoch = requestEpoch.current
       await client.run<MoveEntriesResult>({
         action: 'moveEntries',
         sourceCategoryId,
@@ -305,7 +341,7 @@ export function useJournal(client: JournalClient) {
       await loadEntries({ ...filter, cursor: null }, false, expectedEpoch)
       setRevision((current) => current + 1)
     } catch (moveError) {
-      if (!(moveError instanceof RequestInvalidatedError)) handleRequestError(moveError)
+      if (!(moveError instanceof RequestInvalidatedError)) handleRequestError(moveError, expectedEpoch)
       throw moveError
     }
   }
@@ -324,10 +360,10 @@ export function useJournal(client: JournalClient) {
           try {
             await loadCategoryManagement(expectedEpoch)
           } catch (refreshError) {
-            handleRequestError(refreshError)
+            handleRequestError(refreshError, expectedEpoch)
           }
         }
-        handleRequestError(deleteError)
+        handleRequestError(deleteError, expectedEpoch)
       }
       throw deleteError
     }
@@ -347,6 +383,8 @@ export function useJournal(client: JournalClient) {
     revision,
     signIn,
     retry,
+    replaceDataSource,
+    clearSession,
     signOut,
     updateFilter,
     loadMore,

@@ -1,9 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Category, DailyEntries, Entry, EntryInput } from './domain/journal'
 import { toFilterCriteria } from './domain/journal'
 import { Icon } from './components/icon'
 import { zhTW } from './i18n/zh-TW'
-import { JournalApiClient } from './services/journal-api-client'
+import {
+  JournalApiClient,
+  type AccountClient,
+  type DeleteAccountInput,
+  type ProvisioningClient,
+  type ProvisioningStatus,
+} from './services/journal-api-client'
 import { CategoryManager } from './features/categories/category-manager'
 import { CalendarView } from './features/entries/calendar-view'
 import { downloadCsv, createCsvBlob } from './features/entries/csv-download'
@@ -13,6 +19,8 @@ import { FilterBar } from './features/entries/filter-bar'
 import { Timeline } from './features/entries/timeline'
 import { ConnectionScreen } from './features/journal/connection-screen'
 import { useJournal, type JournalClient } from './features/journal/use-journal'
+import { DataSpaceSetup } from './features/provisioning/data-space-setup'
+import { DataConnectionSettings } from './features/settings/data-connection-settings'
 import {
   getInitialView,
   readViewPreference,
@@ -23,13 +31,16 @@ import { getJournalMonth, getLocalDate, monthParts } from './utils/date'
 import './styles/global.css'
 
 type AppProps = {
-  client?: JournalClient
+  client?: AppClient
 }
 
-type Page = JournalView | 'categories' | 'export'
+type Page = JournalView | 'categories' | 'export' | 'settings'
+type AppClient = JournalClient & ProvisioningClient & AccountClient
+
+const WORKSPACE_REVALIDATION_INTERVAL_MS = 2_000
 
 export function App({ client }: AppProps) {
-  const [journalClient] = useState<JournalClient>(() => client ?? new JournalApiClient())
+  const [journalClient] = useState<AppClient>(() => client ?? new JournalApiClient())
   const journal = useJournal(journalClient)
   const [page, setPage] = useState<Page>(() => getInitialPage())
   const [calendarMonth, setCalendarMonth] = useState(() => getLocalDate().slice(0, 7))
@@ -42,6 +53,10 @@ export function App({ client }: AppProps) {
   const [editingEntry, setEditingEntry] = useState<Entry | null | undefined>()
   const [isExporting, setIsExporting] = useState<'filtered' | 'all'>()
   const [exportError, setExportError] = useState<string>()
+  const [isChangingDataSpace, setIsChangingDataSpace] = useState(false)
+  const [isStartingDataSpaceChange, setIsStartingDataSpaceChange] = useState(false)
+  const [connectionStatus, setConnectionStatus] = useState<ProvisioningStatus>()
+  const [connectionStatusError, setConnectionStatusError] = useState<string>()
 
   const {
     status,
@@ -57,6 +72,7 @@ export function App({ client }: AppProps) {
     revision,
     signIn,
     retry,
+    clearSession,
     signOut,
     updateFilter,
     loadMore,
@@ -72,13 +88,15 @@ export function App({ client }: AppProps) {
     handleRequestError,
   } = journal
   const journalTimezone = timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+  const workspaceEpoch = useRef(0)
+  const previousJournalStatus = useRef(status)
+  const sessionRestoreRequestId = useRef(0)
+  const isRestoringSession = useRef(false)
+  const lastSessionRevalidationAt = useRef(0)
 
-  useEffect(() => {
-    if (timezone) setCalendarMonth(getJournalMonth(timezone))
-  }, [timezone])
-
-  useEffect(() => {
-    if (status !== 'signed-out') return
+  const clearWorkspaceState = useCallback(() => {
+    setPage(getInitialPage())
+    setCalendarMonth(getLocalDate().slice(0, 7))
     setCalendarDays([])
     setCalendarError(undefined)
     setIsCalendarLoading(false)
@@ -88,12 +106,109 @@ export function App({ client }: AppProps) {
     setEditingEntry(undefined)
     setIsExporting(undefined)
     setExportError(undefined)
-  }, [status])
+    setIsChangingDataSpace(false)
+    setIsStartingDataSpaceChange(false)
+    setConnectionStatus(undefined)
+    setConnectionStatusError(undefined)
+  }, [])
+
+  const invalidateWorkspace = useCallback((): number => {
+    workspaceEpoch.current += 1
+    return workspaceEpoch.current
+  }, [])
+
+  const isCurrentWorkspace = useCallback((expectedEpoch: number): boolean => (
+    expectedEpoch === workspaceEpoch.current
+  ), [])
+
+  const restoreWorkspaceSession = useCallback(async (): Promise<void> => {
+    const restoreRequestId = ++sessionRestoreRequestId.current
+    isRestoringSession.current = true
+    invalidateWorkspace()
+    clearWorkspaceState()
+    clearSession()
+    try {
+      await retry()
+    } finally {
+      if (restoreRequestId === sessionRestoreRequestId.current) {
+        isRestoringSession.current = false
+      }
+    }
+  }, [clearSession, clearWorkspaceState, invalidateWorkspace, retry])
+
+  const handleSignOut = useCallback(async (): Promise<void> => {
+    sessionRestoreRequestId.current += 1
+    isRestoringSession.current = false
+    invalidateWorkspace()
+    clearWorkspaceState()
+    await signOut()
+  }, [clearWorkspaceState, invalidateWorkspace, signOut])
+
+  const handleProvisioningSessionInvalidated = useCallback(() => {
+    void restoreWorkspaceSession()
+  }, [restoreWorkspaceSession])
+
+  useEffect(() => {
+    if (timezone) setCalendarMonth(getJournalMonth(timezone))
+  }, [timezone])
+
+  useEffect(() => {
+    const leftReady = previousJournalStatus.current === 'ready' && status !== 'ready'
+    previousJournalStatus.current = status
+    if (status === 'ready') return
+    if (leftReady) invalidateWorkspace()
+    clearWorkspaceState()
+  }, [clearWorkspaceState, invalidateWorkspace, status])
+
+  const revalidateSession = useCallback(() => {
+    if (status !== 'ready') return
+    const now = Date.now()
+    if (isRestoringSession.current || now - lastSessionRevalidationAt.current < WORKSPACE_REVALIDATION_INTERVAL_MS) {
+      return
+    }
+    lastSessionRevalidationAt.current = now
+    void restoreWorkspaceSession()
+  }, [restoreWorkspaceSession, status])
+
+  useEffect(() => {
+    const handleFocus = () => revalidateSession()
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') revalidateSession()
+    }
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [revalidateSession])
+
+  useEffect(() => {
+    if (status !== 'ready' || page !== 'settings' || isChangingDataSpace) return
+
+    let cancelled = false
+    const expectedWorkspaceEpoch = workspaceEpoch.current
+    setConnectionStatus(undefined)
+    setConnectionStatusError(undefined)
+    void journalClient.getProvisioningStatus().then((nextStatus) => {
+      if (cancelled || !isCurrentWorkspace(expectedWorkspaceEpoch)) return
+      setConnectionStatus(nextStatus)
+    }).catch((statusError: unknown) => {
+      if (cancelled || !isCurrentWorkspace(expectedWorkspaceEpoch)) return
+      setConnectionStatusError(toErrorMessage(statusError))
+      handleRequestError(statusError)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [handleRequestError, isChangingDataSpace, isCurrentWorkspace, journalClient, page, status])
 
   useEffect(() => {
     if (status !== 'ready' || page !== 'calendar') return
 
     let cancelled = false
+    const expectedWorkspaceEpoch = workspaceEpoch.current
     const { year, month } = monthParts(calendarMonth)
     setIsCalendarLoading(true)
     setCalendarError(undefined)
@@ -103,26 +218,27 @@ export function App({ client }: AppProps) {
       month,
       filter: toFilterCriteria(filter),
     }).then((counts) => {
-      if (!cancelled) setCalendarDays(counts)
+      if (cancelled || !isCurrentWorkspace(expectedWorkspaceEpoch)) return
+      setCalendarDays(counts)
     }).catch((loadError: unknown) => {
-      if (!cancelled) {
-        setCalendarDays([])
-        setCalendarError(toErrorMessage(loadError))
-        handleRequestError(loadError)
-      }
+      if (cancelled || !isCurrentWorkspace(expectedWorkspaceEpoch)) return
+      setCalendarDays([])
+      setCalendarError(toErrorMessage(loadError))
+      handleRequestError(loadError)
     }).finally(() => {
-      if (!cancelled) setIsCalendarLoading(false)
+      if (!cancelled && isCurrentWorkspace(expectedWorkspaceEpoch)) setIsCalendarLoading(false)
     })
 
     return () => {
       cancelled = true
     }
-  }, [calendarMonth, filter, handleRequestError, journalClient, page, revision, status])
+  }, [calendarMonth, filter, handleRequestError, isCurrentWorkspace, journalClient, page, revision, status])
 
   useEffect(() => {
     if (status !== 'ready' || page !== 'calendar' || !selectedDate) return
 
     let cancelled = false
+    const expectedWorkspaceEpoch = workspaceEpoch.current
     setIsCalendarLoading(true)
     setCalendarError(undefined)
     void journalClient.run<Entry[]>({
@@ -130,21 +246,93 @@ export function App({ client }: AppProps) {
       date: selectedDate,
       filter: toFilterCriteria(filter),
     }).then((dateEntries) => {
-      if (!cancelled) setSelectedDateEntries(dateEntries)
+      if (cancelled || !isCurrentWorkspace(expectedWorkspaceEpoch)) return
+      setSelectedDateEntries(dateEntries)
     }).catch((loadError: unknown) => {
-      if (!cancelled) {
-        setSelectedDateEntries([])
-        setCalendarError(toErrorMessage(loadError))
-        handleRequestError(loadError)
-      }
+      if (cancelled || !isCurrentWorkspace(expectedWorkspaceEpoch)) return
+      setSelectedDateEntries([])
+      setCalendarError(toErrorMessage(loadError))
+      handleRequestError(loadError)
     }).finally(() => {
-      if (!cancelled) setIsCalendarLoading(false)
+      if (!cancelled && isCurrentWorkspace(expectedWorkspaceEpoch)) setIsCalendarLoading(false)
     })
 
     return () => {
       cancelled = true
     }
-  }, [filter, handleRequestError, journalClient, page, revision, selectedDate, status])
+  }, [filter, handleRequestError, isCurrentWorkspace, journalClient, page, revision, selectedDate, status])
+
+  const handleDataSpaceComplete = useCallback(() => {
+    void restoreWorkspaceSession()
+  }, [restoreWorkspaceSession])
+
+  const handleStartDataSpaceChange = async () => {
+    if (isStartingDataSpaceChange) return
+    const expectedWorkspaceEpoch = workspaceEpoch.current
+    setIsStartingDataSpaceChange(true)
+    try {
+      await journalClient.startSheetChange()
+      if (!isCurrentWorkspace(expectedWorkspaceEpoch)) return
+      setIsChangingDataSpace(true)
+    } catch (changeError) {
+      if (!isCurrentWorkspace(expectedWorkspaceEpoch)) return
+      handleRequestError(changeError)
+      throw changeError
+    } finally {
+      if (isCurrentWorkspace(expectedWorkspaceEpoch)) setIsStartingDataSpaceChange(false)
+    }
+  }
+
+  const clearAfterAccountAction = () => {
+    clearWorkspaceState()
+    clearSession()
+  }
+
+  const runAccountAction = async (action: () => Promise<void>): Promise<void> => {
+    sessionRestoreRequestId.current += 1
+    isRestoringSession.current = false
+    const expectedWorkspaceEpoch = invalidateWorkspace()
+    try {
+      await action()
+      if (!isCurrentWorkspace(expectedWorkspaceEpoch)) return
+      clearAfterAccountAction()
+    } catch (accountError) {
+      if (!isCurrentWorkspace(expectedWorkspaceEpoch)) return
+      handleRequestError(accountError)
+      throw accountError
+    }
+  }
+
+  const handleDisconnect = (): Promise<void> => runAccountAction(() => journalClient.disconnect())
+
+  const handleDeleteAccount = (input: DeleteAccountInput): Promise<void> => (
+    runAccountAction(() => journalClient.deleteAccount(input))
+  )
+
+  if (status === 'provisioning') {
+    return (
+      <DataSpaceSetup
+        client={journalClient}
+        mode="initial"
+        onComplete={handleDataSpaceComplete}
+        onSessionInvalidated={handleProvisioningSessionInvalidated}
+        onRestart={() => void handleSignOut()}
+      />
+    )
+  }
+
+  if (isChangingDataSpace && status === 'ready') {
+    return (
+      <DataSpaceSetup
+        client={journalClient}
+        mode="change"
+        onComplete={handleDataSpaceComplete}
+        onCancel={() => setIsChangingDataSpace(false)}
+        onSessionInvalidated={handleProvisioningSessionInvalidated}
+        onRestart={() => void handleSignOut()}
+      />
+    )
+  }
 
   if (status !== 'ready') {
     return (
@@ -152,7 +340,7 @@ export function App({ client }: AppProps) {
         status={status}
         error={error}
         onSignIn={signIn}
-        onRetry={() => void retry()}
+        onRetry={() => void restoreWorkspaceSession()}
       />
     )
   }
@@ -183,21 +371,19 @@ export function App({ client }: AppProps) {
   }
 
   const handleExport = async (scope: 'filtered' | 'all') => {
+    const expectedWorkspaceEpoch = workspaceEpoch.current
     setIsExporting(scope)
     setExportError(undefined)
     try {
       const data = await exportEntries(scope)
+      if (!isCurrentWorkspace(expectedWorkspaceEpoch)) return
       downloadCsv(createCsvBlob(data.headers, data.rows), `daily-journal-${getLocalDate()}.csv`)
     } catch (downloadError) {
+      if (!isCurrentWorkspace(expectedWorkspaceEpoch)) return
       setExportError(toErrorMessage(downloadError))
     } finally {
-      setIsExporting(undefined)
+      if (isCurrentWorkspace(expectedWorkspaceEpoch)) setIsExporting(undefined)
     }
-  }
-
-  const handleSignOut = () => {
-    signOut()
-    setPage(getInitialPage())
   }
 
   if (selectedEntry) {
@@ -218,9 +404,21 @@ export function App({ client }: AppProps) {
 
   return (
     <div className="app-shell">
-      <DesktopNavigation page={page} onNavigate={navigate} onCreate={() => setEditingEntry(null)} onSignOut={handleSignOut} />
+      <DesktopNavigation
+        page={page}
+        onNavigate={navigate}
+        onCreate={() => setEditingEntry(null)}
+        onSignOut={() => void handleSignOut()}
+        onConfigureDataSpace={() => void handleStartDataSpaceChange().catch(() => undefined)}
+        isConfiguringDataSpace={isStartingDataSpaceChange}
+      />
       <div className="app-shell__workspace">
-        <MobileHeader onCreate={() => setEditingEntry(null)} onSignOut={handleSignOut} />
+        <MobileHeader
+          onCreate={() => setEditingEntry(null)}
+          onSignOut={() => void handleSignOut()}
+          onConfigureDataSpace={() => void handleStartDataSpaceChange().catch(() => undefined)}
+          isConfiguringDataSpace={isStartingDataSpaceChange}
+        />
         <main className="app-main">
           {(page === 'timeline' || page === 'calendar') && (
             <>
@@ -235,7 +433,7 @@ export function App({ client }: AppProps) {
               {error && (
                 <section className="page-error" role="alert">
                   <p>{error}</p>
-                  <button className="button button--secondary" type="button" onClick={() => void retry()}>{zhTW.connection.retry}</button>
+                  <button className="button button--secondary" type="button" onClick={() => void restoreWorkspaceSession()}>{zhTW.connection.retry}</button>
                 </section>
               )}
             </>
@@ -326,6 +524,18 @@ export function App({ client }: AppProps) {
               </div>
             </section>
           )}
+
+          {page === 'settings' && (
+            <>
+              {connectionStatusError && <section className="page-error" role="alert"><p>{connectionStatusError}</p></section>}
+              <DataConnectionSettings
+                status={connectionStatus}
+                onStartChange={handleStartDataSpaceChange}
+                onDisconnect={handleDisconnect}
+                onDeleteAccount={handleDeleteAccount}
+              />
+            </>
+          )}
         </main>
         {(page === 'timeline' || page === 'calendar') && (
           <button className="mobile-fab" type="button" aria-label={zhTW.actions.addEntry} onClick={() => setEditingEntry(null)}>
@@ -362,17 +572,20 @@ function renderEditor(
   )
 }
 
-function DesktopNavigation({ page, onNavigate, onCreate, onSignOut }: {
+function DesktopNavigation({ page, onNavigate, onCreate, onSignOut, onConfigureDataSpace, isConfiguringDataSpace }: {
   page: Page
   onNavigate: (page: Page) => void
   onCreate: () => void
   onSignOut: () => void
+  onConfigureDataSpace: () => void
+  isConfiguringDataSpace: boolean
 }) {
   const items: Array<{ page: Page; label: string; icon: string }> = [
     { page: 'timeline', label: zhTW.navigation.timeline, icon: 'timeline' },
     { page: 'calendar', label: zhTW.navigation.calendar, icon: 'calendar_month' },
     { page: 'categories', label: zhTW.navigation.categories, icon: 'category' },
     { page: 'export', label: zhTW.navigation.export, icon: 'ios_share' },
+    { page: 'settings', label: zhTW.navigation.settings, icon: 'settings' },
   ]
 
   return (
@@ -391,6 +604,9 @@ function DesktopNavigation({ page, onNavigate, onCreate, onSignOut }: {
       </nav>
       <div className="desktop-nav__footer">
         <span><Icon>lock</Icon>{zhTW.accessibility.sheetStorageNotice}</span>
+        <button className="button button--text desktop-nav__data-space" type="button" disabled={isConfiguringDataSpace} onClick={onConfigureDataSpace}>
+          <Icon>table_chart</Icon>{isConfiguringDataSpace ? zhTW.provisioning.startingChange : zhTW.provisioning.openSettings}
+        </button>
         <button className="button button--text desktop-nav__sign-out" type="button" onClick={onSignOut}>
           <Icon>logout</Icon>{zhTW.actions.signOut}
         </button>
@@ -399,11 +615,17 @@ function DesktopNavigation({ page, onNavigate, onCreate, onSignOut }: {
   )
 }
 
-function MobileHeader({ onCreate, onSignOut }: { onCreate: () => void; onSignOut: () => void }) {
+function MobileHeader({ onCreate, onSignOut, onConfigureDataSpace, isConfiguringDataSpace }: {
+  onCreate: () => void
+  onSignOut: () => void
+  onConfigureDataSpace: () => void
+  isConfiguringDataSpace: boolean
+}) {
   return (
     <header className="mobile-header">
       <div><strong>{zhTW.app.name}</strong><small>{zhTW.app.tagline}</small></div>
       <div className="mobile-header__actions">
+        <button className="icon-button" type="button" aria-label={zhTW.provisioning.openSettings} disabled={isConfiguringDataSpace} onClick={onConfigureDataSpace}><Icon>table_chart</Icon></button>
         <button className="icon-button" type="button" aria-label={zhTW.actions.signOut} onClick={onSignOut}><Icon>logout</Icon></button>
         <button className="icon-button" type="button" aria-label={zhTW.actions.addEntry} onClick={onCreate}><Icon filled>add</Icon></button>
       </div>
@@ -417,6 +639,7 @@ function MobileNavigation({ page, onNavigate }: { page: Page; onNavigate: (page:
     { page: 'calendar', label: zhTW.navigation.calendar, icon: 'calendar_month' },
     { page: 'categories', label: zhTW.navigation.categories, icon: 'category' },
     { page: 'export', label: zhTW.navigation.export, icon: 'ios_share' },
+    { page: 'settings', label: zhTW.navigation.settings, icon: 'settings' },
   ]
   return (
     <nav className="mobile-nav" aria-label={zhTW.accessibility.primaryNavigation}>

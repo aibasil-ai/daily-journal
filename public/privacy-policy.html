@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="每日記事的隱私權政策" />
+    <title>隱私權政策 | 每日記事</title>
+    <style>
+      :root { color: #18212b; background: #f5f7fb; font-family: "Noto Sans TC", system-ui, sans-serif; }
+      * { box-sizing: border-box; }
+      body { margin: 0; line-height: 1.8; }
+      header { padding: 1.5rem clamp(1.25rem, 5vw, 5rem); background: #071523; color: #f8fbff; }
+      header a { color: inherit; font-weight: 700; text-decoration: none; }
+      main { width: min(100% - 2.5rem, 52rem); margin: 3rem auto 4rem; padding: clamp(1.5rem, 5vw, 3rem); border: 1px solid #d7deeb; border-radius: 1rem; background: #fff; box-shadow: 0 1rem 3rem rgb(23 42 70 / 8%); }
+      h1 { margin: 0; color: #0b3970; font-size: clamp(1.9rem, 5vw, 2.7rem); line-height: 1.3; }
+      h2 { margin: 2.4rem 0 0.65rem; color: #123f73; font-size: 1.2rem; }
+      p, li { color: #394758; }
+      ul { padding-left: 1.3rem; }
+      .updated { margin-top: 0.75rem; color: #66758a; font-size: 0.9rem; }
+      .notice { margin-top: 1.5rem; padding: 1rem 1.15rem; border-left: 4px solid #2874c8; border-radius: 0.35rem; background: #edf5ff; color: #244665; }
+      footer { padding: 1.5rem; color: #66758a; text-align: center; font-size: 0.9rem; }
+      footer a { color: #174d8c; }
+    </style>
+  </head>
+  <body>
+    <header><a href="/">每日記事</a></header>
+    <main>
+      <h1>隱私權政策</h1>
+      <p class="updated">最後更新：2026 年 8 月 20 日</p>
+      <p class="notice">每日記事的設計原則是讓您的日記資料留在您自己擁有的 Google Sheet，而不是儲存在本服務的中央資料庫。</p>
+
+      <h2>我們處理的資料</h2>
+      <p>當您使用 Google 帳號登入時，我們會處理 Google 提供的穩定帳號識別碼、顯示名稱、電子郵件與頭像，並在伺服器端保存您的 Google Sheet 連線資訊、加密的 refresh token、已授予的權限範圍及本站工作階段資料。</p>
+      <p>日記內容、記事標題、分類、標籤、連結與 CSV 匯出內容不會存入本服務的 Firestore 資料庫。這些資料會由伺服器依您的授權直接讀寫您自己的 Google Sheet。</p>
+
+      <h2>Google 權限的用途</h2>
+      <ul>
+        <li>OpenID、email 與 profile 用於確認您的登入身分與顯示帳號資訊。</li>
+        <li>Google Sheets 權限用於建立、驗證及讀寫您的日記 Sheet。</li>
+        <li>Google Drive metadata 權限用於在伺服器端列出與確認您自己擁有、可編輯的 Google Sheet。</li>
+        <li>Google Drive file 權限只會用於刪除本服務建立且由您明確二次確認要刪除的 Sheet。</li>
+      </ul>
+      <p>本服務不會把 Google access token 或 refresh token 傳給瀏覽器。refresh token 會以獨立的伺服器端加密金鑰保護，短效 access token 只在單次伺服器請求記憶體中使用。</p>
+
+      <h2>資料保留與刪除</h2>
+      <p>登出只會撤銷本站工作階段。中斷 Google 連線會清除伺服器端連線憑證與工作階段，但不會刪除您的 Google Sheet。刪除帳號資料預設也會保留 Sheet；只有本服務建立的作用中 Sheet，才可在您明確二次確認後由服務協助刪除。您自行連結的既有 Sheet 必須由您自行在 Google Drive 管理。</p>
+      <p>您也可以隨時在 Google 帳號的第三方應用程式存取權管理頁面撤銷本服務的 Google 權限。撤銷後，服務將無法再讀寫您的 Sheet，直到您重新授權。</p>
+
+      <h2>安全與揭露</h2>
+      <p>本服務透過 HTTPS、HttpOnly 工作階段 Cookie、伺服器端 token 加密與帳號專屬 Sheet 連線降低未授權存取風險。我們不會出售您的資料，也不會將日記內容提供給廣告或分析服務。依法有效的請求或為保護服務安全所必須的處理，可能構成有限例外。</p>
+
+      <h2>政策更新</h2>
+      <p>若資料處理方式有重大變更，會在本頁更新日期與內容。繼續使用服務前，請閱讀最新版政策。</p>
+    </main>
+    <footer><a href="/terms-of-service.html">服務條款</a> | <a href="/">返回每日記事</a></footer>
+  </body>
+</html>

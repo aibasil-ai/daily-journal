@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import type { Category, Entry, EntryFilter, EntryFilterCriteria, EntryInput } from '../domain/journal'
-import { FakeJournalStore } from '../test/fake-journal-store'
-import { JournalService } from './journal-service'
+import type { Category, Entry, EntryFilter, EntryFilterCriteria, EntryInput } from './types'
+import { InMemoryJournalStore } from './in-memory-store'
+import { JournalService } from './service'
 
 const timestamp = '2026-08-04T12:00:00+08:00'
 
@@ -69,7 +69,7 @@ describe('JournalService', () => {
   })
 
   it('搬移前驗證整批選取，成功時同時更新分類與 updatedAt', () => {
-    const store = new FakeJournalStore({
+    const store = new InMemoryJournalStore({
       categories: [category({ id: 'work' }), category({ id: 'life', name: '生活' })],
       entries: [entry({ id: 'one', categoryId: 'work' }), entry({ id: 'two', categoryId: 'work' })],
     })
@@ -85,7 +85,7 @@ describe('JournalService', () => {
   })
 
   it('遇到無效目的地、重複選取或非來源記事時不搬移任何記事', () => {
-    const store = new FakeJournalStore({
+    const store = new InMemoryJournalStore({
       categories: [
         category({ id: 'work' }),
         category({ id: 'life', name: '生活' }),
@@ -112,7 +112,7 @@ describe('JournalService', () => {
 
   it('新增與更新記事時會正規化內容、保留建立時間', () => {
     let currentTimestamp = '2026-08-04T12:00:00+08:00'
-    const store = new FakeJournalStore({ categories: [category()] })
+    const store = new InMemoryJournalStore({ categories: [category()] })
     const service = new JournalService(store, () => currentTimestamp, () => 'entry-new')
 
     const created = service.saveEntry(entryInput({
@@ -176,7 +176,7 @@ describe('JournalService', () => {
   })
 
   it('停用分類會保留歷史記事，且可永久刪除記事', () => {
-    const store = new FakeJournalStore({
+    const store = new InMemoryJournalStore({
       categories: [category({ id: 'work' })],
       entries: [entry({ id: 'history', categoryId: 'work' })],
     })
@@ -292,8 +292,8 @@ describe('JournalService', () => {
   })
 })
 
-function createService(options: ConstructorParameters<typeof FakeJournalStore>[0] = {}): JournalService {
-  return new JournalService(new FakeJournalStore(options), () => timestamp, () => 'generated-id')
+function createService(options: ConstructorParameters<typeof InMemoryJournalStore>[0] = {}): JournalService {
+  return new JournalService(new InMemoryJournalStore(options), () => timestamp, () => 'generated-id')
 }
 
 function category(overrides: Partial<Category> = {}): Category {

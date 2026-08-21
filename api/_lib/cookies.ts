@@ -1,7 +1,9 @@
 export const SESSION_COOKIE_NAME = 'daily_journal_session'
+export const PROVISIONING_COOKIE_NAME = 'daily_journal_provisioning'
 export const OAUTH_STATE_COOKIE_NAME = 'daily_journal_oauth_state'
 
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
+const PROVISIONING_MAX_AGE_SECONDS = 60 * 20
 const STATE_MAX_AGE_SECONDS = 60 * 10
 const COOKIE_ATTRIBUTES = 'HttpOnly; Secure; SameSite=Lax; Path=/'
 
@@ -11,6 +13,18 @@ export function createSessionCookie(value: string): string {
 
 export function clearSessionCookie(): string {
   return createCookie(SESSION_COOKIE_NAME, '', 0)
+}
+
+export function createProvisioningCookie(value: string): string {
+  return createCookie(PROVISIONING_COOKIE_NAME, value, PROVISIONING_MAX_AGE_SECONDS)
+}
+
+export function clearProvisioningCookie(): string {
+  return createCookie(PROVISIONING_COOKIE_NAME, '', 0)
+}
+
+export function clearAllSessionCookies(): string[] {
+  return [clearSessionCookie(), clearProvisioningCookie()]
 }
 
 export function createOAuthStateCookie(value: string): string {

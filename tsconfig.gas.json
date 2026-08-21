@@ -15,5 +15,5 @@
     "noEmit": true,
     "types": ["node", "vitest/globals"]
   },
-  "include": ["gas/src"]
+  "include": ["gas/src", "shared/journal"]
 }
