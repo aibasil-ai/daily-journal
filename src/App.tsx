@@ -4,6 +4,7 @@ import { toFilterCriteria } from './domain/journal'
 import { Icon } from './components/icon'
 import { zhTW } from './i18n/zh-TW'
 import {
+  AuthenticationError,
   JournalApiClient,
   type AccountClient,
   type DeleteAccountInput,
@@ -167,8 +168,20 @@ export function App({ client }: AppProps) {
       return
     }
     lastSessionRevalidationAt.current = now
-    void restoreWorkspaceSession()
-  }, [restoreWorkspaceSession, status])
+    void journalClient.restoreSession().then((sessionState) => {
+      if (sessionState === 'signed-out') {
+        clearWorkspaceState()
+        clearSession()
+      } else if (sessionState === 'provisioning') {
+        void restoreWorkspaceSession()
+      }
+    }).catch((revalidateError: unknown) => {
+      if (revalidateError instanceof AuthenticationError) {
+        clearWorkspaceState()
+        clearSession()
+      }
+    })
+  }, [clearSession, clearWorkspaceState, journalClient, restoreWorkspaceSession, status])
 
   useEffect(() => {
     const handleFocus = () => revalidateSession()

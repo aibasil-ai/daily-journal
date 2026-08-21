@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type {
   ActiveSheetConnectionDocument,
   UserDocument,
@@ -8,6 +8,7 @@ import {
   JournalRequestContextAuthenticationError,
   JournalRequestContextConfigurationError,
   JournalRequestContextConflictError,
+  clearAccessTokenCache,
   createJournalRequestContextResolver,
 } from './journal-request-context.js'
 import type { ServerConfig } from './server-config.js'
@@ -32,6 +33,10 @@ const config: ServerConfig = {
 }
 
 describe('journal request context', () => {
+  beforeEach(() => {
+    clearAccessTokenCache()
+  })
+
   test('從不透明 journal Cookie 解析 session、使用者與其作用中連線，且只保留 request 記憶體 access token', async () => {
     const system = createSystem()
 

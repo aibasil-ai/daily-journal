@@ -106,6 +106,18 @@ export class JournalRequestContextProvisioningRequiredError extends Error {
   }
 }
 
+type CachedAccessToken = {
+  accessToken: string
+  expiresAt: number
+}
+
+const ACCESS_TOKEN_CACHE_TTL_MS = 50 * 60_000
+const accessTokenCache = new Map<string, CachedAccessToken>()
+
+export function clearAccessTokenCache(): void {
+  accessTokenCache.clear()
+}
+
 export function createJournalRequestContextResolver(
   dependencies: JournalRequestContextDependencies,
 ): (request: Request) => Promise<JournalRequestContext> {
@@ -168,58 +180,77 @@ export function createJournalRequestContextResolver(
       throw new JournalRequestContextAuthenticationError(session.sessionId, connection.id)
     }
 
-    let credentials: GoogleCredentials
-    try {
-      credentials = await refresh(refreshToken, dependencies.config)
-    } catch (error) {
-      if (error instanceof InvalidRefreshTokenError) {
-        throw new JournalRequestContextAuthenticationError(
-          session.sessionId,
-          connection.id,
-          expectedEncryptedRefreshToken,
-        )
-      }
-      throw error
-    }
+    const cacheKey = `${connection.id}:${expectedEncryptedRefreshToken.ciphertext}`
+    const cached = accessTokenCache.get(cacheKey)
+    const now = Date.now()
 
-    const replacement = nonEmptyString(credentials.refreshToken)
-    const scopesChanged = credentials.scopes !== undefined && !areScopesEqual(connection.scopes, credentials.scopes)
+    let accessToken = cached && cached.expiresAt > now ? cached.accessToken : undefined
     let resolvedConnection = connection
-    if (replacement || scopesChanged) {
-      if (dependencies.connections.updateActiveConnectionCredentialsIfCurrent) {
-        const updated = await dependencies.connections.updateActiveConnectionCredentialsIfCurrent({
-          userId: user.id,
-          connectionId: connection.id,
-          expectedConnectionVersion: connection.connectionVersion,
-          ...(replacement === undefined
-            ? {}
-            : {
-              encryptedRefreshToken: encryptToken(
-                replacement,
-                dependencies.config.tokenEncryptionKey,
-                dependencies.config.tokenEncryptionKeyVersion,
-              ),
-            }),
-          ...(credentials.scopes === undefined ? {} : { scopes: credentials.scopes }),
+
+    if (!accessToken) {
+      let credentials: GoogleCredentials
+      try {
+        credentials = await refresh(refreshToken, dependencies.config)
+      } catch (error) {
+        if (error instanceof InvalidRefreshTokenError) {
+          accessTokenCache.delete(cacheKey)
+          throw new JournalRequestContextAuthenticationError(
+            session.sessionId,
+            connection.id,
+            expectedEncryptedRefreshToken,
+          )
+        }
+        throw error
+      }
+
+      accessToken = credentials.accessToken
+      if (accessToken) {
+        accessTokenCache.set(cacheKey, {
+          accessToken,
+          expiresAt: now + ACCESS_TOKEN_CACHE_TTL_MS,
         })
-        if (!updated) throw new JournalRequestContextConflictError()
-        resolvedConnection = updated
-      } else if (replacement) {
-        // 舊測試替身僅支援 token CAS；正式 ConnectionStore 一律使用上方版本 CAS。
-        const updated = await dependencies.connections.updateEncryptedTokenIfCurrent(
-          connection.id,
-          expectedEncryptedRefreshToken,
-          encryptToken(
-            replacement,
-            dependencies.config.tokenEncryptionKey,
-            dependencies.config.tokenEncryptionKeyVersion,
-          ),
-        )
-        if (!updated) throw new JournalRequestContextConflictError()
+      }
+
+      const replacement = nonEmptyString(credentials.refreshToken)
+      const scopesChanged = credentials.scopes !== undefined && !areScopesEqual(connection.scopes, credentials.scopes)
+      if (replacement || scopesChanged) {
+        if (dependencies.connections.updateActiveConnectionCredentialsIfCurrent) {
+          const updated = await dependencies.connections.updateActiveConnectionCredentialsIfCurrent({
+            userId: user.id,
+            connectionId: connection.id,
+            expectedConnectionVersion: connection.connectionVersion,
+            ...(replacement === undefined
+              ? {}
+              : {
+                encryptedRefreshToken: encryptToken(
+                  replacement,
+                  dependencies.config.tokenEncryptionKey,
+                  dependencies.config.tokenEncryptionKeyVersion,
+                ),
+              }),
+            ...(credentials.scopes === undefined ? {} : { scopes: credentials.scopes }),
+          })
+          if (!updated) throw new JournalRequestContextConflictError()
+          resolvedConnection = updated
+          if (replacement) accessTokenCache.delete(cacheKey)
+        } else if (replacement) {
+          // 舊測試替身僅支援 token CAS；正式 ConnectionStore 一律使用上方版本 CAS。
+          const updated = await dependencies.connections.updateEncryptedTokenIfCurrent(
+            connection.id,
+            expectedEncryptedRefreshToken,
+            encryptToken(
+              replacement,
+              dependencies.config.tokenEncryptionKey,
+              dependencies.config.tokenEncryptionKeyVersion,
+            ),
+          )
+          if (!updated) throw new JournalRequestContextConflictError()
+          accessTokenCache.delete(cacheKey)
+        }
       }
     }
 
-    return { session, user, connection: resolvedConnection, accessToken: credentials.accessToken }
+    return { session, user, connection: resolvedConnection, accessToken }
   }
 }
 
