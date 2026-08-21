@@ -112,7 +112,6 @@ export class GoogleSheetsClient {
       'columnGroups',
       'slicers',
       'tables',
-      'commentAnchors',
       ...(options.includeGridData
         ? ['data(startRow,startColumn,rowData(values(userEnteredValue,userEnteredFormat,note,dataValidation,textFormatRuns,pivotTable,dataSourceTable,dataSourceFormula,chipRuns)))']
         : []),
