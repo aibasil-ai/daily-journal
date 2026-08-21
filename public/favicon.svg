@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a" />
+      <stop offset="55%" stop-color="#1d4ed8" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+
+    <linearGradient id="bookCover" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#f1f5f9" />
+    </linearGradient>
+
+    <linearGradient id="spineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1e40af" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="45%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+
+    <filter id="dropShadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#020617" flood-opacity="0.32" />
+    </filter>
+
+    <filter id="goldGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#f59e0b" flood-opacity="0.5" />
+    </filter>
+  </defs>
+
+  <!-- App Icon Squircle Background -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" />
+
+  <!-- Inner Ambient Glow Border -->
+  <rect x="8" y="8" width="496" height="496" rx="120" fill="none" stroke="#ffffff" stroke-width="6" stroke-opacity="0.18" />
+
+  <!-- Journal Book Icon -->
+  <g filter="url(#dropShadow)">
+    <!-- Book Body -->
+    <rect x="116" y="104" width="260" height="304" rx="28" fill="url(#bookCover)" />
+
+    <!-- Left Spine -->
+    <path d="M116 132 C116 116.5 128.5 104 144 104 L168 104 L168 408 L144 408 C128.5 408 116 395.5 116 380 Z" fill="url(#spineGrad)" />
+
+    <!-- Bookmark Ribbon (Gold) -->
+    <path d="M280 104 L316 104 L316 200 L298 182 L280 200 Z" fill="url(#goldGrad)" />
+
+    <!-- Diary Journal Content Writing Lines -->
+    <rect x="194" y="164" width="70" height="16" rx="8" fill="#2563eb" fill-opacity="0.9" />
+    <rect x="194" y="212" width="144" height="15" rx="7.5" fill="#64748b" fill-opacity="0.55" />
+    <rect x="194" y="252" width="144" height="15" rx="7.5" fill="#64748b" fill-opacity="0.55" />
+    <rect x="194" y="292" width="120" height="15" rx="7.5" fill="#64748b" fill-opacity="0.55" />
+    <rect x="194" y="332" width="85" height="15" rx="7.5" fill="#64748b" fill-opacity="0.55" />
+  </g>
+
+  <!-- Sparkle Star (auto_awesome) -->
+  <g filter="url(#goldGlow)">
+    <path d="M380 72 Q380 128 436 128 Q380 128 380 184 Q380 128 324 128 Q380 128 380 72 Z" fill="url(#goldGrad)" />
+    <circle cx="380" cy="128" r="8" fill="#ffffff" />
+  </g>
+</svg>
