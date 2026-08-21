@@ -1859,41 +1859,48 @@ p {
   position: fixed;
   z-index: 60;
   inset: 0;
-  display: grid;
-  overflow: auto;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 0;
-  background: rgb(25 28 30 / 38%);
+  background: rgb(25 28 30 / 45%);
   backdrop-filter: blur(4px);
 }
 
 .editor-modal {
   display: flex;
-  width: min(100%, 60rem);
-  min-height: 100%;
   flex-direction: column;
+  width: min(100%, 60rem);
+  height: 100%;
+  max-height: 100svh;
   background: var(--surface-card);
+  overflow: hidden;
 }
 
 .editor-modal__header {
-  position: sticky;
-  top: 0;
-  z-index: 3;
+  flex: 0 0 auto;
   border-bottom: 1px solid var(--outline-variant);
-  background: rgb(255 255 255 / 94%);
-  backdrop-filter: blur(10px);
+  background: var(--surface-card);
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .editor-modal__header > div {
   display: flex;
-  min-height: 4rem;
+  min-height: 3.75rem;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   padding: 0.5rem 1rem;
 }
 
 .editor-modal__header h1 {
   font-size: 1.25rem;
+}
+
+.editor-modal .entry-form {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 1.25rem 1rem calc(2.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 .confirm-dialog {
