@@ -118,6 +118,7 @@ export async function refreshGoogleCredentials(
   const response = await requestToken(body, fetchImpl)
   const payload = await readTokenPayload(response)
   if (!response.ok) {
+    console.error(`[GoogleOAuth refresh token error ${response.status}]`, payload)
     if (payload.error === 'invalid_grant') {
       throw new InvalidRefreshTokenError()
     }
@@ -159,7 +160,8 @@ async function requestToken(body: URLSearchParams, fetchImpl: typeof fetch): Pro
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString(),
     })
-  } catch {
+  } catch (error) {
+    console.error('[GoogleOAuth token request error]', error)
     throw new GoogleOAuthUpstreamError()
   }
 }

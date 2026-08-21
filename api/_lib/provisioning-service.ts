@@ -397,6 +397,7 @@ export class ProvisioningService {
         spreadsheetName: '每日記事',
       }, true)
     } catch (error) {
+      console.error('[ProvisioningService.createSheet error]', error)
       if (error instanceof ProvisioningServiceError && error.code === 'upstream_failure') throw error
       await this.markAttemptFailed(claimed, 'provisioning_failed')
       if (error instanceof ProvisioningServiceError && error.code === 'provisioning_failed') throw error

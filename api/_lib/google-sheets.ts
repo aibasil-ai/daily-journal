@@ -167,10 +167,19 @@ export class GoogleSheetsClient {
     let response: Response
     try {
       response = await this.fetchImpl(url, init)
-    } catch {
+    } catch (error) {
+      console.error('[GoogleSheetsClient network error]', error)
       throw new GoogleUpstreamError()
     }
-    if (!response.ok) throw toGoogleApiError(response.status)
+    if (!response.ok) {
+      try {
+        const errorBody = await response.clone().text()
+        console.error(`[GoogleSheetsClient API error ${response.status}]`, errorBody)
+      } catch {
+        console.error(`[GoogleSheetsClient API error ${response.status}]`)
+      }
+      throw toGoogleApiError(response.status)
+    }
     return response
   }
 }

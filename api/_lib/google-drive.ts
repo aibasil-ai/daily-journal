@@ -118,10 +118,19 @@ export class GoogleDriveClient {
         ...(method ? { method } : {}),
         headers: { Authorization: `Bearer ${accessToken}` },
       })
-    } catch {
+    } catch (error) {
+      console.error('[GoogleDriveClient network error]', error)
       throw new GoogleUpstreamError()
     }
-    if (!response.ok) throw toGoogleApiError(response.status)
+    if (!response.ok) {
+      try {
+        const errorBody = await response.clone().text()
+        console.error(`[GoogleDriveClient API error ${response.status}]`, errorBody)
+      } catch {
+        console.error(`[GoogleDriveClient API error ${response.status}]`)
+      }
+      throw toGoogleApiError(response.status)
+    }
     return response
   }
 }
