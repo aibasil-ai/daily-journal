@@ -28,6 +28,7 @@ export const zhTW = {
     reconnect: '重新登入',
     retry: '重新嘗試',
     connecting: '連線中...',
+    redirecting: '前往 Google 登入中...',
     reconnectHint: 'Google Sheet 連線可能需要重新登入或重新設定資料空間。',
     privacyPolicy: '隱私權政策',
     termsOfService: '服務條款',

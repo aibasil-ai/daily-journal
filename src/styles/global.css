@@ -980,6 +980,19 @@ p {
   animation: spin 0.8s linear infinite;
 }
 
+.app-loading-spinner--button {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-width: 2.5px;
+  border-color: rgb(255 255 255 / 25%);
+  border-top-color: #ffffff;
+}
+
+.connection-card__google-button--loading {
+  opacity: 0.95;
+  cursor: wait;
+}
+
 .app-loading-brand {
   display: flex;
   flex-direction: column;

@@ -32,3 +32,14 @@ test('檢查工作階段時停用登入按鈕', () => {
 
   expect(screen.getByRole('button', { name: '連線中...' })).toBeDisabled()
 })
+
+test('點擊 Google 登入按鈕後立即呈現載入狀態「前往 Google 登入中...」並停用按鈕', async () => {
+  const onSignIn = vi.fn()
+  render(<ConnectionScreen status="signed-out" onSignIn={onSignIn} onRetry={vi.fn()} />)
+
+  const button = screen.getByRole('button', { name: '使用 Google 帳號登入' })
+  await userEvent.click(button)
+
+  expect(onSignIn).toHaveBeenCalledOnce()
+  expect(screen.getByRole('button', { name: '前往 Google 登入中...' })).toBeDisabled()
+})

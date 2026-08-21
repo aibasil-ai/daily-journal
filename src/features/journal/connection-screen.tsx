@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { JournalStatus } from './use-journal'
 import { Icon } from '../../components/icon'
 import { zhTW } from '../../i18n/zh-TW'
@@ -10,8 +11,14 @@ type ConnectionScreenProps = {
 }
 
 export function ConnectionScreen({ status, error, onSignIn, onRetry }: ConnectionScreenProps) {
+  const [isSigningIn, setIsSigningIn] = useState(false)
   const isLoading = status === 'loading' || status === 'checking-session'
   const needsReconnect = status === 'error' || Boolean(error)
+
+  const handleSignIn = () => {
+    setIsSigningIn(true)
+    onSignIn()
+  }
 
   return (
     <main className="connection-screen">
@@ -47,14 +54,28 @@ export function ConnectionScreen({ status, error, onSignIn, onRetry }: Connectio
           {needsReconnect && <p className="connection-card__hint">{zhTW.connection.reconnectHint}</p>}
           <div className="connection-card__actions">
             {status === 'error' && (
-              <button className="button connection-card__retry" type="button" onClick={onRetry} disabled={isLoading}>
+              <button className="button connection-card__retry" type="button" onClick={onRetry} disabled={isLoading || isSigningIn}>
                 <Icon>refresh</Icon>
                 {zhTW.connection.retry}
               </button>
             )}
-            <button className="button connection-card__google-button" type="button" onClick={onSignIn} disabled={isLoading}>
-              <GoogleMark />
-              {isLoading ? zhTW.connection.connecting : status === 'error' ? zhTW.connection.reconnect : zhTW.connection.signIn}
+            <button
+              className={`button connection-card__google-button${isSigningIn ? ' connection-card__google-button--loading' : ''}`}
+              type="button"
+              onClick={handleSignIn}
+              disabled={isLoading || isSigningIn}
+            >
+              {isSigningIn ? (
+                <>
+                  <span className="app-loading-spinner app-loading-spinner--button" aria-hidden="true" />
+                  <span>{zhTW.connection.redirecting}</span>
+                </>
+              ) : (
+                <>
+                  <GoogleMark />
+                  <span>{isLoading ? zhTW.connection.connecting : status === 'error' ? zhTW.connection.reconnect : zhTW.connection.signIn}</span>
+                </>
+              )}
             </button>
           </div>
           <p style={{ marginTop: '1.25rem', color: '#adb4c0', fontSize: '0.75rem', lineHeight: 1.6, textAlign: 'center' }}>
