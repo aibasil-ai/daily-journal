@@ -944,11 +944,67 @@ p {
   }
 }
 
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.app-shell--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: var(--color-bg, #f8fafc);
+}
+
+.app-loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 2rem;
+}
+
+.app-loading-spinner {
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 3.5px solid rgba(59, 130, 246, 0.15);
+  border-top-color: var(--color-primary, #2563eb);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.app-loading-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.app-loading-brand strong {
+  font-size: 1.15rem;
+  color: var(--color-text, #1e293b);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.app-loading-brand span {
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #64748b);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .connection-card-shell__flare,
   .connection-card__google-button::before,
   .connection-screen__orbits span::after,
-  .connection-title-flare {
+  .connection-title-flare,
+  .app-loading-spinner {
     animation: none;
   }
 }

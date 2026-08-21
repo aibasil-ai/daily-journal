@@ -39,6 +39,39 @@ type Page = JournalView | 'categories' | 'export' | 'settings'
 type AppClient = JournalClient & ProvisioningClient & AccountClient
 
 const WORKSPACE_REVALIDATION_INTERVAL_MS = 2_000
+const AUTH_HINT_KEY = 'daily-journal-auth-hint'
+
+function readAuthHint(): boolean {
+  try {
+    return typeof window !== 'undefined' && window.localStorage.getItem(AUTH_HINT_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function writeAuthHint(hasAuth: boolean): void {
+  try {
+    if (typeof window === 'undefined') return
+    if (hasAuth) window.localStorage.setItem(AUTH_HINT_KEY, '1')
+    else window.localStorage.removeItem(AUTH_HINT_KEY)
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function AppLoadingScreen() {
+  return (
+    <div className="app-shell app-shell--loading" aria-busy="true" aria-live="polite">
+      <div className="app-loading-container">
+        <div className="app-loading-spinner" aria-hidden="true" />
+        <div className="app-loading-brand">
+          <strong>{zhTW.app.name}</strong>
+          <span>{zhTW.connection.connecting}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export function App({ client }: AppProps) {
   const [journalClient] = useState<AppClient>(() => client ?? new JournalApiClient())
@@ -276,8 +309,13 @@ export function App({ client }: AppProps) {
   }, [filter, handleRequestError, isCurrentWorkspace, journalClient, page, revision, selectedDate, status])
 
   useEffect(() => {
-    if (status === 'ready' && typeof window !== 'undefined' && window.location.search.includes('setup=')) {
-      window.history.replaceState({}, '', window.location.pathname)
+    if (status === 'ready') {
+      writeAuthHint(true)
+      if (typeof window !== 'undefined' && window.location.search.includes('setup=')) {
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+    } else if (status === 'signed-out') {
+      writeAuthHint(false)
     }
   }, [status])
 
@@ -354,6 +392,11 @@ export function App({ client }: AppProps) {
         onRestart={() => void handleSignOut()}
       />
     )
+  }
+
+  const isInitialLoading = status === 'checking-session' || status === 'loading'
+  if (isInitialLoading && readAuthHint() && !error) {
+    return <AppLoadingScreen />
   }
 
   if (status !== 'ready') {

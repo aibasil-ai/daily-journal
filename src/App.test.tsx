@@ -597,6 +597,34 @@ test('視窗重新取得焦點時只重新探測一次 session', async () => {
   await waitFor(() => expect(restoreSession).toHaveBeenCalledTimes(2))
 })
 
+test('曾登入的使用者重新整理時顯示淺色載入畫面，不閃爍登入頁面', async () => {
+  window.localStorage.setItem('daily-journal-auth-hint', '1')
+  const sessionDeferred = deferred<'authenticated'>()
+  const run = vi.fn(async (request: ApiRequest) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [], tagSuggestions: [] }
+    if (request.action === 'listCategories') return { categories: [], entryCounts: {} }
+    if (request.action === 'listEntries') return { items: [], nextCursor: null }
+    if (request.action === 'getMonthlyEntries') return []
+    throw new Error(`未預期的請求：${request.action}`)
+  })
+  const client = createClient({
+    restoreSession: vi.fn(() => sessionDeferred.promise),
+    run: run as JournalClient['run'],
+  })
+
+  render(<App client={client} />)
+
+  expect(screen.getByText('連線中...')).toBeInTheDocument()
+  expect(screen.queryByText('把今天，寫進時光裡')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: '使用 Google 帳號登入' })).not.toBeInTheDocument()
+
+  act(() => {
+    sessionDeferred.resolve('authenticated')
+  })
+
+  expect(await screen.findByRole('heading', { name: '每日記事' })).toBeInTheDocument()
+})
+
 function createClient(
   overrides: Partial<JournalClient> & Partial<ProvisioningClient> & Partial<AccountClient> = {},
 ): JournalClient & ProvisioningClient & AccountClient {
