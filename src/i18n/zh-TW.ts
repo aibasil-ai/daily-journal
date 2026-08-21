@@ -129,6 +129,10 @@ export const zhTW = {
     today: '今天',
     close: '關閉',
     signOut: '登出',
+    saving: '儲存中...',
+    deleting: '刪除中...',
+    moving: '搬移中...',
+    loadingMore: '載入中...',
   },
   filters: {
     title: '篩選記事',

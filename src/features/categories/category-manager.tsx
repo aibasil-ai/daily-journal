@@ -136,7 +136,7 @@ export function CategoryManager({
           <div className="category-editor__actions">
             {editing !== undefined && <button className="button button--secondary" type="button" disabled={isSaving} onClick={closeEditor}>{zhTW.actions.cancel}</button>}
             <button className="button button--primary" type="button" disabled={isSaving || !name.trim()} onClick={() => void handleSave()}>
-              {isSaving ? zhTW.connection.connecting : zhTW.categories.save}
+              {isSaving ? zhTW.actions.saving : zhTW.categories.save}
             </button>
           </div>
         </section>
@@ -244,7 +244,7 @@ export function CategoryManager({
             <div className="confirm-dialog__actions">
               <button className="button button--secondary" type="button" data-dialog-initial-focus disabled={isDeleting} onClick={() => setPendingDelete(undefined)}>{zhTW.actions.cancel}</button>
               <button className="button button--danger" type="button" disabled={isDeleting} onClick={() => void handleDelete()}>
-                {isDeleting ? zhTW.connection.connecting : zhTW.categories.confirmDelete}
+                {isDeleting ? zhTW.actions.deleting : zhTW.categories.confirmDelete}
               </button>
             </div>
           </div>

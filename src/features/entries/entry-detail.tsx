@@ -88,7 +88,7 @@ export function EntryDetail({ entry, categoryName, timezone, onBack, onEdit, onD
             <div className="confirm-dialog__actions">
               <button className="button button--secondary" type="button" data-dialog-initial-focus disabled={isDeleting} onClick={() => setIsConfirming(false)}>{zhTW.actions.cancel}</button>
               <button className="button button--danger" type="button" disabled={isDeleting} onClick={handleDelete}>
-                {isDeleting ? zhTW.connection.connecting : zhTW.deleteDialog.confirm}
+                {isDeleting ? zhTW.actions.deleting : zhTW.deleteDialog.confirm}
               </button>
             </div>
           </div>

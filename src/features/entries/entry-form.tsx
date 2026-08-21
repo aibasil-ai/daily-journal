@@ -249,7 +249,7 @@ export function EntryForm({ entry, categories, tagSuggestions, timezone, onSave,
         </button>
         <button className="button button--primary" type="submit" disabled={isSaving}>
           <Icon filled>save</Icon>
-          {isSaving ? zhTW.connection.connecting : entry ? zhTW.actions.saveChanges : zhTW.actions.saveEntry}
+          {isSaving ? zhTW.actions.saving : entry ? zhTW.actions.saveChanges : zhTW.actions.saveEntry}
         </button>
       </footer>
     </form>

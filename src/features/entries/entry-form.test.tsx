@@ -1,7 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { expect, test, vi } from 'vitest'
+import { afterEach, expect, test, vi } from 'vitest'
 import { EntryForm } from './entry-form'
+
+afterEach(() => {
+  cleanup()
+})
 
 test('提交含標籤與連結的記事', async () => {
   const user = userEvent.setup()
@@ -31,4 +35,31 @@ test('提交含標籤與連結的記事', async () => {
     tags: ['會議', '專案A'],
     links: [{ label: '會議紀錄', url: 'https://example.com/meeting' }],
   })))
+})
+
+test('儲存記事時按鈕顯示「儲存中...」並處於停用狀態', async () => {
+  const user = userEvent.setup()
+  let resolveSave!: () => void
+  const savePromise = new Promise<void>((resolve) => {
+    resolveSave = resolve
+  })
+  const onSave = vi.fn().mockImplementation(() => savePromise)
+  render(
+    <EntryForm
+      categories={[{
+        id: 'work', name: '工作', isActive: true, createdAt: '2026-08-04T00:00:00+08:00', updatedAt: '2026-08-04T00:00:00+08:00',
+      }]}
+      tagSuggestions={[]}
+      timezone="Asia/Taipei"
+      onSave={onSave}
+      onCancel={vi.fn()}
+    />,
+  )
+
+  await user.type(screen.getByLabelText('記事內容'), '測試儲存文字')
+  await user.selectOptions(screen.getByLabelText('分類'), 'work')
+  await user.click(screen.getByRole('button', { name: '儲存記事' }))
+
+  expect(screen.getByRole('button', { name: '儲存中...' })).toBeDisabled()
+  resolveSave()
 })

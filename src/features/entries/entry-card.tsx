@@ -70,7 +70,7 @@ export function EntryCard({ entry, categoryName, timezone, onOpen, onEdit, onDel
                 {zhTW.actions.cancel}
               </button>
               <button className="button button--danger" type="button" disabled={isDeleting} onClick={handleDelete}>
-                {isDeleting ? zhTW.connection.connecting : zhTW.deleteDialog.confirm}
+                {isDeleting ? zhTW.actions.deleting : zhTW.deleteDialog.confirm}
               </button>
             </div>
           </div>
