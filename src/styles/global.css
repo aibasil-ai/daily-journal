@@ -1576,6 +1576,27 @@ p {
   text-align: center;
 }
 
+.search-loading-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0.5rem auto 1.25rem;
+  padding: 0.5rem 1rem;
+  width: fit-content;
+  color: var(--primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  background: var(--primary-fixed, #dbeafe);
+  box-shadow: 0 1px 2px rgb(37 99 235 / 10%);
+}
+
+.search-loading-note .loading-note-spinner {
+  font-size: 1.125rem;
+  animation: spin 0.9s linear infinite;
+}
+
 .empty-state {
   display: grid;
   max-width: 32rem;

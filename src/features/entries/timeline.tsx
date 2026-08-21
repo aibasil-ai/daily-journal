@@ -65,11 +65,10 @@ export function Timeline({
           </div>
         </section>
       ))}
-      {isLoading && <p className="loading-note" role="status">{zhTW.connection.connecting}</p>}
       {nextCursor !== null && (
         <div className="timeline__load-more">
           <button className="button button--secondary" type="button" onClick={onLoadMore} disabled={isLoading}>
-            {zhTW.actions.loadMore}
+            {isLoading ? zhTW.timeline.loadingMore : zhTW.actions.loadMore}
           </button>
         </div>
       )}

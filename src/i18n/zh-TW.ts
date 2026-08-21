@@ -143,6 +143,7 @@ export const zhTW = {
     toggleSearch: '搜尋與篩選',
     showSearch: '開啟搜尋與篩選',
     hideSearch: '收合搜尋與篩選',
+    searching: '查詢中...',
   },
   form: {
     createTitle: '新增記事',
@@ -172,6 +173,7 @@ export const zhTW = {
     yesterday: '昨天',
     untitled: '未命名記事',
     readEntry: '閱讀記事',
+    loadingMore: '載入中...',
   },
   calendar: {
     weekdays: ['一', '二', '三', '四', '五', '六', '日'],

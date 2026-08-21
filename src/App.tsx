@@ -522,6 +522,12 @@ export function App({ client }: AppProps) {
                   onClose={() => setIsFilterOpen(false)}
                 />
               )}
+              {((page === 'timeline' && isLoadingEntries) || (page === 'calendar' && isCalendarLoading)) && (
+                <p className="loading-note search-loading-note" role="status">
+                  <Icon className="loading-note-spinner">progress_activity</Icon>
+                  <span>{zhTW.filters.searching}</span>
+                </p>
+              )}
               {error && (
                 <section className="page-error" role="alert">
                   <p>{error}</p>
@@ -549,7 +555,6 @@ export function App({ client }: AppProps) {
           {page === 'calendar' && !selectedDate && (
             <>
               {calendarError && <p className="form-error" role="alert">{calendarError}</p>}
-              {isCalendarLoading && <p className="loading-note" role="status">{zhTW.connection.connecting}</p>}
               <CalendarView
                 month={calendarMonth}
                 days={calendarDays}
