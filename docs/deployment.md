@@ -12,7 +12,7 @@
 - 一個可管理 DNS 的正式網域，例如 `journal.example.com`。
 - 可建立 Google Cloud 專案、啟用計費與建立服務帳號的 Google 帳號。
 - 一個 Vercel 帳號；Hobby 方案即可部署目前的每日 cleanup cron。Vercel Hobby 只支援每日一次、每小時精度，不保證精確分鐘；若日後要每 5 分鐘清理，才需要 Pro 或 Enterprise。
-- Node.js `20.19` 以上與 npm。以下終端機指令以 PowerShell 為例。
+- Node.js `24.x`（與 `package.json` 的 `engines` 設定一致）與 npm。以下終端機指令以 PowerShell 為例。
 
 以下用 `<正式網域>` 代表你的實際網域。假設你選擇 `journal.example.com`，後續所有範例都要改成：
 
@@ -25,7 +25,7 @@ https://journal.example.com
 ## 第 1 步：先在本機確認要部署的版本
 
 1. 在專案根目錄開啟 PowerShell。
-2. 確認 Node.js 版本至少為 `v20.19.0`：
+2. 確認 Node.js 版本為 `24.x`（需與 `package.json` 的 `engines` 一致）：
 
    ```powershell
    node --version

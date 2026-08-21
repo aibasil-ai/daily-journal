@@ -32,7 +32,7 @@ Cloud Firestore Native mode
 
 ## 本機開發
 
-先決條件：Node.js 20.19 以上、npm，以及 Python 3（虛擬環境若需要請以 `python -m venv .venv` 建立，且不納入版本控制）。
+先決條件：Node.js 24.x（與 `package.json` 的 `engines` 一致）、npm，以及 Python 3（虛擬環境若需要請以 `python -m venv .venv` 建立，且不納入版本控制）。
 
 ```bash
 npm install
