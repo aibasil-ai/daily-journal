@@ -641,7 +641,7 @@ test('預設隱藏搜尋與篩選區塊，點擊按鈕後展開與收合', async
   await screen.findByRole('heading', { name: '每日記事' })
   expect(screen.queryByPlaceholderText('搜尋記事...')).not.toBeInTheDocument()
 
-  const toggleBtn = screen.getByRole('button', { name: '開啟搜尋與篩選' })
+  const toggleBtn = screen.getAllByRole('button', { name: '開啟搜尋與篩選' })[0]
   await user.click(toggleBtn)
 
   expect(screen.getByPlaceholderText('搜尋記事...')).toBeInTheDocument()

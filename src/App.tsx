@@ -481,6 +481,10 @@ export function App({ client }: AppProps) {
       />
       <div className="app-shell__workspace">
         <MobileHeader
+          page={page}
+          isFilterOpen={isFilterOpen}
+          hasActiveFilters={hasActiveFilters}
+          onToggleFilter={() => setIsFilterOpen((prev) => !prev)}
           onCreate={() => setEditingEntry(null)}
           onSignOut={() => void handleSignOut()}
           onConfigureDataSpace={() => void handleStartDataSpaceChange().catch(() => undefined)}
@@ -703,7 +707,20 @@ function DesktopNavigation({ page, onNavigate, onCreate, onSignOut, onConfigureD
   )
 }
 
-function MobileHeader({ onCreate, onSignOut, onConfigureDataSpace, isConfiguringDataSpace }: {
+function MobileHeader({
+  page,
+  isFilterOpen,
+  hasActiveFilters,
+  onToggleFilter,
+  onCreate,
+  onSignOut,
+  onConfigureDataSpace,
+  isConfiguringDataSpace,
+}: {
+  page: Page
+  isFilterOpen: boolean
+  hasActiveFilters: boolean
+  onToggleFilter: () => void
   onCreate: () => void
   onSignOut: () => void
   onConfigureDataSpace: () => void
@@ -713,6 +730,18 @@ function MobileHeader({ onCreate, onSignOut, onConfigureDataSpace, isConfiguring
     <header className="mobile-header">
       <div><strong>{zhTW.app.name}</strong><small>{zhTW.app.tagline}</small></div>
       <div className="mobile-header__actions">
+        {(page === 'timeline' || page === 'calendar') && (
+          <button
+            className={`icon-button mobile-header__filter-btn${isFilterOpen ? ' mobile-header__filter-btn--active' : ''}`}
+            type="button"
+            aria-label={isFilterOpen ? zhTW.filters.hideSearch : zhTW.filters.showSearch}
+            aria-expanded={isFilterOpen}
+            onClick={onToggleFilter}
+          >
+            <Icon>{isFilterOpen ? 'search_off' : 'search'}</Icon>
+            {hasActiveFilters && <span className="active-filter-indicator" aria-hidden="true" />}
+          </button>
+        )}
         <button className="icon-button" type="button" aria-label={zhTW.provisioning.openSettings} disabled={isConfiguringDataSpace} onClick={onConfigureDataSpace}><Icon>table_chart</Icon></button>
         <button className="icon-button" type="button" aria-label={zhTW.actions.signOut} onClick={onSignOut}><Icon>logout</Icon></button>
         <button className="icon-button" type="button" aria-label={zhTW.actions.addEntry} onClick={onCreate}><Icon filled>add</Icon></button>
