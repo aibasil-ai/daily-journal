@@ -262,7 +262,16 @@ export function App({ client }: AppProps) {
     }
   }, [filter, handleRequestError, isCurrentWorkspace, journalClient, page, revision, selectedDate, status])
 
+  useEffect(() => {
+    if (status === 'ready' && typeof window !== 'undefined' && window.location.search.includes('setup=')) {
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [status])
+
   const handleDataSpaceComplete = useCallback(() => {
+    if (typeof window !== 'undefined' && window.location.search.includes('setup=')) {
+      window.history.replaceState({}, '', window.location.pathname)
+    }
     void restoreWorkspaceSession()
   }, [restoreWorkspaceSession])
 
