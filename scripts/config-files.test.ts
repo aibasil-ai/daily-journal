@@ -42,7 +42,7 @@ test('前端不再嵌入 Google OAuth 設定，Vercel 以 filesystem-first 提�
   expect(JSON.parse(vercelConfig)).toEqual({
     $schema: 'https://openapi.vercel.sh/vercel.json',
     rewrites: [
-      { source: '/(.*)', destination: '/index.html' },
+      { source: '/((?!api/.*).*)', destination: '/index.html' },
     ],
     crons: [
       { path: '/api/internal/cleanup', schedule: '0 0 * * *' },
