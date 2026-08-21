@@ -91,6 +91,7 @@ export function App({ client }: AppProps) {
   const [isStartingDataSpaceChange, setIsStartingDataSpaceChange] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<ProvisioningStatus>()
   const [connectionStatusError, setConnectionStatusError] = useState<string>()
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
 
   const {
     status,
@@ -122,6 +123,7 @@ export function App({ client }: AppProps) {
     handleRequestError,
   } = journal
   const journalTimezone = timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+  const hasActiveFilters = Boolean(filter.query || filter.from || filter.to || filter.categoryId || filter.tag)
   const workspaceEpoch = useRef(0)
   const previousJournalStatus = useRef(status)
   const sessionRestoreRequestId = useRef(0)
@@ -492,9 +494,30 @@ export function App({ client }: AppProps) {
                   <h1>{page === 'timeline' ? zhTW.navigation.timeline : zhTW.navigation.calendar}</h1>
                   <p>{page === 'timeline' ? zhTW.app.timelineDescription : zhTW.app.tagline}</p>
                 </div>
-                <ViewToggle page={page} onNavigate={navigate} />
+                <div className="page-heading__actions">
+                  <button
+                    className={`search-toggle-btn${isFilterOpen ? ' search-toggle-btn--active' : ''}${hasActiveFilters ? ' search-toggle-btn--has-filters' : ''}`}
+                    type="button"
+                    aria-label={isFilterOpen ? zhTW.filters.hideSearch : zhTW.filters.showSearch}
+                    aria-expanded={isFilterOpen}
+                    onClick={() => setIsFilterOpen((prev) => !prev)}
+                  >
+                    <Icon>{isFilterOpen ? 'search_off' : 'search'}</Icon>
+                    <span>{zhTW.filters.toggleSearch}</span>
+                    {hasActiveFilters && <span className="active-filter-indicator" aria-hidden="true" />}
+                  </button>
+                  <ViewToggle page={page} onNavigate={navigate} />
+                </div>
               </header>
-              <FilterBar filter={filter} categories={categories.filter((category) => category.isActive)} tagSuggestions={tagSuggestions} onChange={(changes) => void updateFilter(changes)} />
+              {isFilterOpen && (
+                <FilterBar
+                  filter={filter}
+                  categories={categories.filter((category) => category.isActive)}
+                  tagSuggestions={tagSuggestions}
+                  onChange={(changes) => void updateFilter(changes)}
+                  onClose={() => setIsFilterOpen(false)}
+                />
+              )}
               {error && (
                 <section className="page-error" role="alert">
                   <p>{error}</p>

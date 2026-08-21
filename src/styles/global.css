@@ -1199,6 +1199,55 @@ p {
   margin-bottom: 1.25rem;
 }
 
+.page-heading__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.search-toggle-btn {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--outline-variant);
+  border-radius: 0.625rem;
+  background: var(--surface-card);
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
+  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
+}
+
+.search-toggle-btn:hover {
+  background: var(--surface-container);
+  color: var(--ink);
+  border-color: var(--outline);
+}
+
+.search-toggle-btn--active {
+  background: var(--primary-fixed, #dbeafe);
+  color: var(--primary, #2563eb);
+  border-color: var(--primary, #2563eb);
+}
+
+.search-toggle-btn--has-filters:not(.search-toggle-btn--active) {
+  border-color: var(--primary, #2563eb);
+  color: var(--primary, #2563eb);
+}
+
+.active-filter-indicator {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primary, #2563eb);
+}
+
 .view-toggle {
   display: inline-flex;
   flex-shrink: 0;
@@ -1209,7 +1258,7 @@ p {
 
 .view-toggle button {
   display: inline-flex;
-  min-height: 36px;
+  min-height: 34px;
   align-items: center;
   gap: 0.375rem;
   padding: 0.375rem 0.625rem;
@@ -1298,9 +1347,28 @@ p {
   font-weight: 700;
 }
 
-.filter-bar__clear {
+.filter-bar__actions {
   grid-column: 1 / -1;
-  justify-self: start;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.filter-bar__clear,
+.filter-bar__close {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.625rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+
+.filter-bar__close {
+  margin-left: auto;
 }
 
 .page-error {
@@ -2936,19 +3004,36 @@ p {
     grid-template-columns: minmax(13rem, 1.4fr) repeat(4, minmax(8rem, 1fr)) auto;
   }
 
-  .filter-bar__search,
-  .filter-bar__clear {
+  .filter-bar__search {
     grid-column: auto;
+  }
+
+  .filter-bar__actions {
+    grid-column: auto;
+    justify-content: flex-end;
   }
 }
 
 @media (max-width: 480px) {
   .page-heading {
     flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .page-heading__actions {
+    width: 100%;
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .search-toggle-btn {
+    flex: 1;
+    justify-content: center;
   }
 
   .view-toggle {
-    width: 100%;
+    flex: 1.4;
+    width: auto;
   }
 
   .view-toggle button {

@@ -7,9 +7,10 @@ type FilterBarProps = {
   categories: Category[]
   tagSuggestions: string[]
   onChange: (changes: Partial<EntryFilter>) => void
+  onClose?: () => void
 }
 
-export function FilterBar({ filter, categories, tagSuggestions, onChange }: FilterBarProps) {
+export function FilterBar({ filter, categories, tagSuggestions, onChange, onClose }: FilterBarProps) {
   const hasFilters = Boolean(filter.query || filter.from || filter.to || filter.categoryId || filter.tag)
 
   return (
@@ -68,16 +69,29 @@ export function FilterBar({ filter, categories, tagSuggestions, onChange }: Filt
           ))}
         </select>
       </label>
-      {hasFilters && (
-        <button
-          className="button button--text filter-bar__clear"
-          type="button"
-          onClick={() => onChange({ query: '', from: null, to: null, categoryId: null, tag: null })}
-        >
-          <Icon>filter_alt_off</Icon>
-          {zhTW.filters.clear}
-        </button>
-      )}
+      <div className="filter-bar__actions">
+        {hasFilters && (
+          <button
+            className="button button--text filter-bar__clear"
+            type="button"
+            onClick={() => onChange({ query: '', from: null, to: null, categoryId: null, tag: null })}
+          >
+            <Icon>filter_alt_off</Icon>
+            {zhTW.filters.clear}
+          </button>
+        )}
+        {onClose && (
+          <button
+            className="button button--text filter-bar__close"
+            type="button"
+            aria-label={zhTW.filters.hideSearch}
+            onClick={onClose}
+          >
+            <Icon>expand_less</Icon>
+            {zhTW.filters.hideSearch}
+          </button>
+        )}
+      </div>
     </section>
   )
 }

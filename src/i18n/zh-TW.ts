@@ -140,6 +140,9 @@ export const zhTW = {
     tag: '標籤',
     allTags: '所有標籤',
     clear: '清除篩選',
+    toggleSearch: '搜尋與篩選',
+    showSearch: '開啟搜尋與篩選',
+    hideSearch: '收合搜尋與篩選',
   },
   form: {
     createTitle: '新增記事',

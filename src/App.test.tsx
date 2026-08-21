@@ -625,6 +625,31 @@ test('曾登入的使用者重新整理時顯示淺色載入畫面，不閃爍�
   expect(await screen.findByRole('heading', { name: '每日記事' })).toBeInTheDocument()
 })
 
+test('預設隱藏搜尋與篩選區塊，點擊按鈕後展開與收合', async () => {
+  const user = userEvent.setup()
+  const run = vi.fn(async (request: ApiRequest) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [], tagSuggestions: [] }
+    if (request.action === 'listCategories') return { categories: [], entryCounts: {} }
+    if (request.action === 'listEntries') return { items: [], nextCursor: null }
+    if (request.action === 'getMonthlyEntries') return []
+    throw new Error(`未預期的請求：${request.action}`)
+  })
+  const client = createClient({ run: run as JournalClient['run'] })
+
+  render(<App client={client} />)
+
+  await screen.findByRole('heading', { name: '每日記事' })
+  expect(screen.queryByPlaceholderText('搜尋記事...')).not.toBeInTheDocument()
+
+  const toggleBtn = screen.getByRole('button', { name: '開啟搜尋與篩選' })
+  await user.click(toggleBtn)
+
+  expect(screen.getByPlaceholderText('搜尋記事...')).toBeInTheDocument()
+
+  await user.click(screen.getAllByRole('button', { name: '收合搜尋與篩選' })[0])
+  expect(screen.queryByPlaceholderText('搜尋記事...')).not.toBeInTheDocument()
+})
+
 function createClient(
   overrides: Partial<JournalClient> & Partial<ProvisioningClient> & Partial<AccountClient> = {},
 ): JournalClient & ProvisioningClient & AccountClient {
