@@ -20,6 +20,8 @@ type DataSpaceSetupProps = {
   onRestart?: () => void
 }
 
+type ActionType = 'create' | 'search' | 'search_more' | 'url' | 'select' | 'confirm'
+
 export function DataSpaceSetup({
   client,
   mode,
@@ -36,6 +38,8 @@ export function DataSpaceSetup({
   const [hasSearched, setHasSearched] = useState(false)
   const [sheetUrl, setSheetUrl] = useState('')
   const [isBusy, setIsBusy] = useState(false)
+  const [activeAction, setActiveAction] = useState<ActionType | null>(null)
+  const [selectingCode, setSelectingCode] = useState<string | null>(null)
   const [error, setError] = useState<string>()
   const [requiresSessionRecovery, setRequiresSessionRecovery] = useState(false)
   const busyRef = useRef(false)
@@ -100,8 +104,14 @@ export function DataSpaceSetup({
     if (nextStatus.phase === 'completed') onComplete()
   }
 
-  const runProvisioningAction = async (action: () => Promise<ProvisioningStatus>): Promise<void> => {
+  const runProvisioningAction = async (
+    actionType: ActionType,
+    action: () => Promise<ProvisioningStatus>,
+    targetCandidateCode?: string,
+  ): Promise<void> => {
     if (!beginBusy()) return
+    setActiveAction(actionType)
+    if (targetCandidateCode) setSelectingCode(targetCandidateCode)
     const expectedComponentEpoch = componentEpoch.current
     statusRequestId.current += 1
     setError(undefined)
@@ -119,8 +129,13 @@ export function DataSpaceSetup({
       setError(toErrorMessage(actionError))
       setRequiresSessionRecovery(isSessionRecoveryRequired(actionError))
     } finally {
-      if (expectedComponentEpoch === componentEpoch.current) finishBusy()
-      else busyRef.current = false
+      if (expectedComponentEpoch === componentEpoch.current) {
+        setActiveAction(null)
+        setSelectingCode(null)
+        finishBusy()
+      } else {
+        busyRef.current = false
+      }
     }
   }
 
@@ -131,6 +146,7 @@ export function DataSpaceSetup({
       return
     }
     if (!beginBusy()) return
+    setActiveAction(append ? 'search_more' : 'search')
     const expectedComponentEpoch = componentEpoch.current
     setError(undefined)
     setRequiresSessionRecovery(false)
@@ -153,8 +169,12 @@ export function DataSpaceSetup({
       setError(toErrorMessage(searchError))
       setRequiresSessionRecovery(isSessionRecoveryRequired(searchError))
     } finally {
-      if (expectedComponentEpoch === componentEpoch.current) finishBusy()
-      else busyRef.current = false
+      if (expectedComponentEpoch === componentEpoch.current) {
+        setActiveAction(null)
+        finishBusy()
+      } else {
+        busyRef.current = false
+      }
     }
   }
 
@@ -170,7 +190,7 @@ export function DataSpaceSetup({
       setError(zhTW.errors.provisioning)
       return
     }
-    void runProvisioningAction(() => client.submitSheetUrl(value))
+    void runProvisioningAction('url', () => client.submitSheetUrl(value))
   }
 
   const handleRecovery = () => {
@@ -236,9 +256,11 @@ export function DataSpaceSetup({
                   {zhTW.provisioning.cancelChange}
                 </button>
               )}
-              <button className="button button--primary" type="button" disabled={isBusy} onClick={() => void runProvisioningAction(() => client.confirmProvisioning())}>
-                <Icon>check</Icon>
-                {zhTW.provisioning.confirmAction}
+              <button className="button button--primary" type="button" disabled={isBusy} onClick={() => void runProvisioningAction('confirm', () => client.confirmProvisioning())}>
+                <Icon className={activeAction === 'confirm' ? 'loading-note-spinner' : ''}>
+                  {activeAction === 'confirm' ? 'progress_activity' : 'check'}
+                </Icon>
+                {activeAction === 'confirm' ? zhTW.provisioning.confirming : zhTW.provisioning.confirmAction}
               </button>
             </div>
           </section>
@@ -248,9 +270,16 @@ export function DataSpaceSetup({
               <span className="data-space-option__icon" aria-hidden="true"><Icon>note_add</Icon></span>
               <h2>{zhTW.provisioning.createTitle}</h2>
               <p>{zhTW.provisioning.createDescription}</p>
-              <button className="button button--primary" type="button" disabled={isBusy} onClick={() => void runProvisioningAction(() => client.createSheet())}>
-                <Icon>add</Icon>
-                {zhTW.provisioning.createAction}
+              <button
+                className="button button--primary"
+                type="button"
+                disabled={isBusy}
+                onClick={() => void runProvisioningAction('create', () => client.createSheet())}
+              >
+                <Icon className={activeAction === 'create' ? 'loading-note-spinner' : ''}>
+                  {activeAction === 'create' ? 'progress_activity' : 'add'}
+                </Icon>
+                {activeAction === 'create' ? zhTW.provisioning.creating : zhTW.provisioning.createAction}
               </button>
             </section>
 
@@ -270,7 +299,8 @@ export function DataSpaceSetup({
                   />
                 </label>
                 <button className="button button--secondary" type="submit" disabled={isBusy}>
-                  {zhTW.provisioning.searchAction}
+                  {activeAction === 'search' && <Icon className="loading-note-spinner">progress_activity</Icon>}
+                  {activeAction === 'search' ? zhTW.provisioning.searching : zhTW.provisioning.searchAction}
                 </button>
               </form>
               {hasSearched && candidates.length === 0 && !isBusy && <p className="form-note">{zhTW.provisioning.noCandidates}</p>}
@@ -287,9 +317,10 @@ export function DataSpaceSetup({
                         type="button"
                         disabled={isBusy}
                         aria-label={zhTW.provisioning.selectCandidate(candidate.name)}
-                        onClick={() => void runProvisioningAction(() => client.selectCandidate(candidate.selectionCode))}
+                        onClick={() => void runProvisioningAction('select', () => client.selectCandidate(candidate.selectionCode), candidate.selectionCode)}
                       >
-                        {zhTW.provisioning.selectCandidate(candidate.name)}
+                        {selectingCode === candidate.selectionCode && <Icon className="loading-note-spinner">progress_activity</Icon>}
+                        {selectingCode === candidate.selectionCode ? zhTW.provisioning.selecting(candidate.name) : zhTW.provisioning.selectCandidate(candidate.name)}
                       </button>
                     </li>
                   ))}
@@ -297,6 +328,7 @@ export function DataSpaceSetup({
               )}
               {nextCursor !== null && (
                 <button className="button button--text" type="button" disabled={isBusy} onClick={() => void searchCandidates(true)}>
+                  {activeAction === 'search_more' && <Icon className="loading-note-spinner">progress_activity</Icon>}
                   {zhTW.provisioning.loadMore}
                 </button>
               )}
@@ -319,7 +351,8 @@ export function DataSpaceSetup({
                   />
                 </label>
                 <button className="button button--secondary" type="submit" disabled={isBusy}>
-                  {zhTW.provisioning.urlAction}
+                  {activeAction === 'url' && <Icon className="loading-note-spinner">progress_activity</Icon>}
+                  {activeAction === 'url' ? zhTW.provisioning.linking : zhTW.provisioning.urlAction}
                 </button>
               </form>
             </section>

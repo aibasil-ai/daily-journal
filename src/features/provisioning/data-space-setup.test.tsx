@@ -34,6 +34,7 @@ test('建立每日記事時避免重複送出，初次設定成功後立即完�
 
   expect(createSheet).toHaveBeenCalledOnce()
   expect(createButton).toBeDisabled()
+  expect(createButton).toHaveTextContent('正在建立 Google Sheet...')
 
   resolveCreate?.({ ...initialStatus, phase: 'completed', sheetName: '每日記事' })
   await waitFor(() => expect(onComplete).toHaveBeenCalledOnce())
