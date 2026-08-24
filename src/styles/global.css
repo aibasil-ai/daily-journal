@@ -1044,6 +1044,16 @@ p {
   }
 }
 
+@media (min-width: 901px) and (max-width: 1200px) {
+  .connection-brand {
+    display: none;
+  }
+
+  .connection-card-shell {
+    transform: none;
+  }
+}
+
 @media (max-width: 900px) {
   .connection-screen {
     padding: 2rem 1rem;
