@@ -199,6 +199,26 @@ describe('ProvisioningService', () => {
     expect(system.revokedUsers).toEqual([])
   })
 
+  test('取消更換只撤銷 provisioning session，保留原本的作用中連線', async () => {
+    const system = createSystem()
+    system.activateExisting('alice', 'opaque-resource-a', '原本日記')
+    const journal = system.createJournal('alice')
+    const started = await system.service.startChange(journal)
+    const attempt = [...system.attempts.values()][0]
+    const provisioningSession = system.sessions.get(started.provisioningSession.sessionId)
+    if (!attempt || !provisioningSession) throw new Error('預期建立換表流程工作階段。')
+
+    await system.service.cancelChange({ session: provisioningSession, attempt })
+
+    expect(system.sessions.get(provisioningSession.sessionId)).toMatchObject({ revokedAt: system.now() })
+    expect(system.sessions.get(journal.session.sessionId)).toMatchObject({ revokedAt: null })
+    expect(system.active.get('alice')).toMatchObject({
+      spreadsheetId: 'opaque-resource-a',
+      spreadsheetName: '原本日記',
+      status: 'active',
+    })
+  })
+
   test('建立失敗會標記 attempt failed，絕不啟用連線', async () => {
     const system = createSystem()
     system.createFailure = true

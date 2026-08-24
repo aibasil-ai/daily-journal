@@ -328,6 +328,55 @@ test('取消更換資料表後仍保留原本的時間軸資料', async () => {
   expect(await screen.findByRole('button', { name: `閱讀記事：${oldEntry.content}` })).toBeInTheDocument()
 })
 
+test('取消更換資料表後設定頁恢復既有連線狀態', async () => {
+  const user = userEvent.setup()
+  const activeStatus = {
+    phase: 'completed' as const,
+    sheetName: '原本的每日記事',
+    lastUpdatedAt: 1,
+    connectionVersion: 1,
+    canDeleteActiveSystemSheet: false,
+    errorCode: null,
+  }
+  const changingStatus = {
+    ...activeStatus,
+    phase: 'initial_choice' as const,
+  }
+  let isChanging = false
+  const getProvisioningStatus = vi.fn(async () => isChanging ? changingStatus : activeStatus)
+  const cancelSheetChange = vi.fn(async () => {
+    isChanging = false
+  })
+  const run = vi.fn(async (request: ApiRequest) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [], tagSuggestions: [] }
+    if (request.action === 'listCategories') return { categories: [], entryCounts: {} }
+    if (request.action === 'listEntries') return { items: [], nextCursor: null }
+    throw new Error(`未預期的請求：${request.action}`)
+  })
+  render(<App client={createClient({
+    run: run as JournalClient['run'],
+    getProvisioningStatus,
+    startSheetChange: vi.fn(async () => {
+      isChanging = true
+      return changingStatus
+    }),
+    cancelSheetChange,
+  })} />)
+
+  await user.click((await screen.findAllByRole('button', { name: '設定' }))[0])
+  expect(await screen.findByText('原本的每日記事')).toBeInTheDocument()
+  expect(screen.getByText('已連線')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: '更換資料表' }))
+  await screen.findByRole('heading', { name: '設定您的資料空間' })
+  await user.click(screen.getByRole('button', { name: '取消更換' }))
+
+  await waitFor(() => expect(cancelSheetChange).toHaveBeenCalledOnce())
+  expect(await screen.findByRole('heading', { name: '資料連線與帳號設定' })).toBeInTheDocument()
+  expect(await screen.findByText('原本的每日記事')).toBeInTheDocument()
+  expect(screen.getByText('已連線')).toBeInTheDocument()
+  expect(screen.queryByText('等待選擇資料表')).not.toBeInTheDocument()
+})
+
 test('中斷連線請求失敗時保留既有記事資料', async () => {
   const user = userEvent.setup()
   const entry = {
@@ -673,6 +722,7 @@ function createClient(
     submitSheetUrl: vi.fn(async () => ({ ...initialStatus, phase: 'completed' as const })),
     confirmProvisioning: vi.fn(async () => ({ ...initialStatus, phase: 'completed' as const })),
     startSheetChange: vi.fn(async () => initialStatus),
+    cancelSheetChange: vi.fn(async () => undefined),
     disconnect: vi.fn(async () => undefined),
     deleteAccount: vi.fn(async () => undefined),
     ...overrides,

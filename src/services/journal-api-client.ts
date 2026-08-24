@@ -59,6 +59,7 @@ export interface ProvisioningClient {
   submitSheetUrl(url: string): Promise<ProvisioningStatus>
   confirmProvisioning(): Promise<ProvisioningStatus>
   startSheetChange(): Promise<ProvisioningStatus>
+  cancelSheetChange(): Promise<void>
 }
 
 export interface AccountClient {
@@ -169,6 +170,20 @@ export class JournalApiClient implements ProvisioningClient, AccountClient {
 
   async startSheetChange(): Promise<ProvisioningStatus> {
     return this.mutateProvisioning('/api/provisioning/start-change', {})
+  }
+
+  async cancelSheetChange(): Promise<void> {
+    const response = await request('/api/provisioning/cancel-change', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    })
+    assertNotAuthenticationResponse(response)
+    if (response.status === 204) return
+
+    const payload = await tryReadJson(response)
+    if (isProvisioningErrorPayload(payload)) throw new ProvisioningApiError(payload.error)
+    throw new JournalApiClientError(response.ok ? zhTW.errors.invalidServiceResponse : zhTW.errors.provisioning)
   }
 
   async disconnect(): Promise<void> {

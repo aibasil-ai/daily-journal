@@ -320,6 +320,13 @@ export class ProvisioningService {
     }
   }
 
+  async cancelChange(context: ProvisioningSessionContext): Promise<void> {
+    if (context.attempt.mode !== 'change') {
+      throw new ProvisioningServiceError('invalid_request', 400)
+    }
+    await this.dependencies.sessions.revokeSession(context.session.sessionId)
+  }
+
   async listCandidateSheets(
     context: ProvisioningSessionContext,
     input: CandidateInput,

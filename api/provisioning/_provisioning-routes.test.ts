@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from 'vitest'
 import { PROVISIONING_COOKIE_NAME, SESSION_COOKIE_NAME } from '../_lib/cookies.js'
 import { ProvisioningServiceError, type JournalProvisioningContext, type ProvisioningSessionContext } from '../_lib/provisioning-service.js'
+import { createCancelChangeHandler, GET as cancelChangeGet } from './_cancel-change.js'
 import { createProvisioningCreateHandler, GET as createGet } from './_create.js'
 import { createProvisioningSheetsHandler, POST as sheetsPost } from './_sheets.js'
 import { createStartChangeHandler, GET as startChangeGet } from './_start-change.js'
@@ -83,6 +84,25 @@ describe('provisioning routes', () => {
     expect(response.headers.get('Set-Cookie')).toContain('HttpOnly; Secure; SameSite=Lax; Path=/')
   })
 
+  test('取消換表只撤銷暫存流程並清除 provisioning cookie', async () => {
+    const service = fakeService()
+    const handler = createCancelChangeHandler({ config, service })
+
+    const response = await handler(new Request('https://journal.example/api/provisioning/cancel-change', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: config.appOrigin },
+      body: '{}',
+    }))
+
+    expect(response.status).toBe(204)
+    expect(service.requireProvisioningContext).toHaveBeenCalledOnce()
+    expect(service.cancelChange).toHaveBeenCalledWith(expect.objectContaining({
+      session: expect.objectContaining({ kind: 'provisioning' }),
+    }))
+    expect(response.headers.get('Set-Cookie')).toContain(`${PROVISIONING_COOKIE_NAME}=;`)
+    expect(response.headers.get('Set-Cookie')).not.toContain(`${SESSION_COOKIE_NAME}=;`)
+  })
+
   test('失效 provisioning session 僅清除 provisioning cookie，並保留 journal cookie', async () => {
     const service = fakeService()
     service.requireProvisioningContext.mockRejectedValueOnce(new ProvisioningServiceError(
@@ -125,6 +145,8 @@ describe('provisioning routes', () => {
     expect(sheetsPost().headers.get('Allow')).toBe('GET')
     expect(startChangeGet().status).toBe(405)
     expect(startChangeGet().headers.get('Allow')).toBe('POST')
+    expect(cancelChangeGet().status).toBe(405)
+    expect(cancelChangeGet().headers.get('Allow')).toBe('POST')
     expect(statusPost().status).toBe(405)
     expect(statusPost().headers.get('Allow')).toBe('GET')
   })
@@ -208,6 +230,7 @@ function fakeService() {
       status: { ...status, phase: 'initial_choice' as const },
       provisioningSession: { sessionId: 'change-session', expiresAt: Date.now() + 60_000, kind: 'provisioning' as const, userId: 'user-a' },
     })),
+    cancelChange: vi.fn(async () => undefined),
     getStatus: vi.fn(async () => ({ status, cookies: [] })),
     createSessionCookie: vi.fn((session: { sessionId: string }) => `daily_journal_session=opaque-${session.sessionId}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=1`),
     createProvisioningCookie: vi.fn((session: { sessionId: string }) => `daily_journal_provisioning=opaque-${session.sessionId}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=1`),

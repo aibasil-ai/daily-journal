@@ -1,4 +1,5 @@
 import { jsonResponse, methodNotAllowed } from '../_lib/function-response.js'
+import * as cancelChangeRoute from './_cancel-change.js'
 import * as confirmRoute from './_confirm.js'
 import * as createRoute from './_create.js'
 import * as selectRoute from './_select.js'
@@ -17,6 +18,7 @@ export type ProvisioningActionRouteModule = {
 export type ProvisioningActionRouteTable = Record<string, ProvisioningActionRouteModule>
 
 export const provisioningActionRoutes: ProvisioningActionRouteTable = {
+  'cancel-change': cancelChangeRoute,
   confirm: confirmRoute,
   create: createRoute,
   select: selectRoute,

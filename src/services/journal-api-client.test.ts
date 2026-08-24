@@ -86,6 +86,7 @@ describe('JournalApiClient', () => {
       .mockResolvedValueOnce(jsonResponse(completedStatus))
       .mockResolvedValueOnce(jsonResponse(completedStatus))
       .mockResolvedValueOnce(jsonResponse(initialStatus))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
     vi.stubGlobal('fetch', fetchMock)
     const client = new JournalApiClient()
     const sheetUrl = 'https://docs.google.com/spreadsheets/d/...'
@@ -100,6 +101,7 @@ describe('JournalApiClient', () => {
     await expect(client.submitSheetUrl(sheetUrl)).resolves.toEqual(completedStatus)
     await expect(client.confirmProvisioning()).resolves.toEqual(completedStatus)
     await expect(client.startSheetChange()).resolves.toEqual(initialStatus)
+    await expect(client.cancelSheetChange()).resolves.toBeUndefined()
 
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/provisioning/status', { credentials: 'same-origin' })
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/provisioning/sheets?q=%E6%AF%8F%E6%97%A5', { credentials: 'same-origin' })
@@ -128,6 +130,12 @@ describe('JournalApiClient', () => {
       credentials: 'same-origin',
     })
     expect(fetchMock).toHaveBeenNthCalledWith(7, '/api/provisioning/start-change', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+      credentials: 'same-origin',
+    })
+    expect(fetchMock).toHaveBeenNthCalledWith(8, '/api/provisioning/cancel-change', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: '{}',

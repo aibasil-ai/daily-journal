@@ -112,6 +112,34 @@ test('更換資料表在確認前不會完成，確認後才通知 App 重新載
   await waitFor(() => expect(onComplete).toHaveBeenCalledOnce())
 })
 
+test('取消更換時先撤銷暫存流程再返回原本畫面', async () => {
+  const user = userEvent.setup()
+  const cancelSheetChange = vi.fn(async () => undefined)
+  const onCancel = vi.fn()
+  render(<DataSpaceSetup client={createClient({ cancelSheetChange })} mode="change" onComplete={vi.fn()} onCancel={onCancel} />)
+
+  await user.click(await screen.findByRole('button', { name: '取消更換' }))
+
+  await waitFor(() => expect(cancelSheetChange).toHaveBeenCalledOnce())
+  expect(onCancel).toHaveBeenCalledOnce()
+})
+
+test('取消更換失敗時保留設定畫面並顯示錯誤', async () => {
+  const user = userEvent.setup()
+  const onCancel = vi.fn()
+  render(<DataSpaceSetup client={createClient({
+    cancelSheetChange: vi.fn(async () => {
+      throw new Error('目前無法取消更換')
+    }),
+  })} mode="change" onComplete={vi.fn()} onCancel={onCancel} />)
+
+  await user.click(await screen.findByRole('button', { name: '取消更換' }))
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('目前無法取消更換')
+  expect(onCancel).not.toHaveBeenCalled()
+  expect(screen.getByRole('button', { name: '建立「每日記事」' })).toBeInTheDocument()
+})
+
 test('設定失敗時保留介面並顯示可讀錯誤', async () => {
   const user = userEvent.setup()
   render(<DataSpaceSetup client={createClient({
@@ -208,6 +236,7 @@ function createClient(overrides: Partial<ProvisioningClient> = {}): Provisioning
     submitSheetUrl: vi.fn(async () => ({ ...initialStatus, phase: 'completed' as const })),
     confirmProvisioning: vi.fn(async () => ({ ...initialStatus, phase: 'completed' as const })),
     startSheetChange: vi.fn(async () => initialStatus),
+    cancelSheetChange: vi.fn(async () => undefined),
     ...overrides,
   }
 }

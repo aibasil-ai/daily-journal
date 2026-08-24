@@ -198,6 +198,34 @@ export function DataSpaceSetup({
     else onSessionInvalidated?.()
   }
 
+  const handleCancelChange = async (): Promise<void> => {
+    if (!beginBusy()) return
+    const expectedComponentEpoch = componentEpoch.current
+    statusRequestId.current += 1
+    setError(undefined)
+    setRequiresSessionRecovery(false)
+    try {
+      await client.cancelSheetChange()
+      if (expectedComponentEpoch !== componentEpoch.current) return
+      onCancel?.()
+    } catch (cancelError) {
+      if (expectedComponentEpoch !== componentEpoch.current) return
+      if (cancelError instanceof AuthenticationError) {
+        onSessionInvalidated?.()
+        return
+      }
+      setError(toErrorMessage(cancelError))
+      setRequiresSessionRecovery(isSessionRecoveryRequired(cancelError))
+    } finally {
+      if (expectedComponentEpoch === componentEpoch.current) {
+        setActiveAction(null)
+        finishBusy()
+      } else {
+        busyRef.current = false
+      }
+    }
+  }
+
   return (
     <main className="data-space-setup">
       <section className="data-space-setup__card" aria-labelledby="data-space-setup-title">
@@ -217,7 +245,7 @@ export function DataSpaceSetup({
             <p>{zhTW.provisioning.recoveryDescription}</p>
             <div className="data-space-setup__actions">
               {mode === 'change' && onCancel && (
-                <button className="button button--secondary" type="button" disabled={isBusy} onClick={onCancel}>
+                <button className="button button--secondary" type="button" disabled={isBusy} onClick={() => void handleCancelChange()}>
                   {zhTW.provisioning.cancelChange}
                 </button>
               )}
@@ -252,7 +280,7 @@ export function DataSpaceSetup({
             <p>{zhTW.provisioning.confirmDescription}</p>
             <div className="data-space-setup__actions">
               {onCancel && (
-                <button className="button button--secondary" type="button" disabled={isBusy} onClick={onCancel}>
+                <button className="button button--secondary" type="button" disabled={isBusy} onClick={() => void handleCancelChange()}>
                   {zhTW.provisioning.cancelChange}
                 </button>
               )}
@@ -361,7 +389,7 @@ export function DataSpaceSetup({
 
         {!needsRecovery && !isReadyToConfirm && onCancel && (
           <div className="data-space-setup__cancel">
-            <button className="button button--text" type="button" disabled={isBusy} onClick={onCancel}>{zhTW.provisioning.cancelChange}</button>
+            <button className="button button--text" type="button" disabled={isBusy} onClick={() => void handleCancelChange()}>{zhTW.provisioning.cancelChange}</button>
           </div>
         )}
       </section>
