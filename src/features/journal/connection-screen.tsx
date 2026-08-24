@@ -78,7 +78,7 @@ export function ConnectionScreen({ status, error, onSignIn, onRetry }: Connectio
               )}
             </button>
           </div>
-          <p style={{ marginTop: '1.25rem', color: '#adb4c0', fontSize: '0.75rem', lineHeight: 1.6, textAlign: 'center' }}>
+          <p className="connection-card__legal">
             <a href="/privacy-policy.html">{zhTW.connection.privacyPolicy}</a>
             <span aria-hidden="true"> | </span>
             <a href="/terms-of-service.html">{zhTW.connection.termsOfService}</a>
