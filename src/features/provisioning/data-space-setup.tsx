@@ -295,8 +295,10 @@ export function DataSpaceSetup({
         ) : (
           <div className="data-space-setup__options">
             <section className="data-space-option">
-              <span className="data-space-option__icon" aria-hidden="true"><Icon>note_add</Icon></span>
-              <h2>{zhTW.provisioning.createTitle}</h2>
+              <div className="data-space-option__heading">
+                <span className="data-space-option__icon" aria-hidden="true"><Icon>note_add</Icon></span>
+                <h2>{zhTW.provisioning.createTitle}</h2>
+              </div>
               <p>{zhTW.provisioning.createDescription}</p>
               <button
                 className="button button--primary"
@@ -312,12 +314,16 @@ export function DataSpaceSetup({
             </section>
 
             <section className="data-space-option">
-              <span className="data-space-option__icon" aria-hidden="true"><Icon>search</Icon></span>
-              <h2>{zhTW.provisioning.searchTitle}</h2>
+              <div className="data-space-option__heading">
+                <span className="data-space-option__icon" aria-hidden="true"><Icon>search</Icon></span>
+                <h2>{zhTW.provisioning.searchTitle}</h2>
+              </div>
               <p>{zhTW.provisioning.searchDescription}</p>
               <form className="data-space-option__form" onSubmit={handleSearch}>
                 <label className="field-group" htmlFor="candidate-sheet-query">
                   <span>{zhTW.provisioning.searchLabel}</span>
+                </label>
+                <div className="data-space-option__form-row">
                   <input
                     id="candidate-sheet-query"
                     value={query}
@@ -325,11 +331,11 @@ export function DataSpaceSetup({
                     disabled={isBusy}
                     onChange={(event) => setQuery(event.target.value)}
                   />
-                </label>
-                <button className="button button--secondary" type="submit" disabled={isBusy}>
-                  {activeAction === 'search' && <Icon className="loading-note-spinner">progress_activity</Icon>}
-                  {activeAction === 'search' ? zhTW.provisioning.searching : zhTW.provisioning.searchAction}
-                </button>
+                  <button className="button button--secondary" type="submit" disabled={isBusy}>
+                    {activeAction === 'search' && <Icon className="loading-note-spinner">progress_activity</Icon>}
+                    {activeAction === 'search' ? zhTW.provisioning.searching : zhTW.provisioning.searchAction}
+                  </button>
+                </div>
               </form>
               {hasSearched && candidates.length === 0 && !isBusy && <p className="form-note">{zhTW.provisioning.noCandidates}</p>}
               {candidates.length > 0 && (
@@ -363,12 +369,16 @@ export function DataSpaceSetup({
             </section>
 
             <section className="data-space-option">
-              <span className="data-space-option__icon" aria-hidden="true"><Icon>link</Icon></span>
-              <h2>{zhTW.provisioning.urlTitle}</h2>
+              <div className="data-space-option__heading">
+                <span className="data-space-option__icon" aria-hidden="true"><Icon>link</Icon></span>
+                <h2>{zhTW.provisioning.urlTitle}</h2>
+              </div>
               <p>{zhTW.provisioning.urlDescription}</p>
               <form className="data-space-option__form" onSubmit={handleUrlSubmission}>
                 <label className="field-group" htmlFor="candidate-sheet-url">
                   <span>{zhTW.provisioning.urlLabel}</span>
+                </label>
+                <div className="data-space-option__form-row">
                   <input
                     id="candidate-sheet-url"
                     type="url"
@@ -377,11 +387,11 @@ export function DataSpaceSetup({
                     disabled={isBusy}
                     onChange={(event) => setSheetUrl(event.target.value)}
                   />
-                </label>
-                <button className="button button--secondary" type="submit" disabled={isBusy}>
-                  {activeAction === 'url' && <Icon className="loading-note-spinner">progress_activity</Icon>}
-                  {activeAction === 'url' ? zhTW.provisioning.linking : zhTW.provisioning.urlAction}
-                </button>
+                  <button className="button button--secondary" type="submit" disabled={isBusy}>
+                    {activeAction === 'url' && <Icon className="loading-note-spinner">progress_activity</Icon>}
+                    {activeAction === 'url' ? zhTW.provisioning.linking : zhTW.provisioning.urlAction}
+                  </button>
+                </div>
               </form>
             </section>
           </div>

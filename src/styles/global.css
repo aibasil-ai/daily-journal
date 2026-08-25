@@ -791,6 +791,16 @@ p {
   height: 2.5rem;
 }
 
+.data-space-option__heading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.data-space-option__heading .data-space-option__icon {
+  flex: 0 0 auto;
+}
+
 .data-space-option h2,
 .data-space-setup__confirmation h2,
 .data-space-setup__recovery h2 {
@@ -811,11 +821,23 @@ p {
 
 .data-space-option__form {
   display: grid;
+  gap: 0.5rem;
+}
+
+.data-space-option__form-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 0.625rem;
 }
 
-.data-space-option__form .button {
+.data-space-option__form-row input {
+  min-width: 0;
+}
+
+.data-space-option__form-row .button {
   justify-self: start;
+  white-space: nowrap;
 }
 
 .data-space-candidates {
@@ -1365,7 +1387,8 @@ p {
 .field-group input,
 .field-group select,
 .field-group textarea,
-.entry-form__link-row input {
+.entry-form__link-row input,
+.data-space-option__form-row input {
   width: 100%;
   border: 1px solid var(--outline-variant);
   border-radius: 0.5rem;
@@ -1378,7 +1401,8 @@ p {
 .filter-bar select,
 .field-group input,
 .field-group select,
-.entry-form__link-row input {
+.entry-form__link-row input,
+.data-space-option__form-row input {
   min-height: 44px;
   padding: 0.625rem 0.75rem;
 }
@@ -1392,7 +1416,8 @@ p {
 .field-group input:focus,
 .field-group select:focus,
 .field-group textarea:focus,
-.entry-form__link-row input:focus {
+.entry-form__link-row input:focus,
+.data-space-option__form-row input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgb(0 74 198 / 12%);
   outline: 0;
