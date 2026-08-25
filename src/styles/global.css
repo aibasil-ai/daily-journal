@@ -1265,7 +1265,7 @@ p {
 .app-main {
   width: min(100%, 78rem);
   margin: 0 auto;
-  padding: 1.5rem 1rem 7.25rem;
+  padding: 1rem 1rem 7.25rem;
 }
 
 .page-heading {
@@ -2455,7 +2455,7 @@ p {
   display: grid;
   max-width: 42rem;
   min-height: 20rem;
-  margin: 5vh auto;
+  margin: 1rem auto;
   justify-items: center;
   align-content: center;
   padding: 2.5rem;
@@ -2885,7 +2885,7 @@ p {
     display: flex;
     width: 16rem;
     flex-direction: column;
-    padding: 1.5rem 1rem;
+    padding: 1rem 1rem 1.5rem;
     border-right: 1px solid var(--outline-variant);
     background: var(--surface-low);
   }
@@ -3009,7 +3009,7 @@ p {
   }
 
   .app-main {
-    padding: 2rem 2rem 3rem;
+    padding: 1rem 2rem 3rem;
   }
 
   .filter-bar {
@@ -3120,13 +3120,13 @@ p {
   }
 
   .focused-screen {
-    padding: 2rem;
+    padding: 1rem 2rem 2rem;
   }
 }
 
 @media (min-width: 1024px) {
   .app-main {
-    padding: 2.5rem 3rem 3rem;
+    padding: 1rem 3rem 3rem;
   }
 
   .calendar-grid__cell {
