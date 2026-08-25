@@ -634,6 +634,9 @@ export function App({ client }: AppProps) {
             </>
           )}
         </main>
+        <footer className="app-footer">
+          <p>{zhTW.app.copyright}</p>
+        </footer>
         {(page === 'timeline' || page === 'calendar') && (
           <button className="mobile-fab" type="button" aria-label={zhTW.actions.addEntry} onClick={() => setEditingEntry(null)}>
             <Icon filled>add</Icon>
@@ -707,6 +710,7 @@ function DesktopNavigation({ page, onNavigate, onCreate, onSignOut, onConfigureD
         <button className="button button--text desktop-nav__sign-out" type="button" onClick={onSignOut}>
           <Icon>logout</Icon>{zhTW.actions.signOut}
         </button>
+        <small className="desktop-nav__copyright">{zhTW.app.copyright}</small>
       </div>
     </aside>
   )

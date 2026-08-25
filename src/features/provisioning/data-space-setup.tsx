@@ -404,6 +404,7 @@ export function DataSpaceSetup({
             <button className="button button--text" type="button" disabled={isBusy} onClick={() => void handleCancelChange()}>{zhTW.provisioning.cancelChange}</button>
           </div>
         )}
+        <p className="data-space-setup__copyright">{zhTW.app.copyright}</p>
       </section>
     </main>
   )

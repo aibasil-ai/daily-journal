@@ -83,6 +83,7 @@ export function ConnectionScreen({ status, error, onSignIn, onRetry }: Connectio
             <span aria-hidden="true"> | </span>
             <a href="/terms-of-service.html">{zhTW.connection.termsOfService}</a>
           </p>
+          <p className="connection-card__copyright">{zhTW.app.copyright}</p>
         </section>
       </div>
     </main>

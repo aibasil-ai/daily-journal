@@ -694,6 +694,14 @@ p {
   min-height: 3.25rem;
 }
 
+.connection-card__copyright {
+  margin-top: 0.75rem;
+  color: #adb4c0;
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
 .data-space-setup {
   display: grid;
   min-height: 100svh;
@@ -938,6 +946,14 @@ p {
 
 .data-space-setup__cancel {
   margin-top: 1rem;
+}
+
+.data-space-setup__copyright {
+  margin-top: 1.25rem;
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .google-mark {
@@ -1265,7 +1281,21 @@ p {
 .app-main {
   width: min(100%, 78rem);
   margin: 0 auto;
-  padding: 1rem 1rem 7.25rem;
+  padding: 1rem 1rem 1.5rem;
+}
+
+.app-footer {
+  width: min(100%, 78rem);
+  margin: 0 auto;
+  padding: 0 1rem 7.25rem;
+  text-align: center;
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.app-footer p {
+  margin: 0;
 }
 
 .page-heading {
@@ -2991,6 +3021,17 @@ p {
   margin-top: 0.25rem;
 }
 
+.desktop-nav__copyright {
+  display: block;
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--outline-variant);
+  color: var(--ink-muted);
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
   .desktop-nav__footer .material-symbols-outlined {
     flex: 0 0 auto;
     font-size: 0.875rem;
@@ -3009,7 +3050,11 @@ p {
   }
 
   .app-main {
-    padding: 1rem 2rem 3rem;
+    padding: 1rem 2rem 1.5rem;
+  }
+
+  .app-footer {
+    padding: 0 2rem 2.5rem;
   }
 
   .filter-bar {
@@ -3126,7 +3171,11 @@ p {
 
 @media (min-width: 1024px) {
   .app-main {
-    padding: 1rem 3rem 3rem;
+    padding: 1rem 3rem 1.5rem;
+  }
+
+  .app-footer {
+    padding: 0 3rem 2.5rem;
   }
 
   .calendar-grid__cell {
@@ -3167,7 +3216,11 @@ p {
   }
 
   .app-main {
-    padding: 0.75rem 0.875rem 6.5rem;
+    padding: 0.75rem 0.875rem 1.5rem;
+  }
+
+  .app-footer {
+    padding: 0 0.875rem 6.5rem;
   }
 
   .category-manager__heading {

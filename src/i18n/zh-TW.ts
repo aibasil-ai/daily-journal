@@ -5,11 +5,12 @@ export const zhTW = {
     timelineDescription: '回顧您的每一天。',
     calendarDescription: (count: number) => `本月共有 ${count} 則記事`,
     categoryDescription: '組織與管理您的記事分類',
+    copyright: '版權所有 © 2026 AIbasil All rights reserved.',
   },
   accessibility: {
     primaryNavigation: '主要導覽',
     viewToggle: '檢視切換',
-    sheetStorageNotice: '資料僅儲存於您的 Google Sheets',
+    sheetStorageNotice: '記事資料僅儲存於您的 Google Sheets',
     connectionBrand: '每日記事品牌',
   },
   navigation: {
