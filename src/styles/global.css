@@ -697,7 +697,7 @@ p {
 .data-space-setup {
   display: grid;
   min-height: 100svh;
-  padding: clamp(1rem, 4vw, 3rem);
+  padding: clamp(1rem, 3vw, 2rem) clamp(1rem, 4vw, 3rem);
   place-items: center;
   background:
     radial-gradient(circle at top right, rgb(37 99 235 / 14%), transparent 30rem),
@@ -706,7 +706,7 @@ p {
 
 .data-space-setup__card {
   width: min(100%, 66rem);
-  padding: clamp(1.25rem, 4vw, 2.5rem);
+  padding: clamp(1.25rem, 3vw, 2rem) clamp(1.25rem, 4vw, 2.5rem);
   border: 1px solid var(--outline-variant);
   border-radius: 1.25rem;
   background: var(--surface-card);
@@ -714,9 +714,11 @@ p {
 }
 
 .data-space-setup__header {
+  display: grid;
+  justify-items: center;
   max-width: 42rem;
   text-align: center;
-  margin: 0 auto 2rem;
+  margin: 0 auto clamp(1.25rem, 2.5vw, 1.75rem);
 }
 
 .data-space-setup__icon,
@@ -730,29 +732,38 @@ p {
 }
 
 .data-space-setup__icon {
-  width: 3.25rem;
-  height: 3.25rem;
-  margin-bottom: 0.875rem;
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-bottom: 0.75rem;
 }
 
-.data-space-setup__header > p {
+.data-space-setup__icon .material-symbols-outlined {
+  font-size: 1.375rem;
+}
+
+.data-space-setup__eyebrow {
   color: var(--primary);
   font-size: 0.75rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
 }
 
 .data-space-setup__header h1 {
-  margin-top: 0.375rem;
-  font-size: clamp(1.75rem, 5vw, 2.25rem);
-  letter-spacing: -0.04em;
+  margin: 0.25rem 0 0;
+  font-size: clamp(1.75rem, 3vw, 2.125rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
 }
 
-.data-space-setup__header > span {
-  display: block;
-  margin-top: 0.75rem;
+.data-space-setup__description {
+  max-width: 38rem;
+  margin-top: 0.625rem;
   color: var(--ink-muted);
-  line-height: 1.7;
+  font-size: clamp(0.875rem, 1.2vw, 1rem);
+  line-height: 1.65;
 }
 
 .data-space-setup__error {

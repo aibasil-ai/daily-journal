@@ -231,9 +231,9 @@ export function DataSpaceSetup({
       <section className="data-space-setup__card" aria-labelledby="data-space-setup-title">
         <header className="data-space-setup__header">
           <span className="data-space-setup__icon" aria-hidden="true"><Icon filled>table_chart</Icon></span>
-          <p>{zhTW.provisioning.status}</p>
+          <p className="data-space-setup__eyebrow">{zhTW.provisioning.status}</p>
           <h1 ref={headingRef} id="data-space-setup-title" tabIndex={-1}>{zhTW.provisioning.title}</h1>
-          <span>{mode === 'initial' ? zhTW.provisioning.initialDescription : zhTW.provisioning.changeDescription}</span>
+          <p className="data-space-setup__description">{mode === 'initial' ? zhTW.provisioning.initialDescription : zhTW.provisioning.changeDescription}</p>
         </header>
 
         {(error ?? statusError) && <p className="form-error data-space-setup__error" role="alert">{error ?? statusError}</p>}
