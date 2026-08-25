@@ -220,9 +220,13 @@ export function CategoryManager({
       {pendingDeactivate && (
         <ConfirmDialog labelledBy="deactivate-category-title" onCancel={() => setPendingDeactivate(undefined)}>
           <div>
-            <span className="confirm-dialog__icon"><Icon>block</Icon></span>
-            <h2 id="deactivate-category-title">{zhTW.categories.deactivateTitle}</h2>
-            <p>{zhTW.categories.deactivateDescription}</p>
+            <header className="confirm-dialog__header">
+              <span className="confirm-dialog__icon"><Icon>block</Icon></span>
+              <div>
+                <h2 id="deactivate-category-title">{zhTW.categories.deactivateTitle}</h2>
+                <p>{zhTW.categories.deactivateDescription}</p>
+              </div>
+            </header>
             {error && <p className="form-error" role="alert">{error}</p>}
             <div className="confirm-dialog__actions">
               <button className="button button--secondary" type="button" data-dialog-initial-focus disabled={isDeactivating} onClick={() => setPendingDeactivate(undefined)}>{zhTW.actions.cancel}</button>
@@ -237,9 +241,13 @@ export function CategoryManager({
       {pendingDelete && (
         <ConfirmDialog labelledBy="delete-category-title" onCancel={() => { if (!isDeleting) setPendingDelete(undefined) }}>
           <div>
-            <span className="confirm-dialog__icon"><Icon filled>delete</Icon></span>
-            <h2 id="delete-category-title">{zhTW.categories.deleteTitle}</h2>
-            <p>{zhTW.categories.deleteDescription}</p>
+            <header className="confirm-dialog__header">
+              <span className="confirm-dialog__icon"><Icon filled>delete</Icon></span>
+              <div>
+                <h2 id="delete-category-title">{zhTW.categories.deleteTitle}</h2>
+                <p>{zhTW.categories.deleteDescription}</p>
+              </div>
+            </header>
             {error && <p className="form-error" role="alert">{error}</p>}
             <div className="confirm-dialog__actions">
               <button className="button button--secondary" type="button" data-dialog-initial-focus disabled={isDeleting} onClick={() => setPendingDelete(undefined)}>{zhTW.actions.cancel}</button>

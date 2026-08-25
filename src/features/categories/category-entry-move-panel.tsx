@@ -200,10 +200,14 @@ export function CategoryEntryMovePanel({
       {pendingMove && (
         <ConfirmDialog labelledBy="confirm-move-title" onCancel={() => { if (!isMoving) setPendingMove(undefined) }}>
           <div>
-            <span className="confirm-dialog__icon"><Icon>drive_file_move</Icon></span>
-            <h2 id="confirm-move-title">
-              {zhTW.categories.confirmMove(pendingMove.entryIds.length, source.name, pendingTarget?.name ?? zhTW.categories.moveTo)}
-            </h2>
+            <header className="confirm-dialog__header">
+              <span className="confirm-dialog__icon"><Icon>drive_file_move</Icon></span>
+              <div>
+                <h2 id="confirm-move-title">
+                  {zhTW.categories.confirmMove(pendingMove.entryIds.length, source.name, pendingTarget?.name ?? zhTW.categories.moveTo)}
+                </h2>
+              </div>
+            </header>
             <label className="field-group">
               <span>{zhTW.categories.moveTo}</span>
               <select

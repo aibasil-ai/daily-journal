@@ -290,9 +290,13 @@ function SettingsDialog({
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
       >
-        <span className="settings-dialog__icon" aria-hidden="true"><Icon>warning</Icon></span>
-        <h2 id={titleId}>{title}</h2>
-        <p id={descriptionId}>{description}</p>
+        <header className="settings-dialog__header">
+          <span className="settings-dialog__icon" aria-hidden="true"><Icon>warning</Icon></span>
+          <div>
+            <h2 id={titleId}>{title}</h2>
+            <p id={descriptionId}>{description}</p>
+          </div>
+        </header>
         {children}
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="settings-dialog__actions">

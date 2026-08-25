@@ -61,9 +61,13 @@ export function EntryCard({ entry, categoryName, timezone, onOpen, onEdit, onDel
       {isConfirming && (
         <ConfirmDialog labelledBy={`delete-title-${entry.id}`} onCancel={() => setIsConfirming(false)}>
           <div>
-            <span className="confirm-dialog__icon"><Icon filled>delete</Icon></span>
-            <h2 id={`delete-title-${entry.id}`}>{zhTW.deleteDialog.title}</h2>
-            <p>{zhTW.deleteDialog.description}</p>
+            <header className="confirm-dialog__header">
+              <span className="confirm-dialog__icon"><Icon filled>delete</Icon></span>
+              <div>
+                <h2 id={`delete-title-${entry.id}`}>{zhTW.deleteDialog.title}</h2>
+                <p>{zhTW.deleteDialog.description}</p>
+              </div>
+            </header>
             {deleteError && <p className="form-error" role="alert">{deleteError}</p>}
             <div className="confirm-dialog__actions">
               <button className="button button--secondary" type="button" data-dialog-initial-focus disabled={isDeleting} onClick={() => setIsConfirming(false)}>
