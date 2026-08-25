@@ -1281,21 +1281,7 @@ p {
 .app-main {
   width: min(100%, 78rem);
   margin: 0 auto;
-  padding: 1rem 1rem 1.5rem;
-}
-
-.app-footer {
-  width: min(100%, 78rem);
-  margin: 0 auto;
-  padding: 0 1rem 7.25rem;
-  text-align: center;
-  color: var(--ink-muted);
-  font-size: 0.75rem;
-  line-height: 1.5;
-}
-
-.app-footer p {
-  margin: 0;
+  padding: 1rem 1rem 7.25rem;
 }
 
 .page-heading {
@@ -3075,11 +3061,7 @@ p {
   }
 
   .app-main {
-    padding: 1rem 2rem 1.5rem;
-  }
-
-  .app-footer {
-    padding: 0 2rem 2.5rem;
+    padding: 1rem 2rem 3rem;
   }
 
   .filter-bar {
@@ -3196,11 +3178,7 @@ p {
 
 @media (min-width: 1024px) {
   .app-main {
-    padding: 1rem 3rem 1.5rem;
-  }
-
-  .app-footer {
-    padding: 0 3rem 2.5rem;
+    padding: 1rem 3rem 3rem;
   }
 
   .calendar-grid__cell {
@@ -3241,11 +3219,7 @@ p {
   }
 
   .app-main {
-    padding: 0.75rem 0.875rem 1.5rem;
-  }
-
-  .app-footer {
-    padding: 0 0.875rem 6.5rem;
+    padding: 0.75rem 0.875rem 6.5rem;
   }
 
   .category-manager__heading {

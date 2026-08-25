@@ -634,9 +634,6 @@ export function App({ client }: AppProps) {
             </>
           )}
         </main>
-        <footer className="app-footer">
-          <p>{zhTW.app.copyright}</p>
-        </footer>
         {(page === 'timeline' || page === 'calendar') && (
           <button className="mobile-fab" type="button" aria-label={zhTW.actions.addEntry} onClick={() => setEditingEntry(null)}>
             <Icon filled>add</Icon>
