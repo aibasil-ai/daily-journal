@@ -112,9 +112,13 @@ export function CalendarView({ month, days, timezone, onMonthChange, onSelectDat
       {overflowDay && (
         <ConfirmDialog labelledBy={`calendar-overflow-${overflowDay.date}`} onCancel={() => setOverflowDay(undefined)}>
           <div className="calendar-entry-picker">
-            <span className="confirm-dialog__icon"><Icon>format_list_bulleted</Icon></span>
-            <h2 id={`calendar-overflow-${overflowDay.date}`}>{zhTW.calendar.chooseEntryTitle(overflowDay.date)}</h2>
-            <p>{zhTW.calendar.chooseEntryDescription}</p>
+            <header className="calendar-entry-picker__header">
+              <span className="confirm-dialog__icon calendar-entry-picker__icon"><Icon>format_list_bulleted</Icon></span>
+              <div>
+                <h2 id={`calendar-overflow-${overflowDay.date}`}>{zhTW.calendar.chooseEntryTitle(overflowDay.date)}</h2>
+                <p>{zhTW.calendar.chooseEntryDescription}</p>
+              </div>
+            </header>
             <div className="calendar-entry-picker__list">
               {overflowDay.entries.map((entry) => {
                 const title = entryTitle(entry)

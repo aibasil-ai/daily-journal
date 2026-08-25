@@ -1879,6 +1879,31 @@ p {
   font-weight: 700;
 }
 
+.calendar-entry-picker__header {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.calendar-entry-picker__icon {
+  flex: 0 0 auto;
+  margin-bottom: 0;
+  background: var(--secondary-container);
+  color: var(--secondary-ink);
+}
+
+.calendar-entry-picker__header h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.calendar-entry-picker__header p {
+  margin: 0.25rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
 .calendar-entry-picker__list {
   display: grid;
   gap: 0.5rem;
