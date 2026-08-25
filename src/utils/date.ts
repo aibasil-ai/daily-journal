@@ -4,9 +4,10 @@ export function getLocalDate(): string {
   return new Date(now.getTime() - offset).toISOString().slice(0, 10)
 }
 
-export function getJournalDate(timezone: string, date = new Date()): string {
+export function getJournalDate(timezone?: string, date = new Date()): string {
+  const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Taipei'
   const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: timezone,
+    timeZone: tz,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -15,7 +16,7 @@ export function getJournalDate(timezone: string, date = new Date()): string {
   return `${values.get('year')}-${values.get('month')}-${values.get('day')}`
 }
 
-export function getJournalMonth(timezone: string, date = new Date()): string {
+export function getJournalMonth(timezone?: string, date = new Date()): string {
   return getJournalDate(timezone, date).slice(0, 7)
 }
 
@@ -24,11 +25,12 @@ export function formatEntryDate(date: string): string {
   return `${year}年${month}月${day}日`
 }
 
-export function formatEntryTime(timestamp: string, timezone: string): string {
+export function formatEntryTime(timestamp: string, timezone?: string): string {
   const date = new Date(timestamp)
   if (Number.isNaN(date.getTime())) return ''
+  const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Taipei'
   return new Intl.DateTimeFormat('zh-TW', {
-    timeZone: timezone,
+    timeZone: tz,
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',

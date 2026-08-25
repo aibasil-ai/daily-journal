@@ -122,7 +122,7 @@ export function App({ client }: AppProps) {
     exportEntries,
     handleRequestError,
   } = journal
-  const journalTimezone = timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+  const journalTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || timezone || 'Asia/Taipei'
   const hasActiveFilters = Boolean(filter.query || filter.from || filter.to || filter.categoryId || filter.tag)
   const workspaceEpoch = useRef(0)
   const previousJournalStatus = useRef(status)
@@ -185,8 +185,8 @@ export function App({ client }: AppProps) {
   }, [restoreWorkspaceSession])
 
   useEffect(() => {
-    if (timezone) setCalendarMonth(getJournalMonth(timezone))
-  }, [timezone])
+    setCalendarMonth(getJournalMonth(journalTimezone))
+  }, [journalTimezone])
 
   useEffect(() => {
     const leftReady = previousJournalStatus.current === 'ready' && status !== 'ready'
