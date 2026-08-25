@@ -187,7 +187,7 @@ export function DataSpaceSetup({
     event.preventDefault()
     const value = sheetUrl.trim()
     if (!value) {
-      setError(zhTW.errors.provisioning)
+      setError(zhTW.provisioning.urlRequired)
       return
     }
     void runProvisioningAction('url', () => client.submitSheetUrl(value))
@@ -231,9 +231,11 @@ export function DataSpaceSetup({
       <section className="data-space-setup__card" aria-labelledby="data-space-setup-title">
         <header className="data-space-setup__header">
           <span className="data-space-setup__icon" aria-hidden="true"><Icon filled>table_chart</Icon></span>
-          <p className="data-space-setup__eyebrow">{zhTW.provisioning.status}</p>
-          <h1 ref={headingRef} id="data-space-setup-title" tabIndex={-1}>{zhTW.provisioning.title}</h1>
-          <p className="data-space-setup__description">{mode === 'initial' ? zhTW.provisioning.initialDescription : zhTW.provisioning.changeDescription}</p>
+          <div className="data-space-setup__header-copy">
+            <p className="data-space-setup__eyebrow">{zhTW.provisioning.status}</p>
+            <h1 ref={headingRef} id="data-space-setup-title" tabIndex={-1}>{zhTW.provisioning.title}</h1>
+            <p className="data-space-setup__description">{mode === 'initial' ? zhTW.provisioning.initialDescription : zhTW.provisioning.changeDescription}</p>
+          </div>
         </header>
 
         {(error ?? statusError) && <p className="form-error data-space-setup__error" role="alert">{error ?? statusError}</p>}

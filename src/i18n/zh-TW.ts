@@ -57,6 +57,7 @@ export const zhTW = {
     urlDescription: '貼上完整網址後，系統會在伺服器端安全驗證資料表。',
     urlLabel: 'Google Sheet 網址',
     urlPlaceholder: 'https://docs.google.com/spreadsheets/d/...',
+    urlRequired: '請輸入 Google Sheet 網址。',
     urlAction: '連結這份資料表',
     linking: '驗證連結中...',
     currentSheet: '目前資料表',

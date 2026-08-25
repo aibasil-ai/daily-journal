@@ -84,6 +84,17 @@ test('可用鍵盤貼上 Google Sheet 網址並只提交網址', async () => {
   await waitFor(() => expect(onComplete).toHaveBeenCalledOnce())
 })
 
+test('空白 Google Sheet 網址提交時要求輸入網址', async () => {
+  const user = userEvent.setup()
+  const submitSheetUrl = vi.fn()
+  render(<DataSpaceSetup client={createClient({ submitSheetUrl })} mode="initial" onComplete={vi.fn()} />)
+
+  await user.click(await screen.findByRole('button', { name: '連結這份資料表' }))
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('請輸入 Google Sheet 網址。')
+  expect(submitSheetUrl).not.toHaveBeenCalled()
+})
+
 test('更換資料表在確認前不會完成，確認後才通知 App 重新載入', async () => {
   const user = userEvent.setup()
   const confirmProvisioning = vi.fn(async () => ({
