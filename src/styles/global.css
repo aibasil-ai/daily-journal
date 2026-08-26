@@ -2971,10 +2971,29 @@ p {
     padding: 1rem 1rem 1.5rem;
     border-right: 1px solid var(--outline-variant);
     background: var(--surface-low);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--outline-variant) transparent;
+  }
+
+  .desktop-nav::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .desktop-nav::-webkit-scrollbar-thumb {
+    background-color: var(--outline-variant);
+    border-radius: 4px;
+  }
+
+  .desktop-nav::-webkit-scrollbar-track {
+    background: transparent;
   }
 
   .desktop-nav__brand {
     display: flex;
+    flex-shrink: 0;
     align-items: center;
     gap: 0.75rem;
     padding: 0 0.5rem;
@@ -3009,11 +3028,13 @@ p {
 
   .desktop-nav__create {
     width: 100%;
-    margin: 2rem 0 1.5rem;
+    flex-shrink: 0;
+    margin: 1.25rem 0 1rem;
   }
 
   .desktop-nav nav {
     display: grid;
+    flex-shrink: 0;
     gap: 0.375rem;
   }
 
@@ -3045,6 +3066,7 @@ p {
 
   .desktop-nav__footer {
     margin-top: auto;
+    flex-shrink: 0;
     padding-top: 1rem;
     border-top: 1px solid var(--outline-variant);
     color: var(--ink-muted);
