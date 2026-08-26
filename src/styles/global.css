@@ -1238,10 +1238,10 @@ p {
   top: 0;
   z-index: 20;
   display: flex;
-  min-height: 4rem;
+  min-height: 3.5rem;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem 1rem;
+  padding: 0.375rem 1rem;
   border-bottom: 1px solid var(--outline-variant);
   background: rgb(247 249 251 / 92%);
   backdrop-filter: blur(12px);
@@ -1251,11 +1251,7 @@ p {
   display: block;
   color: var(--primary);
   font-size: 1.125rem;
-}
-
-.mobile-header small {
-  color: var(--ink-muted);
-  font-size: 0.6875rem;
+  line-height: 1.25;
 }
 
 .mobile-header__actions {

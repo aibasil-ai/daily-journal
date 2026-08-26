@@ -734,7 +734,7 @@ function MobileHeader({
 }) {
   return (
     <header className="mobile-header">
-      <div><strong>{zhTW.app.name}</strong><small>{zhTW.app.tagline}</small></div>
+      <div><strong>{zhTW.app.name}</strong></div>
       <div className="mobile-header__actions">
         {(page === 'timeline' || page === 'calendar') && (
           <button
