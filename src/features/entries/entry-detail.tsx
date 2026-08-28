@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { CategoryColor, Entry } from '../../domain/journal'
 import { Icon } from '../../components/icon'
 import { ConfirmDialog } from '../../components/confirm-dialog'
@@ -21,6 +21,12 @@ export function EntryDetail({ entry, categoryName, categoryColor, timezone, onBa
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string>()
   const title = entry.title || entry.content.slice(0, 80) || zhTW.timeline.untitled
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, 0)
+    }
+  }, [entry.id])
 
   const handleDelete = async () => {
     setIsDeleting(true)

@@ -108,4 +108,22 @@ describe('EntryDetail', () => {
     expect(screen.getByText('工作')).toHaveClass('category-badge--custom-color')
     expect(screen.getByText('工作')).toHaveStyle({ '--category-color': '#b97c66' })
   })
+
+  it('scrolls to top when rendered', () => {
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+    render(
+      <EntryDetail
+        entry={mockEntry}
+        categoryName="工作"
+        categoryColor={null}
+        timezone="Asia/Taipei"
+        onBack={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn().mockResolvedValue(undefined)}
+      />,
+    )
+
+    expect(scrollToSpy).toHaveBeenCalledWith(0, 0)
+    scrollToSpy.mockRestore()
+  })
 })
