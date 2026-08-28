@@ -6,6 +6,7 @@ import {
 import { JournalError } from '../../shared/journal/errors.js'
 import { InMemoryJournalStore } from '../../shared/journal/in-memory-store.js'
 import { JournalService } from '../../shared/journal/service.js'
+import { normalizeCategoryColor } from '../../shared/journal/category-colors.js'
 import type { JournalStore } from '../../shared/journal/store.js'
 import type {
   ApiResponse,
@@ -38,9 +39,9 @@ export const ENTRY_HEADERS = [
   'updatedAt',
 ]
 
-export const CATEGORY_HEADERS = ['id', 'name', 'isActive', 'createdAt', 'updatedAt']
+export const CATEGORY_HEADERS = ['id', 'name', 'isActive', 'createdAt', 'updatedAt', 'color']
 export const SETTINGS_HEADERS = ['key', 'value']
-export const SCHEMA_VERSION = '1'
+export const SCHEMA_VERSION = '2'
 
 const REQUIRED_SHEET_NAMES = [ENTRY_SHEET_NAME, CATEGORY_SHEET_NAME, SETTINGS_SHEET_NAME] as const
 const SUPPORTED_COLUMN_COUNTS: Record<(typeof REQUIRED_SHEET_NAMES)[number], number> = {
@@ -86,6 +87,16 @@ type ValidatedSchema = {
   timezone: string
   sheetIds: Record<(typeof REQUIRED_SHEET_NAMES)[number], number>
 }
+
+type SchemaVersion = '1' | '2'
+
+type InspectedSchema = ValidatedSchema & {
+  version: SchemaVersion
+  schemaVersionRowIndex: number
+  metadata: SpreadsheetMetadata
+}
+
+const LEGACY_CATEGORY_HEADERS = ['id', 'name', 'isActive', 'createdAt', 'updatedAt']
 
 type Changes<T> = {
   updates: Row<T>[]
@@ -144,7 +155,7 @@ export class SheetsJournalStore implements JournalStore {
 
     if (required) {
       try {
-        await validateSchema(options.client, options.accessToken, options.spreadsheetId, metadata)
+        await ensureCurrentSchema(options.client, options.accessToken, options.spreadsheetId, metadata)
       } catch (error) {
         if (!(error instanceof JournalError) || !isSpreadsheetBlank(metadata)) throw error
         const requests = buildInitializationRequests(metadata)
@@ -152,7 +163,7 @@ export class SheetsJournalStore implements JournalStore {
         return
       }
       // 已有 schema 的資料表不可只驗證 headers；先完整唯讀解析所有資料列才可啟用。
-      await readRows(options.client, options.accessToken, options.spreadsheetId)
+      await readRows(options.client, options.accessToken, options.spreadsheetId, '2')
       return
     } else if (!isSpreadsheetBlank(metadata)) {
       throw schemaMismatch('Google Sheet 非空且缺少必要工作表，無法安全初始化。')
@@ -165,12 +176,12 @@ export class SheetsJournalStore implements JournalStore {
   static async verifySchema(
     options: Pick<SheetsJournalStoreOptions, 'client' | 'accessToken' | 'spreadsheetId'>,
   ): Promise<void> {
-    await validateSchema(options.client, options.accessToken, options.spreadsheetId)
+    await ensureCurrentSchema(options.client, options.accessToken, options.spreadsheetId)
   }
 
   static async load(options: SheetsJournalStoreOptions): Promise<SheetsJournalStore> {
-    const schema = await validateSchema(options.client, options.accessToken, options.spreadsheetId)
-    const rows = await readRows(options.client, options.accessToken, options.spreadsheetId)
+    const schema = await ensureCurrentSchema(options.client, options.accessToken, options.spreadsheetId)
+    const rows = await readRows(options.client, options.accessToken, options.spreadsheetId, '2')
     const journal = new InMemoryJournalStore({
       timezone: schema.timezone,
       entries: rows.entries.rows.map(({ item }) => item),
@@ -212,8 +223,8 @@ export class SheetsJournalStore implements JournalStore {
     if (snapshotsEqual(this.original, desired)) return
 
     // 寫入前重新驗證所有工作表與 schema，避免在不相容資料上進行任何變更。
-    const schema = await validateSchema(this.client, this.accessToken, this.spreadsheetId)
-    const current = await readRows(this.client, this.accessToken, this.spreadsheetId)
+    const schema = await validateCurrentSchema(this.client, this.accessToken, this.spreadsheetId)
+    const current = await readRows(this.client, this.accessToken, this.spreadsheetId, '2')
     const requests = buildWriteRequests(schema, current, this.original, desired)
     if (!requests.length) {
       this.original = cloneSnapshot(desired)
@@ -265,12 +276,12 @@ export class SheetsJournalStore implements JournalStore {
   }
 }
 
-async function validateSchema(
+async function inspectSchema(
   client: GoogleSheetsClient,
   accessToken: string,
   spreadsheetId: string,
   existingMetadata?: SpreadsheetMetadata,
-): Promise<ValidatedSchema> {
+): Promise<InspectedSchema> {
   const metadata = existingMetadata ?? await client.getSpreadsheet(
     accessToken,
     spreadsheetId,
@@ -291,39 +302,94 @@ async function validateSchema(
   const settingsHeaders = ranges[2]?.values?.[0] ?? []
   const settingsRows = ranges[3]?.values ?? []
 
-  if (!headersMatch(entryHeaders, ENTRY_HEADERS)) {
-    throw schemaMismatch('Google Sheet entries 工作表欄位不符預期。')
-  }
-  if (!headersMatch(categoryHeaders, CATEGORY_HEADERS)) {
-    throw schemaMismatch('Google Sheet categories 工作表欄位不符預期。')
-  }
-  if (!headersMatch(settingsHeaders, SETTINGS_HEADERS)) {
-    throw schemaMismatch('Google Sheet settings 工作表欄位不符預期。')
+  if (!headersMatch(entryHeaders, ENTRY_HEADERS) || !headersMatch(settingsHeaders, SETTINGS_HEADERS)) {
+    throw schemaMismatch('Google Sheet 欄位不符預期。')
   }
 
-  const versionRows = settingsRows.slice(1).filter((row) => text(row[0]).trim() === 'schemaVersion')
-  if (versionRows.length !== 1 || text(versionRows[0][1]).trim() !== SCHEMA_VERSION) {
+  const versionRows = settingsRows.slice(1).flatMap((row, index) => (
+    text(row[0]).trim() === 'schemaVersion'
+      ? [{ value: text(row[1]).trim(), rowIndex: index + 2 }]
+      : []
+  ))
+  if (versionRows.length !== 1) {
     throw schemaMismatch('Google Sheet settings 的 schemaVersion 不支援。')
+  }
+  const version = versionRows[0].value
+  const isV1 = version === '1' && headersMatch(categoryHeaders, LEGACY_CATEGORY_HEADERS)
+  const isV2 = version === '2' && headersMatch(categoryHeaders, CATEGORY_HEADERS)
+  if (!isV1 && !isV2) {
+    throw schemaMismatch('Google Sheet categories 工作表欄位或版本不符預期。')
   }
 
   return {
     timezone: metadata.properties.timeZone?.trim() || 'UTC',
     sheetIds: required,
+    version: isV1 ? '1' : '2',
+    schemaVersionRowIndex: versionRows[0].rowIndex,
+    metadata,
   }
+}
+
+async function validateCurrentSchema(
+  client: GoogleSheetsClient,
+  accessToken: string,
+  spreadsheetId: string,
+): Promise<ValidatedSchema> {
+  const inspected = await inspectSchema(client, accessToken, spreadsheetId)
+  if (inspected.version !== '2') {
+    throw schemaMismatch('Google Sheet settings 的 schemaVersion 不支援。')
+  }
+  return inspected
+}
+
+async function ensureCurrentSchema(
+  client: GoogleSheetsClient,
+  accessToken: string,
+  spreadsheetId: string,
+  existingMetadata?: SpreadsheetMetadata,
+): Promise<ValidatedSchema> {
+  const inspected = await inspectSchema(client, accessToken, spreadsheetId, existingMetadata)
+  if (inspected.version === '2') return inspected
+
+  await readRows(client, accessToken, spreadsheetId, '1')
+  assertLegacyColorColumnBlank(inspected.metadata, inspected.sheetIds[CATEGORY_SHEET_NAME])
+  await client.batchUpdate(accessToken, spreadsheetId, [
+    updateCellsRequest(inspected.sheetIds[CATEGORY_SHEET_NAME], 0, [['color']], 5),
+    updateCellsRequest(
+      inspected.sheetIds[SETTINGS_SHEET_NAME],
+      inspected.schemaVersionRowIndex - 1,
+      [['2']],
+      1,
+    ),
+  ])
+  return validateCurrentSchema(client, accessToken, spreadsheetId)
 }
 
 async function readRows(
   client: GoogleSheetsClient,
   accessToken: string,
   spreadsheetId: string,
+  version: SchemaVersion,
 ): Promise<LoadedRows> {
   const ranges = await client.batchGet(accessToken, spreadsheetId, [
     `${ENTRY_SHEET_NAME}!A2:I`,
-    `${CATEGORY_SHEET_NAME}!A2:E`,
+    `${CATEGORY_SHEET_NAME}!A2:${version === '1' ? 'E' : 'F'}`,
   ])
   return {
     entries: parseSheetRows(ranges[0], toEntry),
-    categories: parseSheetRows(ranges[1], toCategory),
+    categories: parseSheetRows(ranges[1], (values, rowIndex) => toCategory(values, rowIndex, version)),
+  }
+}
+
+function assertLegacyColorColumnBlank(metadata: SpreadsheetMetadata, categorySheetId: number): void {
+  const sheet = metadata.sheets.find(({ properties }) => properties.sheetId === categorySheetId)
+  const hasSixthColumnContent = sheet?.data?.some((grid) => (
+    grid.rowData?.some((row) => row.values?.some((cell, index) => (
+      (grid.startColumn ?? 0) + index >= 5 && !isBlankCell(cell)
+    )) ?? false) ?? false
+  )) ?? false
+  if (hasSixthColumnContent) {
+    throw schemaMismatch('舊版 categories 的 color 欄已有資料或格式，無法安全升級。')
   }
 }
 
@@ -492,11 +558,17 @@ function parseSheetRows<T extends { id: string }>(
   return { rows, lastOccupiedRow }
 }
 
-function toCategory(values: unknown[], rowIndex: number): Category {
+function toCategory(values: unknown[], rowIndex: number, version: SchemaVersion): Category {
   const id = requiredText(values[0], '分類 ID', rowIndex)
+  const rawColor = version === '2' ? text(values[5]).trim() : ''
+  const color = rawColor ? normalizeCategoryColor(rawColor) ?? null : null
+  if (rawColor && !color) {
+    throw dataError(`categories 第 ${rowIndex} 列的顏色不受支援。`)
+  }
   return {
     id,
     name: text(values[1]),
+    color,
     isActive: parseBoolean(values[2], rowIndex),
     createdAt: text(values[3]),
     updatedAt: text(values[4]),
@@ -710,10 +782,11 @@ function updateCellsRequest(
   sheetId: number,
   rowIndex: number,
   rows: Array<Array<string | boolean>>,
+  columnIndex = 0,
 ): Record<string, unknown> {
   return {
     updateCells: {
-      start: { sheetId, rowIndex, columnIndex: 0 },
+      start: { sheetId, rowIndex, columnIndex },
       rows: rows.map((values) => ({
         values: values.map((value) => ({
           userEnteredValue: typeof value === 'boolean'
@@ -747,6 +820,7 @@ function categoryValues(category: Category): Array<string | boolean> {
     category.isActive,
     category.createdAt,
     category.updatedAt,
+    category.color ?? '',
   ]
 }
 
@@ -773,6 +847,7 @@ function categoriesEqual(left: Category, right: Category): boolean {
     && left.isActive === right.isActive
     && left.createdAt === right.createdAt
     && left.updatedAt === right.updatedAt
+    && left.color === right.color
 }
 
 function snapshotsEqual(left: JournalSnapshot, right: JournalSnapshot): boolean {

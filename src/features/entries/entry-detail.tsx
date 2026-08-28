@@ -1,20 +1,22 @@
 import { useState } from 'react'
-import type { Entry } from '../../domain/journal'
+import type { CategoryColor, Entry } from '../../domain/journal'
 import { Icon } from '../../components/icon'
 import { ConfirmDialog } from '../../components/confirm-dialog'
 import { zhTW } from '../../i18n/zh-TW'
 import { formatEntryDate, formatEntryTime } from '../../utils/date'
+import { categoryColorStyle } from '../../utils/category-color'
 
 type EntryDetailProps = {
   entry: Entry
   categoryName: string
+  categoryColor: CategoryColor | null
   timezone: string
   onBack: () => void
   onEdit: () => void
   onDelete: () => Promise<void>
 }
 
-export function EntryDetail({ entry, categoryName, timezone, onBack, onEdit, onDelete }: EntryDetailProps) {
+export function EntryDetail({ entry, categoryName, categoryColor, timezone, onBack, onEdit, onDelete }: EntryDetailProps) {
   const [isConfirming, setIsConfirming] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string>()
@@ -51,7 +53,10 @@ export function EntryDetail({ entry, categoryName, timezone, onBack, onEdit, onD
       <article className="entry-detail__card">
         <header className="entry-detail__header">
           <div className="entry-detail__metadata">
-            <span className="category-badge"><Icon>folder</Icon>{categoryName}</span>
+            <span
+              className={`category-badge${categoryColor ? ' category-badge--custom-color' : ''}`}
+              style={categoryColorStyle(categoryColor)}
+            ><Icon>folder</Icon>{categoryName}</span>
             <time><Icon>schedule</Icon>{formatEntryDate(entry.entryDate)} {formatEntryTime(entry.createdAt, timezone)}</time>
           </div>
           <h1 id="entry-detail-title">{title}</h1>

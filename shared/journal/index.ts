@@ -1,4 +1,5 @@
 export * from './types.js'
+export * from './category-colors.js'
 export * from './errors.js'
 export * from './validation.js'
 export * from './store.js'

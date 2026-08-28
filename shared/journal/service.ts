@@ -1,4 +1,5 @@
 import { JournalError } from './errors.js'
+import type { CategoryColor } from './category-colors.js'
 import type {
   BootstrapData,
   Category,
@@ -98,12 +99,29 @@ export class JournalService {
         : {
             id: this.uuid(),
             name,
+            color: null,
             isActive: true,
             createdAt: timestamp,
             updatedAt: timestamp,
           }
 
       return this.store.saveCategory(category)
+    })
+  }
+
+  setCategoryColor(id: string, color: CategoryColor | null): Category {
+    return this.store.withWriteLock(() => {
+      const categoryId = id.trim()
+      const current = this.store.listCategories().find((category) => category.id === categoryId)
+      if (!current) {
+        throw new JournalError('NOT_FOUND', '找不到要更新顏色的分類。')
+      }
+      if (current.color === color) return { ...current }
+      return this.store.saveCategory({
+        ...current,
+        color,
+        updatedAt: this.now(),
+      })
     })
   }
 

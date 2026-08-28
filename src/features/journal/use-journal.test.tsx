@@ -39,6 +39,83 @@ describe('useJournal', () => {
     expect(result.current.categoryEntryCounts).toEqual({ work: 2 })
   })
 
+  test('正規化舊類別回應並只更新目標類別的顏色，不增加 revision', async () => {
+    const categories = [
+      {
+        id: 'work', name: '工作', isActive: true,
+        createdAt: '2026-08-04T00:00:00+08:00', updatedAt: '2026-08-04T00:00:00+08:00',
+      },
+      {
+        id: 'life', name: '生活', color: ' #B97C66 ', isActive: true,
+        createdAt: '2026-08-04T00:00:00+08:00', updatedAt: '2026-08-04T00:00:00+08:00',
+      },
+    ]
+    const run = vi.fn(async (request: ApiRequest) => {
+      if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories, tagSuggestions: [] }
+      if (request.action === 'listCategories') return { categories, entryCounts: { work: 0, life: 0 } }
+      if (request.action === 'listEntries') return { items: [], nextCursor: null }
+      if (request.action === 'setCategoryColor') {
+        return { ...categories[0], color: request.color }
+      }
+      throw new Error(`未預期的請求：${request.action}`)
+    })
+    const client = createClient({ run: run as JournalClient['run'] })
+    const { result } = renderHook(() => useJournal(client))
+
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    expect(result.current.categories.find(({ id }) => id === 'work')?.color).toBeNull()
+    expect(result.current.categories.find(({ id }) => id === 'life')?.color).toBe('#b97c66')
+    const revisionBefore = result.current.revision
+
+    await act(async () => {
+      await result.current.setCategoryColor('work', '#ffe784')
+    })
+
+    expect(run).toHaveBeenCalledWith({ action: 'setCategoryColor', id: 'work', color: '#ffe784' })
+    expect(result.current.categories.find(({ id }) => id === 'work')?.color).toBe('#ffe784')
+    expect(result.current.revision).toBe(revisionBefore)
+  })
+
+  test('較晚完成的改色回應不會覆蓋較新的類別狀態', async () => {
+    const category = {
+      id: 'work', name: '工作', color: null,
+      isActive: true, createdAt: '2026-08-04T00:00:00+08:00', updatedAt: '2026-08-04T00:00:00+08:00',
+    }
+    type ColoredCategory = Omit<typeof category, 'color'> & { color: '#ffe784' }
+    let resolveColor!: (value: ColoredCategory) => void
+    const colorResponse = new Promise<ColoredCategory>((resolve) => {
+      resolveColor = resolve
+    })
+    const run = vi.fn(async (request: ApiRequest) => {
+      if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category], tagSuggestions: [] }
+      if (request.action === 'listCategories') return { categories: [category], entryCounts: { work: 0 } }
+      if (request.action === 'listEntries') return { items: [], nextCursor: null }
+      if (request.action === 'setCategoryColor') return colorResponse
+      if (request.action === 'deactivateCategory') return { ...category, color: '#ffe784' as const, isActive: false }
+      throw new Error(`未預期的請求：${request.action}`)
+    })
+    const client = createClient({ run: run as JournalClient['run'] })
+    const { result } = renderHook(() => useJournal(client))
+
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    let colorRequest!: Promise<unknown>
+    act(() => {
+      colorRequest = result.current.setCategoryColor('work', '#ffe784')
+    })
+    await waitFor(() => expect(result.current.savingCategoryColorIds.has('work')).toBe(true))
+    await act(async () => {
+      await result.current.deactivateCategory('work')
+    })
+    await act(async () => {
+      resolveColor({ ...category, color: '#ffe784' })
+      await colorRequest
+    })
+
+    expect(result.current.categories).toEqual([expect.objectContaining({
+      id: 'work', color: '#ffe784', isActive: false,
+    })])
+  })
+
   test('搬移成功後刷新類別摘要與目前主記事清單', async () => {
     const run = vi.fn(async (request: ApiRequest) => {
       if (request.action === 'bootstrap') return bootstrap
@@ -272,6 +349,7 @@ describe('useJournal', () => {
     const newCategory = {
       id: 'new',
       name: '新分類',
+      color: null,
       isActive: true,
       createdAt: '2026-08-20T00:00:00+08:00',
       updatedAt: '2026-08-20T00:00:00+08:00',

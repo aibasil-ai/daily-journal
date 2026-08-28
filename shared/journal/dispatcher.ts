@@ -2,6 +2,7 @@ import { JournalError, isJournalError } from './errors.js'
 import type { ApiRequest, ApiResponse } from './types.js'
 import {
   parseCategoryInput,
+  parseCategoryColor,
   parseEntryFilter,
   parseEntryFilterCriteria,
   parseEntryInput,
@@ -75,6 +76,11 @@ export function executeJournalRequest(
         const category = parseCategoryInput(request.category)
         return { ok: true, data: getService().saveCategory(category) }
       }
+      case 'setCategoryColor': {
+        const id = readString(request, 'id')
+        const color = parseCategoryColor(request.color)
+        return { ok: true, data: getService().setCategoryColor(id, color) }
+      }
       case 'deactivateCategory': {
         const id = readString(request, 'id')
         return { ok: true, data: getService().deactivateCategory(id) }
@@ -121,6 +127,7 @@ export function isJournalMutation(request: unknown): boolean {
   return request.action === 'saveEntry'
     || request.action === 'deleteEntry'
     || request.action === 'saveCategory'
+    || request.action === 'setCategoryColor'
     || request.action === 'deactivateCategory'
     || request.action === 'activateCategory'
     || request.action === 'moveEntries'
@@ -144,6 +151,7 @@ function isSupportedAction(action: string): action is ApiRequest['action'] {
     || action === 'saveEntry'
     || action === 'deleteEntry'
     || action === 'saveCategory'
+    || action === 'setCategoryColor'
     || action === 'deactivateCategory'
     || action === 'activateCategory'
     || action === 'moveEntries'

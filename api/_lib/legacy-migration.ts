@@ -171,7 +171,7 @@ export type LegacyMigrationStore = {
 
 export type LegacyMigrationDrive = Pick<GoogleDriveClient, 'getOwnedSpreadsheet'>
 
-/** 此介面刻意沒有任何寫入方法，遷移只能讀取驗證既有資料。 */
+/** 此介面不允許搬移或重寫資料列；驗證可進行 schema-only v1→v2 升級。 */
 export type LegacyMigrationSheets = {
   validateExisting(accessToken: string, spreadsheetId: string): Promise<void>
 }
@@ -221,7 +221,7 @@ export class LegacyMigrationClaimConflictError extends Error {
 
 /**
  * 將已登入但尚未完成初始設定的帳號，一次性綁定既有個人版 Sheet。
- * 此流程只做 Google Drive 與 Sheets 的唯讀驗證；不會複製、清空或寫入資料列。
+ * 此流程只做 Google Drive 與 Sheets 驗證；只允許 schema-only 升級，不會複製、清空或重寫資料列。
  */
 export async function runLegacyMigration(
   input: LegacyMigrationInput,
@@ -498,7 +498,7 @@ export function createServerLegacyMigrationDependencies(
     drive: new GoogleDriveClient(),
     sheets: {
       async validateExisting(accessToken: string, spreadsheetId: string): Promise<void> {
-        // load 會完整驗證 schema 與資料列，但不會發出任何 batchUpdate。
+        // load 會完整驗證 schema 與資料列；必要時只原子升級 schema，不重寫資料列。
         await SheetsJournalStore.load({ client: sheetsClient, accessToken, spreadsheetId })
       },
     },

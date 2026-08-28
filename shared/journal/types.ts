@@ -1,3 +1,5 @@
+import type { CategoryColor } from './category-colors.js'
+
 /** 僅包含可透過 API 傳遞的 JSON 資料。 */
 export type JournalLink = {
   label: string
@@ -7,6 +9,7 @@ export type JournalLink = {
 export type Category = {
   id: string
   name: string
+  color: CategoryColor | null
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -96,6 +99,7 @@ export type ApiRequest =
   | { action: 'saveEntry'; entry: EntryInput }
   | { action: 'deleteEntry'; id: string }
   | { action: 'saveCategory'; category: CategoryInput }
+  | { action: 'setCategoryColor'; id: string; color: CategoryColor | null }
   | { action: 'deactivateCategory'; id: string }
   | { action: 'activateCategory'; id: string }
   | { action: 'moveEntries'; sourceCategoryId: string; targetCategoryId: string; entryIds: string[] }

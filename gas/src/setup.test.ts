@@ -26,7 +26,7 @@ describe('initializeJournal', () => {
     expect(environment.spreadsheet.getSheet('categories')?.values).toEqual([CATEGORY_HEADERS])
     expect(environment.spreadsheet.getSheet('settings')?.values).toEqual([
       SETTINGS_HEADERS,
-      ['schemaVersion', '1'],
+      ['schemaVersion', '2'],
     ])
     expect(environment.waitLock).toHaveBeenCalledWith(10_000)
     expect(environment.releaseLock).toHaveBeenCalledTimes(1)
@@ -63,6 +63,7 @@ describe('initializeJournal', () => {
     new AppsScriptJournalStore().saveCategory({
       id: 'work',
       name: '工作',
+      color: null,
       isActive: true,
       createdAt: '2026-08-04T12:00:00+08:00',
       updatedAt: '2026-08-04T12:00:00+08:00',
@@ -77,8 +78,8 @@ describe('initializeJournal', () => {
     const store = new AppsScriptJournalStore()
     const createdAt = '2026-08-04T12:00:00+08:00'
     const updatedAt = '2026-08-18T10:00:00+08:00'
-    store.saveCategory({ id: 'work', name: '工作', isActive: true, createdAt, updatedAt: createdAt })
-    store.saveCategory({ id: 'life', name: '生活', isActive: true, createdAt, updatedAt: createdAt })
+    store.saveCategory({ id: 'work', name: '工作', color: null, isActive: true, createdAt, updatedAt: createdAt })
+    store.saveCategory({ id: 'life', name: '生活', color: null, isActive: true, createdAt, updatedAt: createdAt })
     store.saveEntry({
       id: 'entry-1', entryDate: '2026-08-04', title: '', content: '第一則', categoryId: 'work',
       tags: [], links: [], createdAt, updatedAt: createdAt,
@@ -106,8 +107,37 @@ describe('initializeJournal', () => {
     ])
     expect(environment.spreadsheet.getSheet('categories')?.values).toEqual([
       CATEGORY_HEADERS,
-      ['life', '生活', true, createdAt, createdAt],
+      ['life', '生活', true, createdAt, createdAt, ''],
     ])
+  })
+
+  it('以 v2 結構讀寫空白與自訂色', () => {
+    initializeJournal('spreadsheet-id')
+    const store = new AppsScriptJournalStore()
+    const createdAt = '2026-08-04T12:00:00+08:00'
+
+    store.saveCategory({
+      id: 'work', name: '工作', color: '#b97c66', isActive: true, createdAt, updatedAt: createdAt,
+    })
+
+    expect(store.listCategories()).toEqual([{
+      id: 'work', name: '工作', color: '#b97c66', isActive: true, createdAt, updatedAt: createdAt,
+    }])
+  })
+
+  it('明確拒絕 v1 Sheet，且不改寫既有值', () => {
+    environment.properties.set('SPREADSHEET_ID', 'spreadsheet-id')
+    for (const [name, values] of [
+      ['entries', [ENTRY_HEADERS]],
+      ['categories', [['id', 'name', 'isActive', 'createdAt', 'updatedAt']]],
+      ['settings', [SETTINGS_HEADERS, ['schemaVersion', '1']]],
+    ] as const) {
+      environment.spreadsheet.insertSheet(name).values.push(...values.map((row) => [...row]))
+    }
+    const categories = environment.spreadsheet.getSheet('categories')!.values.map((row) => [...row])
+
+    expect(() => new AppsScriptJournalStore().ensureSchema()).toThrow('資料表「categories」欄位不符預期。')
+    expect(environment.spreadsheet.getSheet('categories')?.values).toEqual(categories)
   })
 })
 

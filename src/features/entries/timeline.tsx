@@ -29,7 +29,7 @@ export function Timeline({
   onCreate,
 }: TimelineProps) {
   const groups = groupEntries(entries)
-  const categoryNames = new Map(categories.map((category) => [category.id, category.name]))
+  const categoriesById = new Map(categories.map((category) => [category.id, category]))
 
   if (!entries.length && !isLoading) {
     return (
@@ -51,17 +51,21 @@ export function Timeline({
             <DateRelationBadge date={date} timezone={timezone} />
           </header>
           <div className="timeline__entries">
-            {dateEntries.map((entry) => (
-              <EntryCard
-                key={entry.id}
-                entry={entry}
-                categoryName={categoryNames.get(entry.categoryId) ?? zhTW.detail.category}
-                timezone={timezone}
-                onOpen={() => onOpen(entry)}
-                onEdit={() => onEdit(entry)}
-                onDelete={() => onDelete(entry.id)}
-              />
-            ))}
+            {dateEntries.map((entry) => {
+              const category = categoriesById.get(entry.categoryId)
+              return (
+                <EntryCard
+                  key={entry.id}
+                  entry={entry}
+                  categoryName={category?.name ?? zhTW.detail.category}
+                  categoryColor={category?.color ?? null}
+                  timezone={timezone}
+                  onOpen={() => onOpen(entry)}
+                  onEdit={() => onEdit(entry)}
+                  onDelete={() => onDelete(entry.id)}
+                />
+              )
+            })}
           </div>
         </section>
       ))}

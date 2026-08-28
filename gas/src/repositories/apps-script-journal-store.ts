@@ -1,6 +1,7 @@
 import { JournalError } from '../domain/errors'
 import type { Category, Entry, EntryFilter, JournalLink } from '../domain/journal'
 import type { JournalStore } from './journal-store'
+import { normalizeCategoryColor } from '../../../shared/journal/category-colors'
 
 export const SPREADSHEET_ID_PROPERTY = 'SPREADSHEET_ID'
 export const ENTRY_SHEET_NAME = 'entries'
@@ -19,10 +20,10 @@ export const ENTRY_HEADERS = [
   'updatedAt',
 ]
 
-export const CATEGORY_HEADERS = ['id', 'name', 'isActive', 'createdAt', 'updatedAt']
+export const CATEGORY_HEADERS = ['id', 'name', 'isActive', 'createdAt', 'updatedAt', 'color']
 export const SETTINGS_HEADERS = ['key', 'value']
 
-const SCHEMA_VERSION = '1'
+const SCHEMA_VERSION = '2'
 const WRITE_LOCK_TIMEOUT_MS = 10_000
 
 type SheetRow = {
@@ -80,6 +81,7 @@ export class AppsScriptJournalStore implements JournalStore {
         category.isActive,
         category.createdAt,
         category.updatedAt,
+        category.color ?? '',
       ]
 
       this.writeRow(sheet, rowIndex ?? sheet.getLastRow() + 1, values)
@@ -221,12 +223,8 @@ export class AppsScriptJournalStore implements JournalStore {
     }
 
     const settings = sheet.getRange(2, 1, lastRow - 1, SETTINGS_HEADERS.length).getValues()
-    const version = settings.find((row) => String(row[0]).trim() === 'schemaVersion')?.[1]
-    if (version === undefined) {
-      this.writeRow(sheet, lastRow + 1, ['schemaVersion', SCHEMA_VERSION])
-      return
-    }
-    if (String(version).trim() !== SCHEMA_VERSION) {
+    const versions = settings.filter((row) => String(row[0]).trim() === 'schemaVersion')
+    if (versions.length !== 1 || String(versions[0][1]).trim() !== SCHEMA_VERSION) {
       throw new JournalError(
         'DATA_ERROR',
         'settings 工作表的 schemaVersion 不支援。請確認資料結構版本後再試。',
@@ -282,9 +280,18 @@ export class AppsScriptJournalStore implements JournalStore {
 
   private toCategory(row: SheetRow): Category {
     const id = this.requiredText(row.values[0], '分類 ID', row.rowIndex)
+    const rawColor = this.text(row.values[5]).trim()
+    const color = rawColor ? normalizeCategoryColor(rawColor) ?? null : null
+    if (rawColor && !color) {
+      throw new JournalError(
+        'DATA_ERROR',
+        `分類資料列「${id}」的顏色不受支援。請修正 Google Sheets 中的資料後再試。`,
+      )
+    }
     return {
       id,
       name: this.text(row.values[1]),
+      color,
       isActive: this.toBoolean(row.values[2], id),
       createdAt: this.dateTimeText(row.values[3]),
       updatedAt: this.dateTimeText(row.values[4]),

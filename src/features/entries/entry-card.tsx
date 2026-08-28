@@ -1,20 +1,22 @@
 import { useState } from 'react'
-import type { Entry } from '../../domain/journal'
+import type { CategoryColor, Entry } from '../../domain/journal'
 import { zhTW } from '../../i18n/zh-TW'
 import { Icon } from '../../components/icon'
 import { ConfirmDialog } from '../../components/confirm-dialog'
 import { formatEntryTime } from '../../utils/date'
+import { categoryColorStyle } from '../../utils/category-color'
 
 type EntryCardProps = {
   entry: Entry
   categoryName: string
+  categoryColor: CategoryColor | null
   timezone: string
   onOpen: () => void
   onEdit: () => void
   onDelete: () => Promise<void>
 }
 
-export function EntryCard({ entry, categoryName, timezone, onOpen, onEdit, onDelete }: EntryCardProps) {
+export function EntryCard({ entry, categoryName, categoryColor, timezone, onOpen, onEdit, onDelete }: EntryCardProps) {
   const [isConfirming, setIsConfirming] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string>()
@@ -39,7 +41,12 @@ export function EntryCard({ entry, categoryName, timezone, onOpen, onEdit, onDel
       <span className="entry-card__dot" aria-hidden="true" />
       <div className="entry-card__body">
         <button className="entry-card__read" type="button" onClick={onOpen} aria-label={`${zhTW.timeline.readEntry}：${title}`}>
-          <span className="category-badge">{categoryName}</span>
+          <span
+            className={`category-badge${categoryColor ? ' category-badge--custom-color' : ''}`}
+            style={categoryColorStyle(categoryColor)}
+          >
+            {categoryName}
+          </span>
           <h4>{title}</h4>
           <p>{entry.content}</p>
           {entry.tags.length > 0 && (

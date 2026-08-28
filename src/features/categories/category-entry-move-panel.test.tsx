@@ -94,6 +94,7 @@ function category(overrides: Partial<Category> = {}): Category {
   return {
     id: 'work',
     name: '工作',
+    color: null,
     isActive: true,
     createdAt: timestamp,
     updatedAt: timestamp,

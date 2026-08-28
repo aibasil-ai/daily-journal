@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { executeJournalRequest } from './dispatcher'
+import { executeJournalRequest, isJournalMutation } from './dispatcher'
 import type { Category, Entry } from './types'
 import { InMemoryJournalStore } from './in-memory-store'
 import { JournalService } from './service'
@@ -84,6 +84,23 @@ describe('executeJournalRequest', () => {
     })
   })
 
+  it('正規化並分派 setCategoryColor', () => {
+    const response = executeJournalRequest(
+      { action: 'setCategoryColor', id: 'work', color: ' #FFE784 ' },
+      service(),
+    )
+
+    expect(response).toMatchObject({ ok: true, data: { id: 'work', color: '#ffe784' } })
+    expect(isJournalMutation({ action: 'setCategoryColor', id: 'work', color: null })).toBe(true)
+  })
+
+  it('拒絕不在白名單的類別顏色', () => {
+    expect(executeJournalRequest(
+      { action: 'setCategoryColor', id: 'work', color: '#414646' },
+      service(),
+    )).toEqual({ ok: false, code: 'VALIDATION_ERROR', message: '請選擇有效的類別顏色。' })
+  })
+
   it('將輸入驗證與領域錯誤轉為可操作的繁中訊息', () => {
     const invalidPayload = executeJournalRequest({
       action: 'saveEntry',
@@ -163,6 +180,7 @@ function category(overrides: Partial<Category> = {}): Category {
   return {
     id: 'work',
     name: '工作',
+    color: null,
     isActive: true,
     createdAt: timestamp,
     updatedAt: timestamp,

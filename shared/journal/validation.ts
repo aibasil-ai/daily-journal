@@ -1,4 +1,6 @@
 import { JournalError } from './errors.js'
+import { normalizeCategoryColor } from './category-colors.js'
+import type { CategoryColor } from './category-colors.js'
 import type {
   CategoryInput,
   EntryFilter,
@@ -118,6 +120,14 @@ export function parseCategoryInput(value: unknown): CategoryInput {
   const input: CategoryInput = { name: readString(value, 'name') }
   if (value.id !== undefined) input.id = readString(value, 'id')
   return input
+}
+
+export function parseCategoryColor(value: unknown): CategoryColor | null {
+  if (value === null) return null
+  if (typeof value !== 'string') throwInvalidRequest()
+  const color = normalizeCategoryColor(value)
+  if (!color) throw new JournalError('VALIDATION_ERROR', '請選擇有效的類別顏色。')
+  return color
 }
 
 export function parseMoveEntriesInput(value: unknown): MoveEntriesInput {

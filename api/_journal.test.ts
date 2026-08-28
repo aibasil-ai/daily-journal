@@ -245,6 +245,27 @@ describe('/api/journal', () => {
     ])
   })
 
+  test('setCategoryColor 走 mutation 的 Origin、限流與 write lease 路徑', async () => {
+    const system = createSystem()
+    const response = await system.handler(journalRequest('session-alice', {
+      action: 'setCategoryColor',
+      id: 'category-alice',
+      color: '#ffe784',
+    }, {
+      origin: config.appOrigin,
+      contentType: 'application/json',
+    }))
+
+    expect(response.status).toBe(200)
+    expect(system.rateLimiter.consume).toHaveBeenCalledWith({
+      scope: 'journal_write', subject: 'alice', limit: 60, windowMs: 60_000,
+    })
+    expect(system.connections.withSheetWriteLease).toHaveBeenCalledWith('connection-alice', expect.any(Function))
+    expect(system.aliceStore.execute).toHaveBeenCalledWith({
+      action: 'setCategoryColor', id: 'category-alice', color: '#ffe784',
+    })
+  })
+
   test('schema、lease 與 journal 輸入錯誤回傳安全的 4xx/409 ApiResponse', async () => {
     const system = createSystem()
     system.journalStoreFactory.mockRejectedValueOnce(new JournalError('DATA_ERROR', '資料表 schema 不支援。'))

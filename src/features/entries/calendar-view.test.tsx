@@ -17,6 +17,7 @@ test('點選日期框時載入該日資料', async () => {
     <CalendarView
       month="2026-08"
       days={[{ date: '2026-08-04', entries: entries.slice(0, 2) }]}
+      categories={[]}
       timezone="Asia/Taipei"
       onMonthChange={vi.fn()}
       onSelectDate={onSelectDate}
@@ -36,6 +37,7 @@ test('點選日期格中的記事會開啟詳細資訊且不選取日期', async
     <CalendarView
       month="2026-08"
       days={[{ date: '2026-08-04', entries: entries.slice(0, 2) }]}
+      categories={[]}
       timezone="Asia/Taipei"
       onMonthChange={vi.fn()}
       onSelectDate={onSelectDate}
@@ -56,6 +58,7 @@ test('點選溢出記事可選擇後開啟詳細資訊', async () => {
     <CalendarView
       month="2026-08"
       days={[{ date: '2026-08-04', entries }]}
+      categories={[]}
       timezone="Asia/Taipei"
       onMonthChange={vi.fn()}
       onSelectDate={vi.fn()}
@@ -68,6 +71,29 @@ test('點選溢出記事可選擇後開啟詳細資訊', async () => {
   await user.click(screen.getByRole('button', { name: '第三則記事' }))
 
   expect(onOpenEntry).toHaveBeenCalledWith(entries[2])
+})
+
+test('日期格和更多清單依類別套用自訂色', async () => {
+  const user = userEvent.setup()
+  render(
+    <CalendarView
+      month="2026-08"
+      days={[{ date: '2026-08-04', entries }]}
+      categories={[{
+        id: 'work', name: '工作', color: '#b97c66', isActive: true,
+        createdAt: '2026-08-04T00:00:00+08:00', updatedAt: '2026-08-04T00:00:00+08:00',
+      }]}
+      timezone="Asia/Taipei"
+      onMonthChange={vi.fn()}
+      onSelectDate={vi.fn()}
+      onOpenEntry={vi.fn()}
+    />,
+  )
+
+  expect(screen.getByRole('button', { name: '閱讀記事：第一則記事' })).toHaveStyle({ '--category-color': '#b97c66' })
+  expect(screen.getByRole('button', { name: '還有 1 則記事' })).not.toHaveAttribute('style')
+  await user.click(screen.getByRole('button', { name: '還有 1 則記事' }))
+  expect(screen.getByRole('button', { name: '第三則記事' })).toHaveStyle({ '--category-color': '#b97c66' })
 })
 
 function createEntry(id: string, title: string) {

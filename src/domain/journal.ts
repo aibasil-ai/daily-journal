@@ -17,6 +17,12 @@ export type {
   MoveEntriesInput,
   MoveEntriesResult,
 } from '../../shared/journal/types'
+export type { CategoryColor } from '../../shared/journal/category-colors'
+export {
+  CATEGORY_COLORS,
+  DEFAULT_CATEGORY_COLOR,
+  normalizeCategoryColor,
+} from '../../shared/journal/category-colors'
 
 import type { EntryFilter, EntryFilterCriteria } from '../../shared/journal/types'
 

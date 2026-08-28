@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import { CategoryManager } from './category-manager'
@@ -12,6 +12,7 @@ test('點選新增類別會開啟類別名稱表單', async () => {
       categories={[{
         id: 'work',
         name: '工作',
+        color: null,
         isActive: true,
         createdAt: '2026-08-04T00:00:00+08:00',
         updatedAt: '2026-08-04T00:00:00+08:00',
@@ -21,6 +22,8 @@ test('點選新增類別會開啟類別名稱表單', async () => {
       onMoveEntries={vi.fn().mockResolvedValue(undefined)}
       onDelete={vi.fn().mockResolvedValue(undefined)}
       onSave={vi.fn().mockResolvedValue(undefined)}
+      savingCategoryColorIds={new Set()}
+      onSetColor={vi.fn().mockResolvedValue(undefined)}
       onDeactivate={vi.fn().mockResolvedValue(undefined)}
       onActivate={vi.fn().mockResolvedValue(undefined)}
     />,
@@ -40,6 +43,7 @@ test('可重新啟用停用中的類別', async () => {
       categories={[{
         id: 'archived',
         name: '舊分類',
+        color: null,
         isActive: false,
         createdAt: '2026-08-04T00:00:00+08:00',
         updatedAt: '2026-08-04T00:00:00+08:00',
@@ -49,6 +53,8 @@ test('可重新啟用停用中的類別', async () => {
       onMoveEntries={vi.fn().mockResolvedValue(undefined)}
       onDelete={vi.fn().mockResolvedValue(undefined)}
       onSave={vi.fn().mockResolvedValue(undefined)}
+      savingCategoryColorIds={new Set()}
+      onSetColor={vi.fn().mockResolvedValue(undefined)}
       onDeactivate={vi.fn().mockResolvedValue(undefined)}
       onActivate={onActivate}
     />,
@@ -65,7 +71,7 @@ test('有記事的類別可開啟搬移面板但不可永久刪除', async () =>
   render(
     <CategoryManager
       categories={[{
-        id: 'work', name: '工作', isActive: true,
+        id: 'work', name: '工作', color: null, isActive: true,
         createdAt: '2026-08-04T00:00:00+08:00', updatedAt: '2026-08-04T00:00:00+08:00',
       }]}
       entryCounts={{ work: 1 }}
@@ -73,6 +79,8 @@ test('有記事的類別可開啟搬移面板但不可永久刪除', async () =>
       onMoveEntries={vi.fn().mockResolvedValue(undefined)}
       onDelete={vi.fn().mockResolvedValue(undefined)}
       onSave={vi.fn().mockResolvedValue(undefined)}
+      savingCategoryColorIds={new Set()}
+      onSetColor={vi.fn().mockResolvedValue(undefined)}
       onDeactivate={vi.fn().mockResolvedValue(undefined)}
       onActivate={vi.fn().mockResolvedValue(undefined)}
     />,
@@ -90,7 +98,7 @@ test('類別操作圖示提供用途提示，刪除限制不直接顯示於卡�
   render(
     <CategoryManager
       categories={[{
-        id: 'work', name: '工作', isActive: true,
+        id: 'work', name: '工作', color: null, isActive: true,
         createdAt: '2026-08-04T00:00:00+08:00', updatedAt: '2026-08-04T00:00:00+08:00',
       }]}
       entryCounts={{ work: 1 }}
@@ -98,6 +106,8 @@ test('類別操作圖示提供用途提示，刪除限制不直接顯示於卡�
       onMoveEntries={vi.fn().mockResolvedValue(undefined)}
       onDelete={vi.fn().mockResolvedValue(undefined)}
       onSave={vi.fn().mockResolvedValue(undefined)}
+      savingCategoryColorIds={new Set()}
+      onSetColor={vi.fn().mockResolvedValue(undefined)}
       onDeactivate={vi.fn().mockResolvedValue(undefined)}
       onActivate={vi.fn().mockResolvedValue(undefined)}
     />,
@@ -123,7 +133,7 @@ test('空類別確認後可永久刪除', async () => {
   render(
     <CategoryManager
       categories={[{
-        id: 'empty', name: '空類別', isActive: true,
+        id: 'empty', name: '空類別', color: null, isActive: true,
         createdAt: '2026-08-04T00:00:00+08:00', updatedAt: '2026-08-04T00:00:00+08:00',
       }]}
       entryCounts={{ empty: 0 }}
@@ -131,6 +141,8 @@ test('空類別確認後可永久刪除', async () => {
       onMoveEntries={vi.fn().mockResolvedValue(undefined)}
       onDelete={onDelete}
       onSave={vi.fn().mockResolvedValue(undefined)}
+      savingCategoryColorIds={new Set()}
+      onSetColor={vi.fn().mockResolvedValue(undefined)}
       onDeactivate={vi.fn().mockResolvedValue(undefined)}
       onActivate={vi.fn().mockResolvedValue(undefined)}
     />,
@@ -140,4 +152,37 @@ test('空類別確認後可永久刪除', async () => {
   await user.click(screen.getByRole('button', { name: '永久刪除類別' }))
 
   expect(onDelete).toHaveBeenCalledWith('empty')
+})
+
+test('調色盤按鈕與右鍵都可開啟色票並送出選色', async () => {
+  const user = userEvent.setup()
+  const category = {
+    id: 'work', name: '工作', color: null, isActive: true,
+    createdAt: '2026-08-04T00:00:00+08:00', updatedAt: '2026-08-04T00:00:00+08:00',
+  }
+  const onSetColor = vi.fn().mockResolvedValue({ ...category, color: '#ffe784' })
+  render(
+    <CategoryManager
+      categories={[category]}
+      entryCounts={{}}
+      onLoadEntryPage={vi.fn().mockResolvedValue({ items: [], nextCursor: null })}
+      onMoveEntries={vi.fn().mockResolvedValue(undefined)}
+      onDelete={vi.fn().mockResolvedValue(undefined)}
+      onSave={vi.fn().mockResolvedValue(undefined)}
+      savingCategoryColorIds={new Set()}
+      onSetColor={onSetColor}
+      onDeactivate={vi.fn().mockResolvedValue(undefined)}
+      onActivate={vi.fn().mockResolvedValue(undefined)}
+    />,
+  )
+
+  const colorButton = screen.getByRole('button', { name: '設定「工作」的類別顏色' })
+  expect(colorButton).toHaveAttribute('aria-haspopup', 'menu')
+  await user.click(colorButton)
+  expect(screen.getByRole('menu', { name: '類別顏色' })).toBeInTheDocument()
+  await user.click(screen.getByRole('menuitemradio', { name: '黃' }))
+  expect(onSetColor).toHaveBeenCalledWith('work', '#ffe784')
+
+  fireEvent.contextMenu(screen.getByRole('article', { name: '工作' }), { clientX: 120, clientY: 160 })
+  expect(screen.getByRole('menu', { name: '類別顏色' })).toBeInTheDocument()
 })

@@ -120,6 +120,98 @@ describe('SheetsJournalStore', () => {
     expect(store.getTimezone()).toBe('Asia/Taipei')
   })
 
+  test('v2 會解析空白與自訂色並將改色寫回第六欄', async () => {
+    expect(CATEGORY_HEADERS).toEqual(['id', 'name', 'isActive', 'createdAt', 'updatedAt', 'color'])
+    expect(SCHEMA_VERSION).toBe('2')
+    const client = fakeClient({
+      metadata: compatibleMetadata(),
+      schemaRanges: compatibleSchemaRanges(),
+      dataRanges: [
+        { range: `${ENTRY_SHEET_NAME}!A2:I`, values: [] },
+        {
+          range: `${CATEGORY_SHEET_NAME}!A2:F`,
+          values: [categoryRow('default'), categoryRow('custom', '#B97C66')],
+        },
+      ],
+    })
+    const store = await SheetsJournalStore.load({
+      client,
+      accessToken: 'test-token',
+      spreadsheetId: 'sheet-ref-a',
+    })
+
+    expect(store.listCategories().find(({ id }) => id === 'default')?.color).toBeNull()
+    expect(store.listCategories().find(({ id }) => id === 'custom')?.color).toBe('#b97c66')
+    await store.execute({ action: 'setCategoryColor', id: 'default', color: '#ffe784' })
+    expect(JSON.stringify(client.batchUpdate.mock.calls)).toContain('#ffe784')
+  })
+
+  test.each(['initialize', 'load', 'verifySchema'] as const)(
+    '%s 會把精確 v1 原子升級為 v2',
+    async (method) => {
+      const client = fakeClient({
+        metadata: compatibleMetadata(),
+        schemaRanges: legacySchemaRanges(),
+        schemaRangesAfterUpdate: compatibleSchemaRanges(),
+        dataRanges: [
+          { range: `${ENTRY_SHEET_NAME}!A2:I`, values: [] },
+          { range: `${CATEGORY_SHEET_NAME}!A2:E`, values: [categoryRow('work').slice(0, 5)] },
+        ],
+      })
+      const options = { client, accessToken: 'test-token', spreadsheetId: 'sheet-ref-a' }
+      if (method === 'initialize') await SheetsJournalStore.initialize(options)
+      else if (method === 'load') await SheetsJournalStore.load(options)
+      else await SheetsJournalStore.verifySchema(options)
+
+      expect(client.batchUpdate).toHaveBeenCalledTimes(1)
+      const requests = client.batchUpdate.mock.calls[0]?.[2] as Array<Record<string, unknown>>
+      expect(requests).toHaveLength(2)
+      const serialized = JSON.stringify(requests)
+      expect(serialized).toContain('color')
+      expect(serialized).toContain('2')
+      expect(serialized).not.toContain('Category A')
+    },
+  )
+
+  test('v1 的第六欄已有內容時，在任何寫入前拒絕遷移', async () => {
+    const metadata = compatibleMetadata()
+    requiredSheet(metadata, CATEGORY_SHEET_NAME).data = [{
+      startColumn: 5,
+      rowData: [{ values: [{ userEnteredValue: { stringValue: 'do-not-overwrite' } }] }],
+    }]
+    const client = fakeClient({
+      metadata,
+      schemaRanges: legacySchemaRanges(),
+      dataRanges: [
+        { range: `${ENTRY_SHEET_NAME}!A2:I`, values: [] },
+        { range: `${CATEGORY_SHEET_NAME}!A2:E`, values: [categoryRow('work').slice(0, 5)] },
+      ],
+    })
+
+    await expect(SheetsJournalStore.load({
+      client, accessToken: 'test-token', spreadsheetId: 'sheet-ref-a',
+    })).rejects.toMatchObject({ code: 'DATA_ERROR' })
+    expect(client.batchUpdate).not.toHaveBeenCalled()
+  })
+
+  test('v1 資料列無法完整解析時，在任何寫入前拒絕遷移', async () => {
+    const badCategory = categoryRow('work').slice(0, 5)
+    badCategory[2] = 'yes'
+    const client = fakeClient({
+      metadata: compatibleMetadata(),
+      schemaRanges: legacySchemaRanges(),
+      dataRanges: [
+        { range: `${ENTRY_SHEET_NAME}!A2:I`, values: [] },
+        { range: `${CATEGORY_SHEET_NAME}!A2:E`, values: [badCategory] },
+      ],
+    })
+
+    await expect(SheetsJournalStore.verifySchema({
+      client, accessToken: 'test-token', spreadsheetId: 'sheet-ref-a',
+    })).rejects.toMatchObject({ code: 'DATA_ERROR' })
+    expect(client.batchUpdate).not.toHaveBeenCalled()
+  })
+
   test('execute 使用共用 dispatcher，僅在有變更時以一個 batchUpdate 寫入', async () => {
     const client = fakeClient({
       metadata: compatibleMetadata(),
@@ -204,6 +296,7 @@ describe('SheetsJournalStore', () => {
     store.saveCategory({
       id: 'category-new',
       name: 'Category A',
+      color: null,
       isActive: true,
       createdAt: '2026-08-20T00:00:00.000+08:00',
       updatedAt: '2026-08-20T00:00:00.000+08:00',
@@ -344,6 +437,7 @@ describe('SheetsJournalStore', () => {
     store.saveCategory({
       id: 'category-new',
       name: 'Category A',
+      color: null,
       isActive: true,
       createdAt: '2026-08-20T00:00:00.000+08:00',
       updatedAt: '2026-08-20T00:00:00.000+08:00',
@@ -449,17 +543,23 @@ function fakeClient(options: {
   metadata: SpreadsheetMetadata
   createdSpreadsheet?: SpreadsheetMetadata
   schemaRanges?: Array<{ range: string; values?: unknown[][] }>
+  schemaRangesAfterUpdate?: Array<{ range: string; values?: unknown[][] }>
   dataRanges?: Array<{ range: string; values?: unknown[][] }>
 }): FakeClient & GoogleSheetsClient {
   const schemaRanges = options.schemaRanges ?? compatibleSchemaRanges()
   const dataRanges = options.dataRanges ?? emptyDataRanges()
+  let didUpdate = false
   const client = {
     createSpreadsheet: vi.fn(async () => options.createdSpreadsheet ?? options.metadata),
     getSpreadsheet: vi.fn(async () => options.createdSpreadsheet ?? options.metadata),
     batchGet: vi.fn(async (_token: string, _spreadsheetId: string, ranges: string[]) => {
-      return ranges.some((range) => range.startsWith(`${SETTINGS_SHEET_NAME}!`)) ? schemaRanges : dataRanges
+      return ranges.some((range) => range.startsWith(`${SETTINGS_SHEET_NAME}!`))
+        ? didUpdate && options.schemaRangesAfterUpdate ? options.schemaRangesAfterUpdate : schemaRanges
+        : dataRanges
+      }),
+    batchUpdate: vi.fn(async () => {
+      didUpdate = true
     }),
-    batchUpdate: vi.fn(async () => undefined),
   }
   return client as FakeClient & GoogleSheetsClient
 }
@@ -499,6 +599,15 @@ function compatibleSchemaRanges(): Array<{ range: string; values?: unknown[][] }
     { range: `${CATEGORY_SHEET_NAME}!1:1`, values: [CATEGORY_HEADERS] },
     { range: `${SETTINGS_SHEET_NAME}!1:1`, values: [SETTINGS_HEADERS] },
     { range: `${SETTINGS_SHEET_NAME}!A:B`, values: [SETTINGS_HEADERS, ['schemaVersion', SCHEMA_VERSION]] },
+  ]
+}
+
+function legacySchemaRanges(): Array<{ range: string; values?: unknown[][] }> {
+  return [
+    { range: `${ENTRY_SHEET_NAME}!1:1`, values: [ENTRY_HEADERS] },
+    { range: `${CATEGORY_SHEET_NAME}!1:1`, values: [['id', 'name', 'isActive', 'createdAt', 'updatedAt']] },
+    { range: `${SETTINGS_SHEET_NAME}!1:1`, values: [SETTINGS_HEADERS] },
+    { range: `${SETTINGS_SHEET_NAME}!A:B`, values: [SETTINGS_HEADERS, ['schemaVersion', '1']] },
   ]
 }
 
@@ -555,12 +664,13 @@ function entryRow(id: string): unknown[] {
   ]
 }
 
-function categoryRow(id: string): unknown[] {
+function categoryRow(id: string, color = ''): unknown[] {
   return [
     id,
     'Category A',
     'TRUE',
     '2026-08-20T00:00:00.000+08:00',
     '2026-08-20T00:00:00.000+08:00',
+    color,
   ]
 }

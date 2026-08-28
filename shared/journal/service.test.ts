@@ -175,6 +175,30 @@ describe('JournalService', () => {
     expect(service.deactivateCategory('work')).toMatchObject({ id: 'work', isActive: false })
   })
 
+  it('只更新類別顏色與 updatedAt，且停用類別也可改色', () => {
+    const store = new InMemoryJournalStore({
+      categories: [{
+        id: 'work', name: '工作', color: null, isActive: false,
+        createdAt: '2026-08-01T00:00:00.000Z', updatedAt: '2026-08-01T00:00:00.000Z',
+      }],
+    })
+    const service = new JournalService(store, () => '2026-08-28T12:00:00.000Z', () => 'unused')
+
+    expect(service.setCategoryColor(' work ', '#ffe784')).toEqual({
+      id: 'work', name: '工作', color: '#ffe784', isActive: false,
+      createdAt: '2026-08-01T00:00:00.000Z', updatedAt: '2026-08-28T12:00:00.000Z',
+    })
+  })
+
+  it('相同顏色不更新時間，且可重設預設顏色', () => {
+    const existing = category({ color: '#ffe784' })
+    const service = createService({ categories: [existing] })
+
+    expect(service.setCategoryColor(existing.id, '#ffe784').updatedAt).toBe(existing.updatedAt)
+    expect(service.setCategoryColor(existing.id, null)).toMatchObject({ color: null, updatedAt: timestamp })
+    expect(() => service.setCategoryColor('missing', null)).toThrow('找不到要更新顏色的分類。')
+  })
+
   it('停用分類會保留歷史記事，且可永久刪除記事', () => {
     const store = new InMemoryJournalStore({
       categories: [category({ id: 'work' })],
@@ -300,6 +324,7 @@ function category(overrides: Partial<Category> = {}): Category {
   return {
     id: 'work',
     name: '工作',
+    color: null,
     isActive: true,
     createdAt: timestamp,
     updatedAt: timestamp,

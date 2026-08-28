@@ -114,6 +114,8 @@ export function App({ client }: AppProps) {
     saveEntry,
     deleteEntry,
     saveCategory,
+    setCategoryColor,
+    savingCategoryColorIds,
     deactivateCategory,
     activateCategory,
     loadCategoryEntryPage,
@@ -454,16 +456,19 @@ export function App({ client }: AppProps) {
   }
 
   if (selectedEntry) {
+    const selectedCategory = categories.find((category) => category.id === selectedEntry.categoryId)
     return (
       <main className="focused-screen">
         <EntryDetail
           entry={selectedEntry}
-          categoryName={categories.find((category) => category.id === selectedEntry.categoryId)?.name ?? zhTW.detail.category}
+          categoryName={selectedCategory?.name ?? zhTW.detail.category}
+          categoryColor={selectedCategory?.color ?? null}
           timezone={journalTimezone}
           onBack={() => setSelectedEntry(undefined)}
           onEdit={() => setEditingEntry(selectedEntry)}
           onDelete={() => handleDeleteEntry(selectedEntry.id)}
         />
+        {error && <section className="page-error" role="alert"><p>{error}</p></section>}
         {editingEntry && renderEditor(editingEntry, categories, tagSuggestions, journalTimezone, handleSaveEntry, () => setEditingEntry(undefined))}
       </main>
     )
@@ -491,6 +496,12 @@ export function App({ client }: AppProps) {
           isConfiguringDataSpace={isStartingDataSpaceChange}
         />
         <main className="app-main">
+          {error && page !== 'categories' && page !== 'settings' && (
+            <section className="page-error" role="alert">
+              <p>{error}</p>
+              <button className="button button--secondary" type="button" onClick={() => void restoreWorkspaceSession()}>{zhTW.connection.retry}</button>
+            </section>
+          )}
           {(page === 'timeline' || page === 'calendar') && (
             <>
               <header className="page-heading app-main__heading">
@@ -528,12 +539,6 @@ export function App({ client }: AppProps) {
                   <span>{zhTW.filters.searching}</span>
                 </p>
               )}
-              {error && (
-                <section className="page-error" role="alert">
-                  <p>{error}</p>
-                  <button className="button button--secondary" type="button" onClick={() => void restoreWorkspaceSession()}>{zhTW.connection.retry}</button>
-                </section>
-              )}
             </>
           )}
 
@@ -558,6 +563,7 @@ export function App({ client }: AppProps) {
               <CalendarView
                 month={calendarMonth}
                 days={calendarDays}
+                categories={categories}
                 timezone={journalTimezone}
                 onMonthChange={setCalendarMonth}
                 onSelectDate={handleSelectDate}
@@ -598,6 +604,8 @@ export function App({ client }: AppProps) {
               onMoveEntries={moveEntries}
               onDelete={deleteCategory}
               onSave={saveCategory}
+              savingCategoryColorIds={savingCategoryColorIds}
+              onSetColor={setCategoryColor}
               onDeactivate={deactivateCategory}
               onActivate={activateCategory}
             />

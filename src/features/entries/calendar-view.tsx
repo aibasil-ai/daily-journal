@@ -1,25 +1,28 @@
 import { useState } from 'react'
-import type { DailyEntries, Entry } from '../../domain/journal'
+import type { Category, DailyEntries, Entry } from '../../domain/journal'
 import { ConfirmDialog } from '../../components/confirm-dialog'
 import { zhTW } from '../../i18n/zh-TW'
 import { getJournalMonth, monthParts } from '../../utils/date'
 import { Icon } from '../../components/icon'
+import { categoryColorStyle } from '../../utils/category-color'
 
 const VISIBLE_ENTRIES_PER_DAY = 2
 
 type CalendarViewProps = {
   month: string
   days: DailyEntries[]
+  categories: Category[]
   timezone: string
   onMonthChange: (month: string) => void
   onSelectDate: (date: string) => void
   onOpenEntry: (entry: Entry) => void
 }
 
-export function CalendarView({ month, days, timezone, onMonthChange, onSelectDate, onOpenEntry }: CalendarViewProps) {
+export function CalendarView({ month, days, categories, timezone, onMonthChange, onSelectDate, onOpenEntry }: CalendarViewProps) {
   const [overflowDay, setOverflowDay] = useState<DailyEntries>()
   const { year, month: monthNumber } = monthParts(month)
   const entriesByDate = new Map(days.map((day) => [day.date, day.entries]))
+  const categoriesById = new Map(categories.map((category) => [category.id, category]))
   const gridCells = createMonthCells(year, monthNumber)
 
   return (
@@ -75,6 +78,7 @@ export function CalendarView({ month, days, timezone, onMonthChange, onSelectDat
                 <div className="calendar-day__entries">
                   {visibleEntries.map((entry) => {
                     const title = entryTitle(entry)
+                    const categoryColor = categoriesById.get(entry.categoryId)?.color ?? null
                     return (
                       <button
                         className="calendar-entry"
@@ -82,6 +86,7 @@ export function CalendarView({ month, days, timezone, onMonthChange, onSelectDat
                         key={entry.id}
                         title={title}
                         aria-label={`${zhTW.timeline.readEntry}：${title}`}
+                        style={categoryColorStyle(categoryColor)}
                         onClick={(event) => {
                           event.stopPropagation()
                           onOpenEntry(entry)
@@ -122,11 +127,13 @@ export function CalendarView({ month, days, timezone, onMonthChange, onSelectDat
             <div className="calendar-entry-picker__list">
               {overflowDay.entries.map((entry) => {
                 const title = entryTitle(entry)
+                const categoryColor = categoriesById.get(entry.categoryId)?.color ?? null
                 return (
                   <button
                     className="calendar-entry-picker__item"
                     type="button"
                     key={entry.id}
+                    style={categoryColorStyle(categoryColor)}
                     onClick={() => {
                       setOverflowDay(undefined)
                       onOpenEntry(entry)

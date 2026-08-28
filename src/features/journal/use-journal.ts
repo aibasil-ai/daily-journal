@@ -3,6 +3,7 @@ import type {
   ApiRequest,
   BootstrapData,
   Category,
+  CategoryColor,
   CategoryManagementData,
   CsvExportData,
   Entry,
@@ -11,7 +12,7 @@ import type {
   EntryListData,
   MoveEntriesResult,
 } from '../../domain/journal'
-import { DEFAULT_ENTRY_FILTER, toFilterCriteria } from '../../domain/journal'
+import { DEFAULT_ENTRY_FILTER, normalizeCategoryColor, toFilterCriteria } from '../../domain/journal'
 import { zhTW } from '../../i18n/zh-TW'
 import { AuthenticationError, type SessionState } from '../../services/journal-api-client'
 
@@ -38,10 +39,18 @@ export function useJournal(client: JournalClient) {
   const [revision, setRevision] = useState(0)
   const listRequestId = useRef(0)
   const requestEpoch = useRef(0)
+  const savingCategoryColorRequestsRef = useRef(new Map<string, symbol>())
+  const categoryMutationRequestsRef = useRef(new Map<string, symbol>())
+  const categoryStateVersion = useRef(0)
   const signOutRetryRequired = useRef(false)
+  const [savingCategoryColorIds, setSavingCategoryColorIds] = useState<ReadonlySet<string>>(new Set())
 
   const clearData = useCallback((nextStatus: JournalStatus, nextError?: string) => {
     listRequestId.current += 1
+    savingCategoryColorRequestsRef.current.clear()
+    categoryMutationRequestsRef.current.clear()
+    categoryStateVersion.current += 1
+    setSavingCategoryColorIds(new Set())
     setTimezone(undefined)
     setCategories([])
     setCategoryEntryCounts({})
@@ -90,9 +99,10 @@ export function useJournal(client: JournalClient) {
   }, [client])
 
   const loadCategoryManagement = useCallback(async (expectedEpoch: number): Promise<void> => {
+    const expectedCategoryStateVersion = categoryStateVersion.current
     const value = await client.run<unknown>({ action: 'listCategories' })
     const data = toCategoryManagementData(value)
-    if (expectedEpoch !== requestEpoch.current) return
+    if (expectedEpoch !== requestEpoch.current || expectedCategoryStateVersion !== categoryStateVersion.current) return
     setCategories(data.categories)
     setCategoryEntryCounts(data.entryCounts)
   }, [client])
@@ -101,7 +111,7 @@ export function useJournal(client: JournalClient) {
     setStatus('loading')
     setError(undefined)
     try {
-      const bootstrap = await client.run<BootstrapData>({ action: 'bootstrap' })
+      const bootstrap = toBootstrapData(await client.run<unknown>({ action: 'bootstrap' }))
       if (expectedEpoch !== requestEpoch.current) return
       setTimezone(bootstrap.timezone)
       setCategories(bootstrap.categories)
@@ -241,49 +251,113 @@ export function useJournal(client: JournalClient) {
 
   const saveCategory = async (name: string, id?: string): Promise<Category> => {
     const expectedEpoch = requestEpoch.current
+    const requestToken = id ? Symbol(id) : undefined
+    if (id) categoryMutationRequestsRef.current.set(id, requestToken!)
     try {
-      const category = await client.run<Category>({
+      const category = toCategory(await client.run<unknown>({
         action: 'saveCategory',
         category: { id, name },
-      })
+      }))
       if (expectedEpoch !== requestEpoch.current) throw new RequestInvalidatedError()
-      setCategories((current) => upsertCategory(current, category))
-      setCategoryEntryCounts((current) => ({ ...current, [category.id]: current[category.id] ?? 0 }))
+      if (!id || categoryMutationRequestsRef.current.get(id) === requestToken) {
+        categoryStateVersion.current += 1
+        setCategories((current) => upsertCategory(current, category))
+        setCategoryEntryCounts((current) => ({ ...current, [category.id]: current[category.id] ?? 0 }))
+      }
       setRevision((current) => current + 1)
       return category
     } catch (categoryError) {
       if (!(categoryError instanceof RequestInvalidatedError)) handleRequestError(categoryError, expectedEpoch)
       throw categoryError
+    } finally {
+      if (id && categoryMutationRequestsRef.current.get(id) === requestToken) {
+        categoryMutationRequestsRef.current.delete(id)
+      }
+    }
+  }
+
+  const setCategoryColor = async (id: string, color: CategoryColor | null): Promise<Category> => {
+    if (savingCategoryColorRequestsRef.current.has(id)) {
+      throw new Error(zhTW.errors.categoryColorSaving)
+    }
+    const current = categories.find((category) => category.id === id)
+    if (current && current.color === color) return current
+
+    const expectedEpoch = requestEpoch.current
+    const requestToken = Symbol(id)
+    savingCategoryColorRequestsRef.current.set(id, requestToken)
+    categoryMutationRequestsRef.current.set(id, requestToken)
+    setSavingCategoryColorIds(new Set(savingCategoryColorRequestsRef.current.keys()))
+    setError(undefined)
+    try {
+      const category = toCategory(await client.run<unknown>({ action: 'setCategoryColor', id, color }))
+      if (expectedEpoch !== requestEpoch.current) throw new RequestInvalidatedError()
+      if (categoryMutationRequestsRef.current.get(id) === requestToken) {
+        categoryStateVersion.current += 1
+        setCategories((items) => upsertCategory(items, category))
+      }
+      return category
+    } catch (categoryError) {
+      if (!(categoryError instanceof RequestInvalidatedError)) handleRequestError(categoryError, expectedEpoch)
+      throw categoryError
+    } finally {
+      if (savingCategoryColorRequestsRef.current.get(id) === requestToken) {
+        savingCategoryColorRequestsRef.current.delete(id)
+        if (expectedEpoch === requestEpoch.current) {
+          setSavingCategoryColorIds(new Set(savingCategoryColorRequestsRef.current.keys()))
+        }
+      }
+      if (categoryMutationRequestsRef.current.get(id) === requestToken) {
+        categoryMutationRequestsRef.current.delete(id)
+      }
     }
   }
 
   const deactivateCategory = async (id: string): Promise<Category> => {
     const expectedEpoch = requestEpoch.current
+    const requestToken = Symbol(id)
+    categoryMutationRequestsRef.current.set(id, requestToken)
     try {
-      const category = await client.run<Category>({ action: 'deactivateCategory', id })
+      const category = toCategory(await client.run<unknown>({ action: 'deactivateCategory', id }))
       if (expectedEpoch !== requestEpoch.current) throw new RequestInvalidatedError()
-      setCategories((current) => upsertCategory(current, category))
-      setCategoryEntryCounts((current) => ({ ...current, [category.id]: current[category.id] ?? 0 }))
+      if (categoryMutationRequestsRef.current.get(id) === requestToken) {
+        categoryStateVersion.current += 1
+        setCategories((current) => upsertCategory(current, category))
+        setCategoryEntryCounts((current) => ({ ...current, [category.id]: current[category.id] ?? 0 }))
+      }
       setRevision((current) => current + 1)
       return category
     } catch (categoryError) {
       if (!(categoryError instanceof RequestInvalidatedError)) handleRequestError(categoryError, expectedEpoch)
       throw categoryError
+    } finally {
+      if (categoryMutationRequestsRef.current.get(id) === requestToken) {
+        categoryMutationRequestsRef.current.delete(id)
+      }
     }
   }
 
   const activateCategory = async (id: string): Promise<Category> => {
     const expectedEpoch = requestEpoch.current
+    const requestToken = Symbol(id)
+    categoryMutationRequestsRef.current.set(id, requestToken)
     try {
-      const category = await client.run<Category>({ action: 'activateCategory', id })
+      const category = toCategory(await client.run<unknown>({ action: 'activateCategory', id }))
       if (expectedEpoch !== requestEpoch.current) throw new RequestInvalidatedError()
-      setCategories((current) => upsertCategory(current, category))
-      setCategoryEntryCounts((current) => ({ ...current, [category.id]: current[category.id] ?? 0 }))
+      if (categoryMutationRequestsRef.current.get(id) === requestToken) {
+        categoryStateVersion.current += 1
+        setCategories((current) => upsertCategory(current, category))
+        setCategoryEntryCounts((current) => ({ ...current, [category.id]: current[category.id] ?? 0 }))
+      }
       setRevision((current) => current + 1)
       return category
     } catch (categoryError) {
       if (!(categoryError instanceof RequestInvalidatedError)) handleRequestError(categoryError, expectedEpoch)
       throw categoryError
+    } finally {
+      if (categoryMutationRequestsRef.current.get(id) === requestToken) {
+        categoryMutationRequestsRef.current.delete(id)
+      }
     }
   }
 
@@ -348,9 +422,13 @@ export function useJournal(client: JournalClient) {
 
   const deleteCategory = async (id: string): Promise<void> => {
     const expectedEpoch = requestEpoch.current
+    const requestToken = Symbol(id)
+    categoryMutationRequestsRef.current.set(id, requestToken)
     try {
       await client.run<null>({ action: 'deleteCategory', id })
       if (expectedEpoch !== requestEpoch.current) throw new RequestInvalidatedError()
+      if (categoryMutationRequestsRef.current.get(id) !== requestToken) return
+      categoryStateVersion.current += 1
       await loadCategoryManagement(expectedEpoch)
       await loadEntries({ ...filter, cursor: null }, false, expectedEpoch)
       setRevision((current) => current + 1)
@@ -366,6 +444,10 @@ export function useJournal(client: JournalClient) {
         handleRequestError(deleteError, expectedEpoch)
       }
       throw deleteError
+    } finally {
+      if (categoryMutationRequestsRef.current.get(id) === requestToken) {
+        categoryMutationRequestsRef.current.delete(id)
+      }
     }
   }
 
@@ -381,6 +463,7 @@ export function useJournal(client: JournalClient) {
     filter,
     isLoadingEntries,
     revision,
+    savingCategoryColorIds,
     signIn,
     retry,
     replaceDataSource,
@@ -391,6 +474,7 @@ export function useJournal(client: JournalClient) {
     saveEntry,
     deleteEntry,
     saveCategory,
+    setCategoryColor,
     deactivateCategory,
     activateCategory,
     loadCategoryEntryPage,
@@ -437,6 +521,40 @@ function toEntryListData(value: unknown): EntryListData {
   }
 }
 
+function toCategory(value: unknown): Category {
+  if (!isRecord(value)) throw new Error(zhTW.errors.invalidServiceResponse)
+  const rawColor = value.color
+  let color: CategoryColor | null | undefined
+  if (rawColor === undefined || rawColor === null) {
+    color = null
+  } else if (typeof rawColor === 'string') {
+    color = normalizeCategoryColor(rawColor)
+  }
+  if (rawColor !== undefined && rawColor !== null && color === undefined) {
+    throw new Error(zhTW.errors.invalidServiceResponse)
+  }
+  return { ...(value as Category), color: color ?? null }
+}
+
+function toCategories(value: unknown): Category[] {
+  if (!Array.isArray(value)) throw new Error(zhTW.errors.invalidServiceResponse)
+  return value.map(toCategory)
+}
+
+function toBootstrapData(value: unknown): BootstrapData {
+  if (!isRecord(value)
+    || typeof value.timezone !== 'string'
+    || !Array.isArray(value.tagSuggestions)
+    || value.tagSuggestions.some((tag) => typeof tag !== 'string')) {
+    throw new Error(zhTW.errors.invalidServiceResponse)
+  }
+  return {
+    timezone: value.timezone,
+    categories: toCategories(value.categories),
+    tagSuggestions: [...value.tagSuggestions] as string[],
+  }
+}
+
 function toCategoryManagementData(value: unknown): CategoryManagementData {
   if (!isRecord(value) || !Array.isArray(value.categories) || !isRecord(value.entryCounts)) {
     throw new Error(zhTW.errors.invalidServiceResponse)
@@ -447,7 +565,7 @@ function toCategoryManagementData(value: unknown): CategoryManagementData {
     }
     return [id, count]
   })) as Record<string, number>
-  return { categories: value.categories as Category[], entryCounts }
+  return { categories: toCategories(value.categories), entryCounts }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

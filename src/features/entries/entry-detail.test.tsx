@@ -33,6 +33,7 @@ describe('EntryDetail', () => {
       <EntryDetail
         entry={mockEntry}
         categoryName="工作"
+        categoryColor={null}
         timezone="Asia/Taipei"
         onBack={vi.fn()}
         onEdit={vi.fn()}
@@ -70,6 +71,7 @@ describe('EntryDetail', () => {
       <EntryDetail
         entry={mockEntry}
         categoryName="工作"
+        categoryColor={null}
         timezone="Asia/Taipei"
         onBack={onBack}
         onEdit={onEdit}
@@ -88,5 +90,22 @@ describe('EntryDetail', () => {
 
     await user.click(screen.getByRole('button', { name: '永久刪除' }))
     expect(onDelete).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses the custom color on the category badge', () => {
+    render(
+      <EntryDetail
+        entry={mockEntry}
+        categoryName="工作"
+        categoryColor="#b97c66"
+        timezone="Asia/Taipei"
+        onBack={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn().mockResolvedValue(undefined)}
+      />,
+    )
+
+    expect(screen.getByText('工作')).toHaveClass('category-badge--custom-color')
+    expect(screen.getByText('工作')).toHaveStyle({ '--category-color': '#b97c66' })
   })
 })

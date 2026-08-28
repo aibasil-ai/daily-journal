@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import type { Category, EntryListData } from '../../domain/journal'
+import type { Category, CategoryColor, EntryListData } from '../../domain/journal'
 import { Icon } from '../../components/icon'
 import { ConfirmDialog } from '../../components/confirm-dialog'
 import { zhTW } from '../../i18n/zh-TW'
 import { CategoryEntryMovePanel } from './category-entry-move-panel'
+import { CategoryColorMenu } from './category-color-menu'
+import { categoryColorStyle } from '../../utils/category-color'
 
 type CategoryManagerProps = {
   categories: Category[]
@@ -13,6 +15,8 @@ type CategoryManagerProps = {
   onMoveEntries: (sourceCategoryId: string, targetCategoryId: string, entryIds: string[]) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onSave: (name: string, id?: string) => Promise<unknown>
+  savingCategoryColorIds: ReadonlySet<string>
+  onSetColor: (id: string, color: CategoryColor | null) => Promise<Category>
   onDeactivate: (id: string) => Promise<unknown>
   onActivate: (id: string) => Promise<unknown>
 }
@@ -24,6 +28,8 @@ export function CategoryManager({
   onMoveEntries,
   onDelete,
   onSave,
+  savingCategoryColorIds,
+  onSetColor,
   onDeactivate,
   onActivate,
 }: CategoryManagerProps) {
@@ -37,6 +43,13 @@ export function CategoryManager({
   const [isDeleting, setIsDeleting] = useState(false)
   const [activatingCategoryId, setActivatingCategoryId] = useState<string>()
   const [error, setError] = useState<string>()
+  const [openColorMenu, setOpenColorMenu] = useState<{
+    categoryId: string
+    position: Readonly<{ x: number; y: number }>
+    restoreFocusTo: HTMLElement
+  }>()
+  const [colorPreviews, setColorPreviews] = useState<ReadonlyMap<string, CategoryColor | null>>(new Map())
+  const [colorStatus, setColorStatus] = useState<string>()
 
   const startEditing = (category: Category | null) => {
     setEditing(category)
@@ -104,6 +117,36 @@ export function CategoryManager({
     }
   }
 
+  const openColorMenuFromButton = (category: Category, button: HTMLButtonElement) => {
+    if (savingCategoryColorIds.has(category.id)) return
+    const rect = button.getBoundingClientRect()
+    setOpenColorMenu({
+      categoryId: category.id,
+      position: { x: rect.left, y: rect.bottom + 8 },
+      restoreFocusTo: button,
+    })
+  }
+
+  const handleSetColor = async (category: Category, color: CategoryColor | null) => {
+    setOpenColorMenu(undefined)
+    if (category.color === color) return
+    setError(undefined)
+    setColorStatus(undefined)
+    setColorPreviews((current) => new Map(current).set(category.id, color))
+    try {
+      await onSetColor(category.id, color)
+      setColorStatus(zhTW.categoryColors.saved(category.name))
+    } catch (colorError) {
+      setError(colorError instanceof Error ? colorError.message : zhTW.errors.categoryColor)
+    } finally {
+      setColorPreviews((current) => {
+        const next = new Map(current)
+        next.delete(category.id)
+        return next
+      })
+    }
+  }
+
   return (
     <section className="category-manager" aria-labelledby="category-manager-title">
       <header className="page-heading category-manager__heading">
@@ -148,11 +191,31 @@ export function CategoryManager({
           {categories.map((category) => {
             const entryCount = entryCounts[category.id] ?? 0
             const editTooltipId = `category-tooltip-edit-${category.id}`
+            const colorTooltipId = `category-tooltip-color-${category.id}`
             const statusTooltipId = `category-tooltip-status-${category.id}`
             const deleteTooltipId = `category-tooltip-delete-${category.id}`
+            const displayColor = colorPreviews.has(category.id)
+              ? colorPreviews.get(category.id) ?? null
+              : category.color
+            const isColorSaving = savingCategoryColorIds.has(category.id)
             return (
-              <article className={`category-card${category.isActive ? '' : ' category-card--inactive'}`} key={category.id}>
-                <div className="category-card__icon"><Icon>{category.isActive ? 'folder' : 'inventory_2'}</Icon></div>
+              <article
+                className={`category-card${category.isActive ? '' : ' category-card--inactive'}`}
+                key={category.id}
+                tabIndex={-1}
+                aria-label={category.name}
+                onContextMenu={(event) => {
+                  if (isColorSaving) return
+                  event.preventDefault()
+                  event.currentTarget.focus()
+                  setOpenColorMenu({
+                    categoryId: category.id,
+                    position: { x: event.clientX, y: event.clientY },
+                    restoreFocusTo: event.currentTarget,
+                  })
+                }}
+              >
+                <div className="category-card__icon" style={categoryColorStyle(displayColor)}><Icon>{category.isActive ? 'folder' : 'inventory_2'}</Icon></div>
                 <div className="category-card__content">
                   <div className="category-card__title-row">
                     <h3>{category.name}</h3>
@@ -167,6 +230,20 @@ export function CategoryManager({
                       {zhTW.categories.moveEntries}
                     </button>
                   )}
+                  <CategoryActionTooltip id={colorTooltipId} content={zhTW.categoryColors.set(category.name)}>
+                    <button
+                      className="icon-button"
+                      type="button"
+                      aria-label={isColorSaving ? zhTW.categoryColors.saving(category.name) : zhTW.categoryColors.set(category.name)}
+                      aria-describedby={colorTooltipId}
+                      aria-haspopup="menu"
+                      aria-busy={isColorSaving}
+                      disabled={isColorSaving}
+                      onClick={(event) => openColorMenuFromButton(category, event.currentTarget)}
+                    >
+                      <Icon>palette</Icon>
+                    </button>
+                  </CategoryActionTooltip>
                   <CategoryActionTooltip id={editTooltipId} content={zhTW.categories.editHint(category.name)}>
                     <button className="icon-button" type="button" aria-label={zhTW.categories.editCategory(category.name)} aria-describedby={editTooltipId} onClick={() => startEditing(category)}>
                       <Icon>edit</Icon>
@@ -216,6 +293,23 @@ export function CategoryManager({
           <p>{zhTW.categories.noCategoriesDescription}</p>
         </section>
       )}
+      {openColorMenu && (() => {
+        const category = categories.find((item) => item.id === openColorMenu.categoryId)
+        if (!category) return null
+        const selectedColor = colorPreviews.has(category.id)
+          ? colorPreviews.get(category.id) ?? null
+          : category.color
+        return (
+          <CategoryColorMenu
+            selectedColor={selectedColor}
+            position={openColorMenu.position}
+            restoreFocusTo={openColorMenu.restoreFocusTo}
+            onSelect={(color) => void handleSetColor(category, color)}
+            onClose={() => setOpenColorMenu(undefined)}
+          />
+        )
+      })()}
+      <p className="sr-only" role="status">{colorStatus}</p>
 
       {pendingDeactivate && (
         <ConfirmDialog labelledBy="deactivate-category-title" onCancel={() => setPendingDeactivate(undefined)}>
