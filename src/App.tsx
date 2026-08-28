@@ -131,10 +131,12 @@ export function App({ client }: AppProps) {
   const sessionRestoreRequestId = useRef(0)
   const isRestoringSession = useRef(false)
   const lastSessionRevalidationAt = useRef(0)
-  const savedScrollPositionRef = useRef<number | null>(null)
+  const entryReturnScrollPositionRef = useRef<number | null>(null)
+  const dateSelectionReturnScrollPositionRef = useRef<number | null>(null)
 
   const clearWorkspaceState = useCallback(() => {
-    savedScrollPositionRef.current = null
+    entryReturnScrollPositionRef.current = null
+    dateSelectionReturnScrollPositionRef.current = null
     setPage(getInitialPage())
     setCalendarMonth(getLocalDate().slice(0, 7))
     setCalendarDays([])
@@ -326,9 +328,9 @@ export function App({ client }: AppProps) {
   }, [status])
 
   useEffect(() => {
-    if (!selectedEntry && savedScrollPositionRef.current !== null) {
-      const targetScrollY = savedScrollPositionRef.current
-      savedScrollPositionRef.current = null
+    if (!selectedEntry && entryReturnScrollPositionRef.current !== null) {
+      const targetScrollY = entryReturnScrollPositionRef.current
+      entryReturnScrollPositionRef.current = null
       if (typeof window !== 'undefined') {
         window.scrollTo(0, targetScrollY)
         if (typeof window.requestAnimationFrame === 'function') {
@@ -339,6 +341,21 @@ export function App({ client }: AppProps) {
       }
     }
   }, [selectedEntry])
+
+  useEffect(() => {
+    if (!selectedDate && !selectedEntry && dateSelectionReturnScrollPositionRef.current !== null) {
+      const targetScrollY = dateSelectionReturnScrollPositionRef.current
+      dateSelectionReturnScrollPositionRef.current = null
+      if (typeof window !== 'undefined') {
+        window.scrollTo(0, targetScrollY)
+        if (typeof window.requestAnimationFrame === 'function') {
+          window.requestAnimationFrame(() => {
+            window.scrollTo(0, targetScrollY)
+          })
+        }
+      }
+    }
+  }, [selectedDate, selectedEntry])
 
   const handleDataSpaceComplete = useCallback(() => {
     if (typeof window !== 'undefined' && window.location.search.includes('setup=')) {
@@ -433,7 +450,8 @@ export function App({ client }: AppProps) {
 
   const navigate = (nextPage: Page) => {
     if (nextPage === 'timeline' || nextPage === 'calendar') saveViewPreference(nextPage)
-    savedScrollPositionRef.current = null
+    entryReturnScrollPositionRef.current = null
+    dateSelectionReturnScrollPositionRef.current = null
     setSelectedDate(undefined)
     setSelectedEntry(undefined)
     setPage(nextPage)
@@ -441,7 +459,7 @@ export function App({ client }: AppProps) {
 
   const handleOpenEntry = (entry: Entry) => {
     if (typeof window !== 'undefined') {
-      savedScrollPositionRef.current = window.scrollY
+      entryReturnScrollPositionRef.current = window.scrollY
     }
     setSelectedEntry(entry)
   }
@@ -459,6 +477,10 @@ export function App({ client }: AppProps) {
   }
 
   const handleSelectDate = (date: string) => {
+    if (typeof window !== 'undefined') {
+      dateSelectionReturnScrollPositionRef.current = window.scrollY
+      window.scrollTo(0, 0)
+    }
     setCalendarError(undefined)
     setSelectedDateEntries([])
     setSelectedDate(date)

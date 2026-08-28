@@ -736,6 +736,47 @@ test('點選記事進入詳情後返回月曆，能恢復原本的滾軸位置',
   scrollToSpy.mockRestore()
 })
 
+test('點選特定日期查看記事列表後返回月曆，能恢復原本的滾軸位置', async () => {
+  const user = userEvent.setup()
+  const entry = {
+    id: 'entry-scroll-date-1', entryDate: '2026-08-04', title: '特定日期記事', content: '內容', categoryId: 'work', tags: [], links: [],
+    createdAt: '2026-08-04T00:00:00+08:00', updatedAt: '2026-08-04T00:00:00+08:00',
+  }
+  const category = {
+    id: 'work', name: '工作', isActive: true, createdAt: '2026-08-04T00:00:00+08:00', updatedAt: '2026-08-04T00:00:00+08:00',
+  }
+  const run = vi.fn(async (request: ApiRequest) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category], tagSuggestions: [] }
+    if (request.action === 'listCategories') return { categories: [category], entryCounts: { work: 1 } }
+    if (request.action === 'listEntries') return { items: [entry], nextCursor: null }
+    if (request.action === 'getMonthlyEntries') return [{ date: '2026-08-04', entries: [entry] }]
+    throw new Error(`未預期的請求：${request.action}`)
+  })
+  const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+  const client = createClient({ run: run as JournalClient['run'] })
+
+  render(<App client={client} />)
+  await screen.findByRole('heading', { name: '每日記事' })
+
+  await user.click(screen.getAllByRole('button', { name: '月曆' })[0])
+  expect(await screen.findByText('特定日期記事')).toBeInTheDocument()
+
+  // Simulate user scrolled down to 420px on the calendar
+  Object.defineProperty(window, 'scrollY', { value: 420, writable: true, configurable: true })
+
+  // Click on the date button (e.g. "4")
+  await user.click(screen.getByRole('button', { name: '2026-08-04，共 1 則記事' }))
+  expect(await screen.findByRole('heading', { level: 2, name: '2026-08-04 的記事' })).toBeInTheDocument()
+
+  // Click "返回月曆" on the date selection view
+  await user.click(screen.getByRole('button', { name: '返回月曆' }))
+  expect(await screen.findByRole('grid', { name: '2026年8月' })).toBeInTheDocument()
+
+  // Verify scroll position was restored to 420
+  expect(scrollToSpy).toHaveBeenCalledWith(0, 420)
+  scrollToSpy.mockRestore()
+})
+
 function createClient(
   overrides: Partial<JournalClient> & Partial<ProvisioningClient> & Partial<AccountClient> = {},
 ): JournalClient & ProvisioningClient & AccountClient {
