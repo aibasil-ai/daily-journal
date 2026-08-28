@@ -131,8 +131,10 @@ export function App({ client }: AppProps) {
   const sessionRestoreRequestId = useRef(0)
   const isRestoringSession = useRef(false)
   const lastSessionRevalidationAt = useRef(0)
+  const savedScrollPositionRef = useRef<number | null>(null)
 
   const clearWorkspaceState = useCallback(() => {
+    savedScrollPositionRef.current = null
     setPage(getInitialPage())
     setCalendarMonth(getLocalDate().slice(0, 7))
     setCalendarDays([])
@@ -323,6 +325,21 @@ export function App({ client }: AppProps) {
     }
   }, [status])
 
+  useEffect(() => {
+    if (!selectedEntry && savedScrollPositionRef.current !== null) {
+      const targetScrollY = savedScrollPositionRef.current
+      savedScrollPositionRef.current = null
+      if (typeof window !== 'undefined') {
+        window.scrollTo(0, targetScrollY)
+        if (typeof window.requestAnimationFrame === 'function') {
+          window.requestAnimationFrame(() => {
+            window.scrollTo(0, targetScrollY)
+          })
+        }
+      }
+    }
+  }, [selectedEntry])
+
   const handleDataSpaceComplete = useCallback(() => {
     if (typeof window !== 'undefined' && window.location.search.includes('setup=')) {
       window.history.replaceState({}, '', window.location.pathname)
@@ -416,9 +433,17 @@ export function App({ client }: AppProps) {
 
   const navigate = (nextPage: Page) => {
     if (nextPage === 'timeline' || nextPage === 'calendar') saveViewPreference(nextPage)
+    savedScrollPositionRef.current = null
     setSelectedDate(undefined)
     setSelectedEntry(undefined)
     setPage(nextPage)
+  }
+
+  const handleOpenEntry = (entry: Entry) => {
+    if (typeof window !== 'undefined') {
+      savedScrollPositionRef.current = window.scrollY
+    }
+    setSelectedEntry(entry)
   }
 
   const handleSaveEntry = async (input: EntryInput) => {
@@ -550,7 +575,7 @@ export function App({ client }: AppProps) {
               nextCursor={nextCursor}
               isLoading={isLoadingEntries}
               onLoadMore={() => void loadMore()}
-              onOpen={setSelectedEntry}
+              onOpen={handleOpenEntry}
               onEdit={setEditingEntry}
               onDelete={handleDeleteEntry}
               onCreate={() => setEditingEntry(null)}
@@ -567,7 +592,7 @@ export function App({ client }: AppProps) {
                 timezone={journalTimezone}
                 onMonthChange={setCalendarMonth}
                 onSelectDate={handleSelectDate}
-                onOpenEntry={setSelectedEntry}
+                onOpenEntry={handleOpenEntry}
               />
             </>
           )}
@@ -588,7 +613,7 @@ export function App({ client }: AppProps) {
                 nextCursor={null}
                 isLoading={isCalendarLoading}
                 onLoadMore={() => undefined}
-                onOpen={setSelectedEntry}
+                onOpen={handleOpenEntry}
                 onEdit={setEditingEntry}
                 onDelete={handleDeleteEntry}
                 onCreate={() => setEditingEntry(null)}
