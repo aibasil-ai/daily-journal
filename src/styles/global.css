@@ -181,6 +181,18 @@ p {
   color: var(--error);
 }
 
+.icon-button--loading {
+  cursor: wait;
+  opacity: 0.85;
+  color: var(--primary);
+}
+
+.icon-button--loading .loading-note-spinner,
+.icon-button .loading-note-spinner {
+  display: inline-block;
+  animation: spin 0.8s linear infinite;
+}
+
 .connection-screen {
   --connection-screen-block-padding: clamp(1.5rem, 4vh, 4rem);
   position: relative;
@@ -1071,7 +1083,8 @@ p {
   .connection-card__google-button::before,
   .connection-screen__orbits span::after,
   .connection-title-flare,
-  .app-loading-spinner {
+  .app-loading-spinner,
+  .loading-note-spinner {
     animation: none;
   }
 }

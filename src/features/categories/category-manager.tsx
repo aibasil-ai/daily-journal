@@ -230,9 +230,9 @@ export function CategoryManager({
                       {zhTW.categories.moveEntries}
                     </button>
                   )}
-                  <CategoryActionTooltip id={colorTooltipId} content={zhTW.categoryColors.set(category.name)}>
+                  <CategoryActionTooltip id={colorTooltipId} content={isColorSaving ? zhTW.categoryColors.saving(category.name) : zhTW.categoryColors.set(category.name)}>
                     <button
-                      className="icon-button"
+                      className={`icon-button${isColorSaving ? ' icon-button--loading' : ''}`}
                       type="button"
                       aria-label={isColorSaving ? zhTW.categoryColors.saving(category.name) : zhTW.categoryColors.set(category.name)}
                       aria-describedby={colorTooltipId}
@@ -241,7 +241,9 @@ export function CategoryManager({
                       disabled={isColorSaving}
                       onClick={(event) => openColorMenuFromButton(category, event.currentTarget)}
                     >
-                      <Icon>palette</Icon>
+                      <Icon className={isColorSaving ? 'loading-note-spinner' : ''}>
+                        {isColorSaving ? 'progress_activity' : 'palette'}
+                      </Icon>
                     </button>
                   </CategoryActionTooltip>
                   <CategoryActionTooltip id={editTooltipId} content={zhTW.categories.editHint(category.name)}>

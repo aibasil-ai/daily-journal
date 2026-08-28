@@ -186,3 +186,31 @@ test('調色盤按鈕與右鍵都可開啟色票並送出選色', async () => {
   fireEvent.contextMenu(screen.getByRole('article', { name: '工作' }), { clientX: 120, clientY: 160 })
   expect(screen.getByRole('menu', { name: '類別顏色' })).toBeInTheDocument()
 })
+
+test('類別顏色儲存中時顯示載入圖示、提示文字並停用按鈕', () => {
+  const category = {
+    id: 'work', name: '工作', color: null, isActive: true,
+    createdAt: '2026-08-04T00:00:00+08:00', updatedAt: '2026-08-04T00:00:00+08:00',
+  }
+  render(
+    <CategoryManager
+      categories={[category]}
+      entryCounts={{}}
+      onLoadEntryPage={vi.fn().mockResolvedValue({ items: [], nextCursor: null })}
+      onMoveEntries={vi.fn().mockResolvedValue(undefined)}
+      onDelete={vi.fn().mockResolvedValue(undefined)}
+      onSave={vi.fn().mockResolvedValue(undefined)}
+      savingCategoryColorIds={new Set(['work'])}
+      onSetColor={vi.fn().mockResolvedValue(category)}
+      onDeactivate={vi.fn().mockResolvedValue(undefined)}
+      onActivate={vi.fn().mockResolvedValue(undefined)}
+    />,
+  )
+
+  const savingButton = screen.getByRole('button', { name: '正在儲存「工作」的類別顏色' })
+  expect(savingButton).toBeDisabled()
+  expect(savingButton).toHaveAttribute('aria-busy', 'true')
+  expect(savingButton).toHaveClass('icon-button--loading')
+  expect(screen.getByRole('tooltip', { name: '正在儲存「工作」的類別顏色' })).toBeInTheDocument()
+  expect(savingButton.querySelector('.loading-note-spinner')).toHaveTextContent('progress_activity')
+})
