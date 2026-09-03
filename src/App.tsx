@@ -556,6 +556,12 @@ export function App({ client }: AppProps) {
                   <h1>{page === 'timeline' ? zhTW.navigation.timeline : zhTW.navigation.calendar}</h1>
                   <p>{page === 'timeline' ? zhTW.app.timelineDescription : zhTW.app.tagline}</p>
                 </div>
+                {((page === 'timeline' && isLoadingEntries) || (page === 'calendar' && isCalendarLoading)) && (
+                  <p className="loading-note search-loading-note" role="status">
+                    <Icon className="loading-note-spinner">progress_activity</Icon>
+                    <span>{zhTW.filters.searching}</span>
+                  </p>
+                )}
                 <div className="page-heading__actions">
                   <button
                     className={`search-toggle-btn${isFilterOpen ? ' search-toggle-btn--active' : ''}${hasActiveFilters ? ' search-toggle-btn--has-filters' : ''}`}
@@ -579,12 +585,6 @@ export function App({ client }: AppProps) {
                   onChange={(changes) => void updateFilter(changes)}
                   onClose={() => setIsFilterOpen(false)}
                 />
-              )}
-              {((page === 'timeline' && isLoadingEntries) || (page === 'calendar' && isCalendarLoading)) && (
-                <p className="loading-note search-loading-note" role="status">
-                  <Icon className="loading-note-spinner">progress_activity</Icon>
-                  <span>{zhTW.filters.searching}</span>
-                </p>
               )}
             </>
           )}
