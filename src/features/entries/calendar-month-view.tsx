@@ -141,6 +141,7 @@ export function CalendarMonthView({
                     className="calendar-entry-picker__item"
                     type="button"
                     key={entry.id}
+                    title={title}
                     style={categoryColorStyle(categoryColor)}
                     onClick={() => {
                       onFocusDate(overflowDate)
@@ -148,7 +149,7 @@ export function CalendarMonthView({
                       onOpenEntry(entry)
                     }}
                   >
-                    <span>{title}</span>
+                    <span className="calendar-entry-picker__title">{title}</span>
                     <Icon>chevron_right</Icon>
                   </button>
                 )

@@ -103,6 +103,31 @@ test('西元 0 至 99 年仍建立正確月份日期', () => {
   expect(screen.queryByRole('button', { name: /0099-02-29/ })).not.toBeInTheDocument()
 })
 
+it('溢出記事清單按鈕具備 title 提示與專屬標題類別以支援文字換行', async () => {
+  const user = userEvent.setup()
+  const longTitle = 'BPW 官方網站 什麼是剪輯？掌握影片剪輯的主要工作流程與基礎觀念'
+  const testEntries = [
+    createEntry('e-1', '記事一'),
+    createEntry('e-2', '記事二'),
+    createEntry('e-3', longTitle),
+  ]
+
+  render(
+    <CalendarMonthView
+      {...defaultProps}
+      days={[{ date: '2026-08-04', entries: testEntries }]}
+    />,
+  )
+
+  await user.click(screen.getByRole('button', { name: '還有 1 則記事' }))
+  const longEntryButton = await screen.findByRole('button', { name: longTitle })
+  expect(longEntryButton).toHaveAttribute('title', longTitle)
+
+  const titleSpan = longEntryButton.querySelector('.calendar-entry-picker__title')
+  expect(titleSpan).toBeInTheDocument()
+  expect(titleSpan).toHaveTextContent(longTitle)
+})
+
 function createEntry(id: string, title: string) {
   return {
     id,
