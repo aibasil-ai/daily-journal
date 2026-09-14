@@ -741,6 +741,7 @@ test('點選記事進入詳情後返回月曆，能恢復原本的滾軸位置',
   expect(await screen.findByText('測試記事')).toBeInTheDocument()
 
   expect(scrollToSpy).toHaveBeenCalledWith(0, 350)
+  expect(screen.getByRole('button', { name: '月' })).toHaveAttribute('aria-pressed', 'true')
   scrollToSpy.mockRestore()
 })
 
@@ -784,6 +785,23 @@ test('點選特定日期查看記事列表後返回月曆，能恢復原本的�
   expect(await screen.findByRole('grid', { name: `${year}年${monthNumber}月` })).toBeInTheDocument()
 
   // Verify scroll position was restored to 420
+  expect(scrollToSpy).toHaveBeenCalledWith(0, 420)
+  expect(screen.getByRole('button', { name: '月' })).toHaveAttribute('aria-pressed', 'true')
+
+  // 再次深入單日並從詳情返回，確認兩層捲動各自還原且焦點日期保留在該日
+  scrollToSpy.mockClear()
+  await user.click(screen.getByRole('button', { name: new RegExp(`^${testDate}，共 1 則記事`) }))
+  expect(screen.queryByRole('button', { name: '月' })).not.toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: `${testDate} 的記事` })).toBeInTheDocument()
+
+  Object.defineProperty(window, 'scrollY', { value: 175, writable: true, configurable: true })
+  await user.click(screen.getByRole('button', { name: '閱讀記事：特定日期記事' }))
+  await user.click(screen.getByRole('button', { name: '返回日曆' }))
+  expect(scrollToSpy).toHaveBeenCalledWith(0, 175)
+
+  await user.click(screen.getByRole('button', { name: '返回日曆' }))
+  expect(screen.getByRole('button', { name: '月' })).toHaveAttribute('aria-pressed', 'true')
+  expect(screen.getByRole('button', { name: new RegExp(`${testDate}.*焦點日期`) })).toBeInTheDocument()
   expect(scrollToSpy).toHaveBeenCalledWith(0, 420)
   scrollToSpy.mockRestore()
 })
@@ -1195,6 +1213,146 @@ test.each(['success', 'error', 'authentication'] as const)(
     expect(screen.queryByRole('button', { name: '使用 Google 帳號登入' })).not.toBeInTheDocument()
   },
 )
+
+test('日與週視角新增預填指定日期，全域新增仍預填今天', async () => {
+  const run = vi.fn(async (request: ApiRequest) => {
+    if (request.action === 'bootstrap') return bootstrapForCalendar
+    if (request.action === 'listCategories') return categoryManagementForCalendar
+    if (request.action === 'listEntries') return { items: [], nextCursor: null }
+    if (request.action === 'getEntriesForRange') return []
+    throw new Error(`未預期的請求：${request.action}`)
+  })
+  const user = renderCalendarApp(run, 'day')
+  await screen.findByRole('heading', { name: '2026年9月3日 星期四' })
+
+  await user.click(screen.getByRole('button', { name: '後一天' }))
+  await screen.findByRole('heading', { name: '2026年9月4日 星期五' })
+  await user.click(await screen.findByRole('button', { name: '新增這天的記事' }))
+  expect(screen.getByLabelText('記事日期')).toHaveValue('2026-09-04')
+  await user.click(screen.getByRole('button', { name: '取消' }))
+
+  await user.click(screen.getByRole('button', { name: '週' }))
+  await user.click(screen.getByRole('button', { name: '新增 2026-09-01 的記事' }))
+  expect(screen.getByLabelText('記事日期')).toHaveValue('2026-09-01')
+  await user.click(screen.getByRole('button', { name: '取消' }))
+
+  await user.click(screen.getAllByRole('button', { name: '新增記事' })[0])
+  expect(screen.getByLabelText('記事日期')).toHaveValue('2026-09-03')
+})
+
+test('mutation 後依序等待目前單日與月期間 query 才還原兩層捲動', async () => {
+  const date = '2026-09-03'
+  const entry = calendarEntry({ id: 'scroll-delete', entryDate: date, title: '兩層捲動記事' })
+  const refreshedDate = deferred<DailyEntries[]>()
+  const refreshedMonth = deferred<DailyEntries[]>()
+  let dateAttempts = 0
+  let monthAttempts = 0
+  const run = vi.fn(async (request: ApiRequest) => {
+    if (request.action === 'bootstrap') return bootstrapForCalendar
+    if (request.action === 'listCategories') return categoryManagementForCalendar
+    if (request.action === 'deleteEntry') return null
+    if (request.action === 'getEntriesForRange' && request.from === request.to) {
+      dateAttempts += 1
+      return dateAttempts === 1
+        ? [{ date, entries: [entry] }]
+        : refreshedDate.promise
+    }
+    if (request.action === 'getEntriesForRange') {
+      monthAttempts += 1
+      return monthAttempts === 1
+        ? [{ date, entries: [entry] }]
+        : refreshedMonth.promise
+    }
+    throw new Error(`未預期的請求：${request.action}`)
+  })
+  const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined)
+  const user = renderCalendarApp(run)
+  await screen.findByText('兩層捲動記事')
+
+  Object.defineProperty(window, 'scrollY', { value: 420, writable: true, configurable: true })
+  await user.click(screen.getByRole('button', { name: new RegExp(`^${date}，共 1 則記事`) }))
+  Object.defineProperty(window, 'scrollY', { value: 175, writable: true, configurable: true })
+  await user.click(await screen.findByRole('button', { name: '閱讀記事：兩層捲動記事' }))
+  scrollToSpy.mockClear()
+
+  await user.click(screen.getByRole('button', { name: '刪除記事' }))
+  await user.click(screen.getByRole('button', { name: '永久刪除' }))
+  await waitFor(() => {
+    expect(dateAttempts).toBe(2)
+    expect(monthAttempts).toBe(2)
+  })
+  expect(screen.getByText('查詢中...')).toBeInTheDocument()
+  expect(screen.queryByText('兩層捲動記事')).not.toBeInTheDocument()
+  expect(scrollToSpy).not.toHaveBeenCalledWith(0, 175)
+
+  await act(async () => refreshedDate.resolve([]))
+  await waitFor(() => expect(scrollToSpy).toHaveBeenCalledWith(0, 175))
+  scrollToSpy.mockClear()
+
+  await user.click(screen.getByRole('button', { name: '返回日曆' }))
+  expect(scrollToSpy).not.toHaveBeenCalledWith(0, 420)
+  await act(async () => refreshedMonth.resolve([]))
+  await waitFor(() => expect(scrollToSpy).toHaveBeenCalledWith(0, 420))
+  expect(screen.getByRole('button', { name: '月' })).toHaveAttribute('aria-pressed', 'true')
+  expect(screen.getByRole('button', { name: new RegExp(`${date}.*焦點日期`) })).toBeInTheDocument()
+})
+
+test('日視角新增成功後保留模式與日期並重新查詢目前 range', async () => {
+  let rangeCount = 0
+  let didSave = false
+  const saved = calendarEntry({ id: 'saved', entryDate: '2026-09-04', title: '新記事' })
+  const run = vi.fn(async (request: ApiRequest) => {
+    if (request.action === 'bootstrap') return bootstrapForCalendar
+    if (request.action === 'listCategories') return categoryManagementForCalendar
+    if (request.action === 'listEntries') return { items: [], nextCursor: null }
+    if (request.action === 'getEntriesForRange') {
+      rangeCount += 1
+      return didSave ? [{ date: saved.entryDate, entries: [saved] }] : []
+    }
+    if (request.action === 'saveEntry') {
+      didSave = true
+      return saved
+    }
+    throw new Error(`未預期的請求：${request.action}`)
+  })
+  const user = renderCalendarApp(run, 'day')
+  await screen.findByText('這天還沒有符合條件的記事')
+
+  await user.click(screen.getByRole('button', { name: '後一天' }))
+  await screen.findByRole('heading', { name: '2026年9月4日 星期五' })
+  await user.click(screen.getByRole('button', { name: '新增這天的記事' }))
+  expect(screen.getByLabelText('記事日期')).toHaveValue('2026-09-04')
+  await user.type(screen.getByLabelText('記事內容'), '新內容')
+  await user.click(screen.getByRole('button', { name: '儲存記事' }))
+
+  expect(await screen.findByText('新記事')).toBeInTheDocument()
+  expect(rangeCount).toBe(3)
+  expect(screen.getByRole('button', { name: '日' })).toHaveAttribute('aria-pressed', 'true')
+  expect(screen.getByRole('heading', { name: '2026年9月4日 星期五' })).toBeInTheDocument()
+})
+
+test('新增失敗時保留表單與指定日期', async () => {
+  const run = vi.fn(async (request: ApiRequest) => {
+    if (request.action === 'bootstrap') return bootstrapForCalendar
+    if (request.action === 'listCategories') return categoryManagementForCalendar
+    if (request.action === 'listEntries') return { items: [], nextCursor: null }
+    if (request.action === 'getEntriesForRange') return []
+    if (request.action === 'saveEntry') throw new Error('儲存失敗')
+    throw new Error(`未預期的請求：${request.action}`)
+  })
+  const user = renderCalendarApp(run, 'day')
+  await screen.findByText('這天還沒有符合條件的記事')
+  await user.click(screen.getByRole('button', { name: '後一天' }))
+  await screen.findByRole('heading', { name: '2026年9月4日 星期五' })
+  await user.click(await screen.findByRole('button', { name: '新增這天的記事' }))
+  await user.type(screen.getByLabelText('記事內容'), '新內容')
+  await user.click(screen.getByRole('button', { name: '儲存記事' }))
+
+  const dialog = screen.getByRole('dialog')
+  expect(await within(dialog).findByText('儲存失敗')).toBeInTheDocument()
+  expect(dialog).toContainElement(screen.getByRole('heading', { name: '新增記事' }))
+  expect(within(dialog).getByLabelText('記事日期')).toHaveValue('2026-09-04')
+})
 
 function createClient(
   overrides: Partial<JournalClient> & Partial<ProvisioningClient> & Partial<AccountClient> = {},

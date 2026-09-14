@@ -51,6 +51,10 @@ type AppProps = {
 type Page = JournalView | 'categories' | 'export' | 'settings'
 type AppClient = JournalClient & ProvisioningClient & AccountClient
 
+type EntryEditorState =
+  | { kind: 'create'; initialDate?: string }
+  | { kind: 'edit'; entry: Entry }
+
 type LoadState<T> =
   | { status: 'idle' }
   | { status: 'loading'; key: string }
@@ -104,7 +108,7 @@ export function App({ client }: AppProps) {
   const [calendarReloadToken, setCalendarReloadToken] = useState(0)
   const [selectedDateReloadToken, setSelectedDateReloadToken] = useState(0)
   const [selectedEntry, setSelectedEntry] = useState<Entry>()
-  const [editingEntry, setEditingEntry] = useState<Entry | null | undefined>()
+  const [editorState, setEditorState] = useState<EntryEditorState>()
   const [isExporting, setIsExporting] = useState<'filtered' | 'all'>()
   const [exportError, setExportError] = useState<string>()
   const [isChangingDataSpace, setIsChangingDataSpace] = useState(false)
@@ -169,7 +173,7 @@ export function App({ client }: AppProps) {
     setSelectedDateQuery({ status: 'idle' })
     setSelectedDateReloadToken(0)
     setSelectedEntry(undefined)
-    setEditingEntry(undefined)
+    setEditorState(undefined)
     setIsExporting(undefined)
     setExportError(undefined)
     setIsChangingDataSpace(false)
@@ -447,35 +451,50 @@ export function App({ client }: AppProps) {
     }
   }, [status])
 
-  useEffect(() => {
-    if (!selectedEntry && entryReturnScrollPositionRef.current !== null) {
-      const targetScrollY = entryReturnScrollPositionRef.current
-      entryReturnScrollPositionRef.current = null
-      if (typeof window !== 'undefined') {
-        window.scrollTo(0, targetScrollY)
-        if (typeof window.requestAnimationFrame === 'function') {
-          window.requestAnimationFrame(() => {
-            window.scrollTo(0, targetScrollY)
-          })
-        }
-      }
-    }
-  }, [selectedEntry])
+  const calendarReturnReady = calendarQuery.status !== 'idle'
+    && calendarQuery.key === calendarQueryKey
+    && (calendarQuery.status === 'ready' || calendarQuery.status === 'error')
+  const selectedDateReturnReady = selectedDateQuery.status !== 'idle'
+    && selectedDateQuery.key === selectedDateQueryKey
+    && (selectedDateQuery.status === 'ready' || selectedDateQuery.status === 'error')
+  const entryReturnReady = page === 'timeline'
+    ? !isLoadingEntries
+    : selectedDate ? selectedDateReturnReady : calendarReturnReady
 
   useEffect(() => {
-    if (!selectedDate && !selectedEntry && dateSelectionReturnScrollPositionRef.current !== null) {
-      const targetScrollY = dateSelectionReturnScrollPositionRef.current
-      dateSelectionReturnScrollPositionRef.current = null
-      if (typeof window !== 'undefined') {
-        window.scrollTo(0, targetScrollY)
-        if (typeof window.requestAnimationFrame === 'function') {
-          window.requestAnimationFrame(() => {
-            window.scrollTo(0, targetScrollY)
-          })
-        }
+    if (selectedEntry || !entryReturnReady || entryReturnScrollPositionRef.current === null) return
+
+    const targetScrollY = entryReturnScrollPositionRef.current
+    entryReturnScrollPositionRef.current = null
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, targetScrollY)
+      if (typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => {
+          window.scrollTo(0, targetScrollY)
+        })
       }
     }
-  }, [selectedDate, selectedEntry])
+  }, [entryReturnReady, selectedEntry])
+
+  useEffect(() => {
+    if (
+      selectedDate
+      || selectedEntry
+      || !calendarReturnReady
+      || dateSelectionReturnScrollPositionRef.current === null
+    ) return
+
+    const targetScrollY = dateSelectionReturnScrollPositionRef.current
+    dateSelectionReturnScrollPositionRef.current = null
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, targetScrollY)
+      if (typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => {
+          window.scrollTo(0, targetScrollY)
+        })
+      }
+    }
+  }, [calendarReturnReady, selectedDate, selectedEntry])
 
   const handleDataSpaceComplete = useCallback(() => {
     if (typeof window !== 'undefined' && window.location.search.includes('setup=')) {
@@ -594,7 +613,7 @@ export function App({ client }: AppProps) {
 
   const handleSaveEntry = async (input: EntryInput) => {
     const saved = await saveEntry(input)
-    setEditingEntry(undefined)
+    setEditorState(undefined)
     setSelectedEntry((current) => current?.id === saved.id ? saved : current)
   }
 
@@ -604,6 +623,7 @@ export function App({ client }: AppProps) {
   }
 
   const handleSelectDate = (date: string) => {
+    setCalendarAnchorDate(clampCalendarAnchorDate(calendarMode, date))
     if (typeof window !== 'undefined') {
       dateSelectionReturnScrollPositionRef.current = window.scrollY
       window.scrollTo(0, 0)
@@ -660,11 +680,11 @@ export function App({ client }: AppProps) {
           timezone={journalTimezone}
           returnTarget={page === 'timeline' ? 'timeline' : 'calendar'}
           onBack={() => setSelectedEntry(undefined)}
-          onEdit={() => setEditingEntry(selectedEntry)}
+          onEdit={() => setEditorState({ kind: 'edit', entry: selectedEntry })}
           onDelete={() => handleDeleteEntry(selectedEntry.id)}
         />
         {error && <section className="page-error" role="alert"><p>{error}</p></section>}
-        {editingEntry && renderEditor(editingEntry, categories, tagSuggestions, journalTimezone, handleSaveEntry, () => setEditingEntry(undefined))}
+        {editorState && renderEditor(editorState, categories, tagSuggestions, journalTimezone, handleSaveEntry, () => setEditorState(undefined))}
       </main>
     )
   }
@@ -714,7 +734,7 @@ export function App({ client }: AppProps) {
       <DesktopNavigation
         page={page}
         onNavigate={navigate}
-        onCreate={() => setEditingEntry(null)}
+        onCreate={() => setEditorState({ kind: 'create' })}
         onSignOut={() => void handleSignOut()}
         onConfigureDataSpace={() => void handleStartDataSpaceChange().catch(() => undefined)}
         isConfiguringDataSpace={isStartingDataSpaceChange}
@@ -725,7 +745,7 @@ export function App({ client }: AppProps) {
           isFilterOpen={isFilterOpen}
           hasActiveFilters={hasActiveFilters}
           onToggleFilter={() => setIsFilterOpen((prev) => !prev)}
-          onCreate={() => setEditingEntry(null)}
+          onCreate={() => setEditorState({ kind: 'create' })}
           onSignOut={() => void handleSignOut()}
           onConfigureDataSpace={() => void handleStartDataSpaceChange().catch(() => undefined)}
           isConfiguringDataSpace={isStartingDataSpaceChange}
@@ -787,9 +807,9 @@ export function App({ client }: AppProps) {
               isLoading={isLoadingEntries}
               onLoadMore={() => void loadMore()}
               onOpen={handleOpenEntry}
-              onEdit={setEditingEntry}
+              onEdit={(entry) => setEditorState({ kind: 'edit', entry })}
               onDelete={handleDeleteEntry}
-              onCreate={() => setEditingEntry(null)}
+              onCreate={() => setEditorState({ kind: 'create' })}
             />
           )}
 
@@ -815,9 +835,9 @@ export function App({ client }: AppProps) {
                   categories={categories}
                   timezone={journalTimezone}
                   onOpenEntry={handleOpenEntry}
-                  onEditEntry={(entry) => setEditingEntry(entry)}
+                  onEditEntry={(entry) => setEditorState({ kind: 'edit', entry })}
                   onDeleteEntry={handleDeleteEntry}
-                  onCreateEntry={(_date) => setEditingEntry(null)}
+                  onCreateEntry={(date) => setEditorState({ kind: 'create', initialDate: date })}
                 />
               )}
               {calendarMode === 'week' && (
@@ -829,7 +849,7 @@ export function App({ client }: AppProps) {
                   expansionResetKey={calendarContentKey}
                   onFocusDate={handleCalendarFocusDate}
                   onOpenEntry={handleOpenEntry}
-                  onCreateEntry={(_date) => setEditingEntry(null)}
+                  onCreateEntry={(date) => setEditorState({ kind: 'create', initialDate: date })}
                 />
               )}
               {calendarMode === 'month' && (
@@ -884,9 +904,9 @@ export function App({ client }: AppProps) {
                   isLoading={false}
                   onLoadMore={() => undefined}
                   onOpen={handleOpenEntry}
-                  onEdit={setEditingEntry}
+                  onEdit={(entry) => setEditorState({ kind: 'edit', entry })}
                   onDelete={handleDeleteEntry}
-                  onCreate={() => setEditingEntry(null)}
+                  onCreate={() => setEditorState({ kind: 'create' })}
                 />
               )}
             </section>
@@ -939,25 +959,26 @@ export function App({ client }: AppProps) {
           )}
         </main>
         {(page === 'timeline' || page === 'calendar') && (
-          <button className="mobile-fab" type="button" aria-label={zhTW.actions.addEntry} onClick={() => setEditingEntry(null)}>
+          <button className="mobile-fab" type="button" aria-label={zhTW.actions.addEntry} onClick={() => setEditorState({ kind: 'create' })}>
             <Icon filled>add</Icon>
           </button>
         )}
         <MobileNavigation page={page} onNavigate={navigate} />
       </div>
-      {editingEntry !== undefined && renderEditor(editingEntry ?? undefined, categories, tagSuggestions, journalTimezone, handleSaveEntry, () => setEditingEntry(undefined))}
+      {editorState && renderEditor(editorState, categories, tagSuggestions, journalTimezone, handleSaveEntry, () => setEditorState(undefined))}
     </div>
   )
 }
 
 function renderEditor(
-  entry: Entry | undefined,
+  editorState: EntryEditorState,
   categories: Category[],
   tagSuggestions: string[],
   timezone: string,
   onSave: (input: EntryInput) => Promise<void>,
   onClose: () => void,
 ) {
+  const entry = editorState.kind === 'edit' ? editorState.entry : undefined
   return (
     <div className="editor-overlay" role="presentation">
       <section className="editor-modal" role="dialog" aria-modal="true" aria-labelledby="entry-editor-title">
@@ -967,7 +988,15 @@ function renderEditor(
             <h1 id="entry-editor-title">{entry ? zhTW.form.editTitle : zhTW.form.createTitle}</h1>
           </div>
         </header>
-        <EntryForm entry={entry} categories={categories} tagSuggestions={tagSuggestions} timezone={timezone} onSave={onSave} onCancel={onClose} />
+        <EntryForm
+          entry={entry}
+          initialDate={editorState.kind === 'create' ? editorState.initialDate : undefined}
+          categories={categories}
+          tagSuggestions={tagSuggestions}
+          timezone={timezone}
+          onSave={onSave}
+          onCancel={onClose}
+        />
       </section>
     </div>
   )
