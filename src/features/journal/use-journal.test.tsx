@@ -404,6 +404,105 @@ describe('useJournal', () => {
     expect(result.current.categories).toEqual([newCategory])
     expect(result.current.entries).toEqual([newEntry])
   })
+test('停用時間軸時不背景查詢 listEntries，仍可在啟用前主動刷新', async () => {
+    let listEntriesCount = 0
+    const run = vi.fn(async (request: ApiRequest) => {
+      if (request.action === 'bootstrap') return bootstrap
+      if (request.action === 'listCategories') return categoryManagement
+      if (request.action === 'listEntries') {
+        listEntriesCount += 1
+        return { items: [], nextCursor: null }
+      }
+      throw new Error(`未預期的請求：${request.action}`)
+    })
+    const client = createClient({ run: run as JournalClient['run'] })
+    const { result } = renderHook(() => useJournal(client, false))
+
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    await act(async () => result.current.updateFilter({ query: '日曆條件' }))
+    expect(listEntriesCount).toBe(0)
+
+    await act(async () => result.current.refreshEntries())
+    expect(listEntriesCount).toBe(1)
+    expect(run).toHaveBeenLastCalledWith({
+      action: 'listEntries',
+      filter: expect.objectContaining({ query: '日曆條件', cursor: null }),
+    })
+  })
+
+  test.each([
+    ['一般錯誤', () => new Error('舊錯誤')],
+    ['認證錯誤', () => new AuthenticationError()],
+  ])('忽略晚於新時間軸資料回來的舊%s', async (_label, createError) => {
+    const staleList = deferred<unknown>()
+    let listCount = 0
+    const run = vi.fn(async (request: ApiRequest) => {
+      if (request.action === 'bootstrap') return bootstrap
+      if (request.action === 'listCategories') return categoryManagement
+      if (request.action === 'listEntries') {
+        listCount += 1
+        if (listCount === 2) return staleList.promise
+        return { items: [], nextCursor: null }
+      }
+      throw new Error(`未預期的請求：${request.action}`)
+    })
+    const client = createClient({ run: run as JournalClient['run'] })
+    const { result } = renderHook(() => useJournal(client))
+    await waitFor(() => expect(listCount).toBe(1))
+
+    let staleUpdate: Promise<void> = Promise.resolve()
+    act(() => {
+      staleUpdate = result.current.updateFilter({ query: '舊條件' })
+    })
+    await waitFor(() => expect(listCount).toBe(2))
+    await act(async () => result.current.updateFilter({ query: '新條件' }))
+
+    await act(async () => {
+      staleList.reject(createError())
+      await staleUpdate
+    })
+    expect(result.current.status).toBe('ready')
+    expect(result.current.filter.query).toBe('新條件')
+    expect(result.current.error).toBeUndefined()
+  })
+
+  test('停用後重新啟用時間軸仍忽略停用前的認證錯誤', async () => {
+    const staleList = deferred<unknown>()
+    let listCount = 0
+    const run = vi.fn(async (request: ApiRequest) => {
+      if (request.action === 'bootstrap') return bootstrap
+      if (request.action === 'listCategories') return categoryManagement
+      if (request.action === 'listEntries') {
+        listCount += 1
+        if (listCount === 2) return staleList.promise
+        return { items: [], nextCursor: null }
+      }
+      throw new Error(`未預期的請求：${request.action}`)
+    })
+    const client = createClient({ run: run as JournalClient['run'] })
+    const { result, rerender } = renderHook(
+      ({ enabled }) => useJournal(client, enabled),
+      { initialProps: { enabled: true } },
+    )
+    await waitFor(() => expect(listCount).toBe(1))
+
+    let staleUpdate: Promise<void> = Promise.resolve()
+    act(() => {
+      staleUpdate = result.current.updateFilter({ query: '保留條件' })
+    })
+    await waitFor(() => expect(listCount).toBe(2))
+    rerender({ enabled: false })
+    rerender({ enabled: true })
+    await act(async () => result.current.refreshEntries())
+
+    await act(async () => {
+      staleList.reject(new AuthenticationError())
+      await staleUpdate
+    })
+    expect(result.current.status).toBe('ready')
+    expect(result.current.filter.query).toBe('保留條件')
+    expect(result.current.error).toBeUndefined()
+  })
 })
 
 function createClient(overrides: Partial<JournalClient> = {}): JournalClient {
@@ -414,4 +513,14 @@ function createClient(overrides: Partial<JournalClient> = {}): JournalClient {
     run: vi.fn(),
     ...overrides,
   }
+}
+
+function deferred<T>() {
+  let resolve: (value: T) => void = () => {}
+  let reject: (reason?: unknown) => void = () => {}
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
 }

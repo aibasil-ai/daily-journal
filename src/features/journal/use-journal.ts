@@ -25,7 +25,7 @@ export interface JournalClient {
   run<T>(request: ApiRequest): Promise<T>
 }
 
-export function useJournal(client: JournalClient) {
+export function useJournal(client: JournalClient, timelineEnabled = true) {
   const [status, setStatus] = useState<JournalStatus>('checking-session')
   const [error, setError] = useState<string>()
   const [timezone, setTimezone] = useState<string>()
@@ -43,7 +43,15 @@ export function useJournal(client: JournalClient) {
   const categoryMutationRequestsRef = useRef(new Map<string, symbol>())
   const categoryStateVersion = useRef(0)
   const signOutRetryRequired = useRef(false)
+  const timelineEnabledRef = useRef(timelineEnabled)
+  timelineEnabledRef.current = timelineEnabled
   const [savingCategoryColorIds, setSavingCategoryColorIds] = useState<ReadonlySet<string>>(new Set())
+
+  useEffect(() => {
+    if (timelineEnabled) return
+    listRequestId.current += 1
+    setIsLoadingEntries(false)
+  }, [timelineEnabled])
 
   const clearData = useCallback((nextStatus: JournalStatus, nextError?: string) => {
     listRequestId.current += 1
@@ -91,12 +99,24 @@ export function useJournal(client: JournalClient) {
       setEntries((current) => append ? [...current, ...result.items] : result.items)
       setNextCursor(result.nextCursor)
       setError(undefined)
+    } catch (loadError) {
+      if (expectedEpoch !== requestEpoch.current || requestId !== listRequestId.current) return
+      throw loadError
     } finally {
       if (expectedEpoch === requestEpoch.current && requestId === listRequestId.current) {
         setIsLoadingEntries(false)
       }
     }
   }, [client])
+
+  const refreshEntries = async (): Promise<void> => {
+    const expectedEpoch = requestEpoch.current
+    try {
+      await loadEntries({ ...filter, cursor: null }, false, expectedEpoch)
+    } catch (loadError) {
+      if (timelineEnabledRef.current) handleRequestError(loadError, expectedEpoch)
+    }
+  }
 
   const loadCategoryManagement = useCallback(async (expectedEpoch: number): Promise<void> => {
     const expectedCategoryStateVersion = categoryStateVersion.current
@@ -121,9 +141,11 @@ export function useJournal(client: JournalClient) {
       const initialFilter = { ...DEFAULT_ENTRY_FILTER }
       setFilter(initialFilter)
       setStatus('ready')
-      void loadEntries(initialFilter, false, expectedEpoch).catch((requestError: unknown) => {
-        handleRequestError(requestError, expectedEpoch)
-      })
+      if (timelineEnabledRef.current) {
+        void loadEntries(initialFilter, false, expectedEpoch).catch((requestError: unknown) => {
+          if (timelineEnabledRef.current) handleRequestError(requestError, expectedEpoch)
+        })
+      }
     } catch (bootstrapError) {
       if (expectedEpoch !== requestEpoch.current) return
       if (bootstrapError instanceof AuthenticationError) {
@@ -202,6 +224,7 @@ export function useJournal(client: JournalClient) {
     const expectedEpoch = requestEpoch.current
     const nextFilter = { ...filter, ...changes, cursor: null }
     setFilter(nextFilter)
+    if (!timelineEnabledRef.current) return
     try {
       await loadEntries(nextFilter, false, expectedEpoch)
     } catch (loadError) {
@@ -226,7 +249,9 @@ export function useJournal(client: JournalClient) {
       if (expectedEpoch !== requestEpoch.current) throw new RequestInvalidatedError()
       setTagSuggestions((current) => [...new Set([...current, ...saved.tags])].sort())
       await loadCategoryManagement(expectedEpoch)
-      await loadEntries({ ...filter, cursor: null }, false, expectedEpoch)
+      if (timelineEnabledRef.current) {
+        await loadEntries({ ...filter, cursor: null }, false, expectedEpoch)
+      }
       setRevision((current) => current + 1)
       return saved
     } catch (saveError) {
@@ -241,7 +266,9 @@ export function useJournal(client: JournalClient) {
       await client.run<null>({ action: 'deleteEntry', id })
       if (expectedEpoch !== requestEpoch.current) return
       await loadCategoryManagement(expectedEpoch)
-      await loadEntries({ ...filter, cursor: null }, false, expectedEpoch)
+      if (timelineEnabledRef.current) {
+        await loadEntries({ ...filter, cursor: null }, false, expectedEpoch)
+      }
       setRevision((current) => current + 1)
     } catch (deleteError) {
       handleRequestError(deleteError, expectedEpoch)
@@ -412,7 +439,9 @@ export function useJournal(client: JournalClient) {
       })
       if (expectedEpoch !== requestEpoch.current) throw new RequestInvalidatedError()
       await loadCategoryManagement(expectedEpoch)
-      await loadEntries({ ...filter, cursor: null }, false, expectedEpoch)
+      if (timelineEnabledRef.current) {
+        await loadEntries({ ...filter, cursor: null }, false, expectedEpoch)
+      }
       setRevision((current) => current + 1)
     } catch (moveError) {
       if (!(moveError instanceof RequestInvalidatedError)) handleRequestError(moveError, expectedEpoch)
@@ -430,7 +459,9 @@ export function useJournal(client: JournalClient) {
       if (categoryMutationRequestsRef.current.get(id) !== requestToken) return
       categoryStateVersion.current += 1
       await loadCategoryManagement(expectedEpoch)
-      await loadEntries({ ...filter, cursor: null }, false, expectedEpoch)
+      if (timelineEnabledRef.current) {
+        await loadEntries({ ...filter, cursor: null }, false, expectedEpoch)
+      }
       setRevision((current) => current + 1)
     } catch (deleteError) {
       if (!(deleteError instanceof RequestInvalidatedError)) {
@@ -471,6 +502,7 @@ export function useJournal(client: JournalClient) {
     signOut,
     updateFilter,
     loadMore,
+    refreshEntries,
     saveEntry,
     deleteEntry,
     saveCategory,

@@ -1,7 +1,7 @@
-import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
-import type { ApiRequest } from './domain/journal'
+import type { ApiRequest, DailyEntries, Entry } from './domain/journal'
 import { App } from './App'
 import type { JournalClient } from './features/journal/use-journal'
 import { zhTW } from './i18n/zh-TW'
@@ -10,9 +10,14 @@ import {
   type AccountClient,
   type ProvisioningClient,
 } from './services/journal-api-client'
-import { getJournalMonth, monthParts } from './utils/date'
+import { getJournalMonth } from './utils/date'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  window.localStorage.clear()
+  vi.restoreAllMocks()
+  vi.useRealTimers()
+})
 
 test('恢復有效 session 後載入啟用分類並進入首頁', async () => {
   const user = userEvent.setup()
@@ -29,7 +34,7 @@ test('恢復有效 session 後載入啟用分類並進入首頁', async () => {
       }
       if (request.action === 'listEntries') return { items: [], nextCursor: null }
       if (request.action === 'listCategories') return { categories, entryCounts: { work: 3 } }
-      if (request.action === 'getMonthlyEntries') return []
+      if (request.action === 'getEntriesForRange') return []
       throw new Error(`未預期的請求：${request.action}`)
     })
   const client = createClient({ run: run as JournalClient['run'] })
@@ -58,7 +63,7 @@ test('GAS 省略空白分頁游標時仍可儲存記事', async () => {
     }
     if (request.action === 'listCategories') return { categories: [category], entryCounts: { work: 0 } }
     if (request.action === 'listEntries') return { items: [savedEntry] }
-    if (request.action === 'getMonthlyEntries') return []
+    if (request.action === 'getEntriesForRange') return []
     if (request.action === 'saveEntry') return savedEntry
     throw new Error(`未預期的請求：${request.action}`)
   })
@@ -185,7 +190,7 @@ test('確認更換資料表後，舊資料不會在重新載入前短暫顯示',
     if (request.action === 'listEntries') {
       return { items: changed ? [newEntry] : [oldEntry], nextCursor: null }
     }
-    if (request.action === 'getMonthlyEntries') return []
+    if (request.action === 'getEntriesForRange') return []
     throw new Error(`未預期的請求：${request.action}`)
   })
   const client = createClient({
@@ -544,8 +549,8 @@ test('更換資料表期間忽略舊月曆與日期請求的回應及登入失�
   const newCategory = {
     id: 'new', name: '新分類', isActive: true, createdAt: '2026-08-20T00:00:00+08:00', updatedAt: '2026-08-20T00:00:00+08:00',
   }
-  const oldMonthly = deferred<Array<{ date: string; entries: typeof oldCalendarEntry[] }>>()
-  const oldDateEntries = deferred<typeof oldCalendarEntry[]>()
+  const oldMonthly = deferred<DailyEntries[]>()
+  const oldDateEntries = deferred<DailyEntries[]>()
   let changed = false
   let monthlyRequestCount = 0
   let selectableDate = ''
@@ -561,14 +566,14 @@ test('更換資料表期間忽略舊月曆與日期請求的回應及登入失�
         : { categories: [oldCategory], entryCounts: { old: 1 } }
     }
     if (request.action === 'listEntries') return { items: changed ? [newEntry] : [oldTimelineEntry], nextCursor: null }
-    if (request.action === 'getMonthlyEntries') {
+    if (request.action === 'getEntriesForRange') {
+      if (request.from === request.to) return oldDateEntries.promise
       if (changed) return []
       monthlyRequestCount += 1
       if (monthlyRequestCount === 1) return oldMonthly.promise
-      selectableDate = `${request.year}-${String(request.month).padStart(2, '0')}-01`
+      selectableDate = `${request.from.slice(0, 7)}-01`
       return [{ date: selectableDate, entries: [{ ...oldCalendarEntry, entryDate: selectableDate }] }]
     }
-    if (request.action === 'getEntriesForDate') return oldDateEntries.promise
     throw new Error(`未預期的請求：${request.action}`)
   })
   const client = createClient({
@@ -603,13 +608,13 @@ test('更換資料表期間忽略舊月曆與日期請求的回應及登入失�
   })
   render(<App client={client} />)
 
-  await user.click((await screen.findAllByRole('button', { name: '月曆' }))[0])
-  await screen.findByRole('heading', { name: '月曆' })
+  await user.click((await screen.findAllByRole('button', { name: '日曆' }))[0])
+  await screen.findByRole('heading', { name: '日曆' })
   await waitFor(() => expect(monthlyRequestCount).toBe(1))
   await user.click(screen.getByRole('button', { name: '下一個月' }))
   await waitFor(() => expect(monthlyRequestCount).toBe(2))
-  await user.click(await screen.findByRole('button', { name: new RegExp(`${selectableDate}，共 1 則記事.*焦點日期`) }))
-  await waitFor(() => expect(run).toHaveBeenCalledWith(expect.objectContaining({ action: 'getEntriesForDate', date: selectableDate })))
+  await user.click(await screen.findByRole('button', { name: new RegExp(`^${selectableDate}，共 1 則記事`) }))
+  await waitFor(() => expect(run).toHaveBeenCalledWith(expect.objectContaining({ action: 'getEntriesForRange', from: selectableDate, to: selectableDate })))
 
   await user.click(screen.getAllByRole('button', { name: '資料空間設定' })[0])
   await user.click(await screen.findByRole('button', { name: '建立「每日記事」' }))
@@ -633,7 +638,7 @@ test('視窗重新取得焦點時只重新探測一次 session', async () => {
     if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [], tagSuggestions: [] }
     if (request.action === 'listCategories') return { categories: [], entryCounts: {} }
     if (request.action === 'listEntries') return { items: [], nextCursor: null }
-    if (request.action === 'getMonthlyEntries') return []
+    if (request.action === 'getEntriesForRange') return []
     throw new Error(`未預期的請求：${request.action}`)
   })
   const restoreSession = vi.fn(async () => 'authenticated' as const)
@@ -654,7 +659,7 @@ test('曾登入的使用者重新整理時顯示淺色載入畫面，不閃爍�
     if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [], tagSuggestions: [] }
     if (request.action === 'listCategories') return { categories: [], entryCounts: {} }
     if (request.action === 'listEntries') return { items: [], nextCursor: null }
-    if (request.action === 'getMonthlyEntries') return []
+    if (request.action === 'getEntriesForRange') return []
     throw new Error(`未預期的請求：${request.action}`)
   })
   const client = createClient({
@@ -681,7 +686,7 @@ test('預設隱藏搜尋與篩選區塊，點擊按鈕後展開與收合', async
     if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [], tagSuggestions: [] }
     if (request.action === 'listCategories') return { categories: [], entryCounts: {} }
     if (request.action === 'listEntries') return { items: [], nextCursor: null }
-    if (request.action === 'getMonthlyEntries') return []
+    if (request.action === 'getEntriesForRange') return []
     throw new Error(`未預期的請求：${request.action}`)
   })
   const client = createClient({ run: run as JournalClient['run'] })
@@ -715,7 +720,7 @@ test('點選記事進入詳情後返回月曆，能恢復原本的滾軸位置',
     if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category], tagSuggestions: [] }
     if (request.action === 'listCategories') return { categories: [category], entryCounts: { work: 1 } }
     if (request.action === 'listEntries') return { items: [entry], nextCursor: null }
-    if (request.action === 'getMonthlyEntries') return [{ date: testDate, entries: [entry] }]
+    if (request.action === 'getEntriesForRange') return [{ date: testDate, entries: [entry] }]
     throw new Error(`未預期的請求：${request.action}`)
   })
   const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
@@ -724,7 +729,7 @@ test('點選記事進入詳情後返回月曆，能恢復原本的滾軸位置',
   render(<App client={client} />)
   await screen.findByRole('heading', { name: '每日記事' })
 
-  await user.click(screen.getAllByRole('button', { name: '月曆' })[0])
+  await user.click(screen.getAllByRole('button', { name: '日曆' })[0])
   expect(await screen.findByText('測試記事')).toBeInTheDocument()
 
   Object.defineProperty(window, 'scrollY', { value: 350, writable: true, configurable: true })
@@ -743,7 +748,7 @@ test('點選特定日期查看記事列表後返回月曆，能恢復原本的�
   const user = userEvent.setup()
   const testMonth = getJournalMonth('Asia/Taipei')
   const testDate = `${testMonth}-04`
-  const { year, month: monthNumber } = monthParts(testMonth)
+  const [year, monthNumber] = testMonth.split('-').map(Number)
   const entry = {
     id: 'entry-scroll-date-1', entryDate: testDate, title: '特定日期記事', content: '內容', categoryId: 'work', tags: [], links: [],
     createdAt: `${testDate}T00:00:00+08:00`, updatedAt: `${testDate}T00:00:00+08:00`,
@@ -755,7 +760,7 @@ test('點選特定日期查看記事列表後返回月曆，能恢復原本的�
     if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category], tagSuggestions: [] }
     if (request.action === 'listCategories') return { categories: [category], entryCounts: { work: 1 } }
     if (request.action === 'listEntries') return { items: [entry], nextCursor: null }
-    if (request.action === 'getMonthlyEntries') return [{ date: testDate, entries: [entry] }]
+    if (request.action === 'getEntriesForRange') return [{ date: testDate, entries: [entry] }]
     throw new Error(`未預期的請求：${request.action}`)
   })
   const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
@@ -764,7 +769,7 @@ test('點選特定日期查看記事列表後返回月曆，能恢復原本的�
   render(<App client={client} />)
   await screen.findByRole('heading', { name: '每日記事' })
 
-  await user.click(screen.getAllByRole('button', { name: '月曆' })[0])
+  await user.click(screen.getAllByRole('button', { name: '日曆' })[0])
   expect(await screen.findByText('特定日期記事')).toBeInTheDocument()
 
   // Simulate user scrolled down to 420px on the calendar
@@ -798,7 +803,7 @@ test('記事詳情依原主頁顯示返回時間軸或日曆', async () => {
     if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category], tagSuggestions: [] }
     if (request.action === 'listCategories') return { categories: [category], entryCounts: { work: 1 } }
     if (request.action === 'listEntries') return { items: [entry], nextCursor: null }
-    if (request.action === 'getMonthlyEntries') return [{ date: entry.entryDate, entries: [entry] }]
+    if (request.action === 'getEntriesForRange') return [{ date: entry.entryDate, entries: [entry] }]
     throw new Error(`未預期的請求：${request.action}`)
   })
   render(<App client={createClient({ run: run as JournalClient['run'] })} />)
@@ -808,9 +813,241 @@ test('記事詳情依原主頁顯示返回時間軸或日曆', async () => {
   expect(screen.getByRole('button', { name: '返回時間軸' })).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: '返回時間軸' }))
 
-  await user.click(screen.getAllByRole('button', { name: '月曆' })[0])
+  await user.click(screen.getAllByRole('button', { name: '日曆' })[0])
   await user.click(await screen.findByRole('button', { name: '閱讀記事：來源測試' }))
   expect(screen.getByRole('button', { name: '返回日曆' })).toBeInTheDocument()
+})
+
+test('依記事時區初始化日曆，保存模式並以焦點日期查詢正確期間', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-09-01T16:30:00.000Z'))
+  const user = userEvent.setup()
+  window.localStorage.setItem('daily-journal:view', 'calendar')
+  window.localStorage.setItem('daily-journal:calendar-mode', 'week')
+  const run = vi.fn(async (request: ApiRequest) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [], tagSuggestions: [] }
+    if (request.action === 'listCategories') return { categories: [], entryCounts: {} }
+    if (request.action === 'listEntries') return { items: [], nextCursor: null }
+    if (request.action === 'getEntriesForRange') return []
+    throw new Error(`未預期的請求：${request.action}`)
+  })
+
+  render(<App client={createClient({ run: run as JournalClient['run'] })} />)
+
+  expect(await screen.findByRole('heading', { name: '2026年8月31日－9月6日' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '週' })).toHaveAttribute('aria-pressed', 'true')
+  expect(run).toHaveBeenCalledWith({
+    action: 'getEntriesForRange',
+    from: '2026-08-31',
+    to: '2026-09-06',
+    filter: { query: '', from: null, to: null, categoryId: null, tag: null },
+  })
+
+  await user.click(screen.getByRole('button', { name: '日' }))
+  expect(screen.getByRole('heading', { name: '2026年9月2日 星期三' })).toBeInTheDocument()
+  expect(window.localStorage.getItem('daily-journal:calendar-mode')).toBe('day')
+
+  await user.click(screen.getByRole('button', { name: '後一天' }))
+  expect(screen.getByRole('heading', { name: /2026年9月3日/ })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: '月' }))
+  await user.click(screen.getByRole('button', { name: '下一個月' }))
+  expect(screen.getByRole('heading', { name: '2026年10月' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: '今天' }))
+  expect(screen.getByRole('heading', { name: '2026年9月' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '月' })).toHaveAttribute('aria-pressed', 'true')
+
+  await user.click(screen.getByRole('button', { name: '日' }))
+  await user.click(screen.getByRole('button', { name: '後一天' }))
+  expect(screen.getByRole('heading', { name: /2026年9月3日/ })).toBeInTheDocument()
+  await user.click(screen.getAllByRole('button', { name: '時間軸' })[0])
+  await user.click(screen.getAllByRole('button', { name: '日曆' })[0])
+  expect(await screen.findByRole('heading', { name: '2026年9月2日 星期三' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '日' })).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('日曆區間查詢與期間計數反映所有篩選條件', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-09-01T16:30:00.000Z'))
+  const user = userEvent.setup()
+  window.localStorage.setItem('daily-journal:view', 'calendar')
+  const category = {
+    id: 'work', name: '工作', color: null, isActive: true,
+    createdAt: '2026-09-01T00:00:00+08:00', updatedAt: '2026-09-01T00:00:00+08:00',
+  }
+  const matching = {
+    id: 'matching', entryDate: '2026-09-03', title: '週會', content: '內容', categoryId: 'work',
+    tags: ['會議'], links: [], createdAt: '2026-09-03T09:00:00+08:00', updatedAt: '2026-09-03T09:00:00+08:00',
+  }
+  const other = { ...matching, id: 'other', title: '其他' }
+  const rangeRequests: Extract<ApiRequest, { action: 'getEntriesForRange' }>[] = []
+  const run = vi.fn(async (request: ApiRequest) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category], tagSuggestions: ['會議'] }
+    if (request.action === 'listCategories') return { categories: [category], entryCounts: { work: 2 } }
+    if (request.action === 'listEntries') return { items: [], nextCursor: null }
+    if (request.action === 'getEntriesForRange') {
+      rangeRequests.push(request)
+      const filtered = request.filter.query === '週會'
+        && request.filter.from === '2026-09-01'
+        && request.filter.to === '2026-09-30'
+        && request.filter.categoryId === 'work'
+        && request.filter.tag === '會議'
+      return filtered
+        ? [{ date: matching.entryDate, entries: [matching] }]
+        : [{ date: matching.entryDate, entries: [matching, other] }]
+    }
+    throw new Error(`未預期的請求：${request.action}`)
+  })
+  render(<App client={createClient({ run: run as JournalClient['run'] })} />)
+  expect(await screen.findByText('本月共有 2 則記事')).toBeInTheDocument()
+
+  await user.click(screen.getAllByRole('button', { name: '開啟搜尋與篩選' })[0])
+  await user.type(screen.getByPlaceholderText('搜尋記事...'), '週會')
+  fireEvent.change(screen.getByLabelText('起始日期'), { target: { value: '2026-09-01' } })
+  fireEvent.change(screen.getByLabelText('結束日期'), { target: { value: '2026-09-30' } })
+  await user.selectOptions(screen.getByLabelText('分類'), 'work')
+  await user.selectOptions(screen.getByLabelText('標籤'), '會議')
+
+  await waitFor(() => expect(rangeRequests.at(-1)?.filter).toEqual({
+    query: '週會',
+    from: '2026-09-01',
+    to: '2026-09-30',
+    categoryId: 'work',
+    tag: '會議',
+  }))
+  expect(await screen.findByText('本月共有 1 則記事')).toBeInTheDocument()
+})
+
+test('日曆頁不執行時間軸 listEntries，篩選只重查目前期間', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-09-01T16:30:00.000Z'))
+  const user = userEvent.setup()
+  window.localStorage.setItem('daily-journal:view', 'calendar')
+  let listEntriesCount = 0
+  let timelineAllowed = false
+  const listRequests: Extract<ApiRequest, { action: 'listEntries' }>[] = []
+  const rangeRequests: Extract<ApiRequest, { action: 'getEntriesForRange' }>[] = []
+  const run = vi.fn(async (request: ApiRequest) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [], tagSuggestions: [] }
+    if (request.action === 'listCategories') return { categories: [], entryCounts: {} }
+    if (request.action === 'listEntries') {
+      listEntriesCount += 1
+      listRequests.push(request)
+      if (!timelineAllowed) throw new Error('時間軸查詢不應在日曆執行')
+      return { items: [], nextCursor: null }
+    }
+    if (request.action === 'getEntriesForRange') {
+      rangeRequests.push(request)
+      return []
+    }
+    throw new Error(`未預期的請求：${request.action}`)
+  })
+  render(<App client={createClient({ run: run as JournalClient['run'] })} />)
+  expect(await screen.findByText('本月共有 0 則記事')).toBeInTheDocument()
+
+  await user.click(screen.getAllByRole('button', { name: '開啟搜尋與篩選' })[0])
+  await user.type(screen.getByPlaceholderText('搜尋記事...'), '週會')
+
+  await waitFor(() => expect(rangeRequests.at(-1)?.filter.query).toBe('週會'))
+  expect(listEntriesCount).toBe(0)
+  expect(screen.queryByText('時間軸查詢不應在日曆執行')).not.toBeInTheDocument()
+
+  timelineAllowed = true
+  await user.click(screen.getAllByRole('button', { name: '時間軸' })[0])
+  await waitFor(() => expect(listEntriesCount).toBe(1))
+  expect(listRequests[0].filter).toEqual(expect.objectContaining({ query: '週會', cursor: null }))
+})
+
+test('類別顏色完成更新時重繪日曆，但不額外查詢期間', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-09-01T16:30:00.000Z'))
+  window.localStorage.setItem('daily-journal:view', 'calendar')
+  window.localStorage.setItem('daily-journal:calendar-mode', 'day')
+  const user = userEvent.setup()
+  const colorRequest = deferred<unknown>()
+  const category = {
+    id: 'work', name: '工作', color: null, isActive: true,
+    createdAt: '2026-09-02T00:00:00+08:00', updatedAt: '2026-09-02T00:00:00+08:00',
+  }
+  const entry = {
+    id: 'color-entry', entryDate: '2026-09-02', title: '顏色記事', content: '內容', categoryId: 'work',
+    tags: [], links: [], createdAt: '2026-09-02T09:00:00+08:00', updatedAt: '2026-09-02T09:00:00+08:00',
+  }
+  let rangeCount = 0
+  const run = vi.fn(async (request: ApiRequest) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category], tagSuggestions: [] }
+    if (request.action === 'listCategories') return { categories: [category], entryCounts: { work: 1 } }
+    if (request.action === 'listEntries') return { items: [entry], nextCursor: null }
+    if (request.action === 'getEntriesForRange') {
+      rangeCount += 1
+      return [{ date: entry.entryDate, entries: [entry] }]
+    }
+    if (request.action === 'setCategoryColor') return colorRequest.promise
+    throw new Error(`未預期的請求：${request.action}`)
+  })
+  render(<App client={createClient({ run: run as JournalClient['run'] })} />)
+  await screen.findByText('顏色記事')
+
+  await user.click(screen.getAllByRole('button', { name: '類別管理' })[0])
+  await user.click(screen.getByRole('button', { name: '設定「工作」的類別顏色' }))
+  await user.click(screen.getByRole('menuitemradio', { name: '黃' }))
+  await waitFor(() => expect(run).toHaveBeenCalledWith({ action: 'setCategoryColor', id: 'work', color: '#ffe784' }))
+  await user.click(screen.getAllByRole('button', { name: '日曆' })[0])
+  await waitFor(() => expect(rangeCount).toBe(2))
+
+  await act(async () => {
+    colorRequest.resolve({ ...category, color: '#ffe784' })
+  })
+  await waitFor(() => expect(screen.getByText('工作')).toHaveStyle({ '--category-color': '#ffe784' }))
+  expect(rangeCount).toBe(2)
+})
+
+test('日視角編輯與刪除成功後依序刷新目前期間', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-09-01T16:30:00.000Z'))
+  window.localStorage.setItem('daily-journal:view', 'calendar')
+  window.localStorage.setItem('daily-journal:calendar-mode', 'day')
+  const user = userEvent.setup()
+  const category = {
+    id: 'work', name: '工作', color: null, isActive: true,
+    createdAt: '2026-09-02T00:00:00+08:00', updatedAt: '2026-09-02T00:00:00+08:00',
+  }
+  const original = {
+    id: 'edit-delete', entryDate: '2026-09-02', title: '編輯前記事', content: '內容', categoryId: 'work',
+    tags: [], links: [], createdAt: '2026-09-02T09:00:00+08:00', updatedAt: '2026-09-02T09:00:00+08:00',
+  }
+  let current: Entry | undefined = original
+  let rangeCount = 0
+  const run = vi.fn(async (request: ApiRequest) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category], tagSuggestions: [] }
+    if (request.action === 'listCategories') return { categories: [category], entryCounts: { work: current ? 1 : 0 } }
+    if (request.action === 'getEntriesForRange') {
+      rangeCount += 1
+      return current ? [{ date: current.entryDate, entries: [current] }] : []
+    }
+    if (request.action === 'saveEntry') {
+      current = { ...original, ...request.entry, id: original.id, updatedAt: '2026-09-02T10:00:00+08:00' }
+      return current
+    }
+    if (request.action === 'deleteEntry') {
+      current = undefined
+      return null
+    }
+    throw new Error(`未預期的請求：${request.action}`)
+  })
+  render(<App client={createClient({ run: run as JournalClient['run'] })} />)
+  await screen.findByText('編輯前記事')
+
+  await user.click(screen.getByRole('button', { name: '編輯 編輯前記事' }))
+  await user.clear(screen.getByLabelText('記事標題'))
+  await user.type(screen.getByLabelText('記事標題'), '編輯後記事')
+  await user.click(screen.getByRole('button', { name: '儲存變更' }))
+  expect(await screen.findByText('編輯後記事')).toBeInTheDocument()
+  expect(rangeCount).toBe(2)
+
+  await user.click(screen.getByRole('button', { name: '刪除記事' }))
+  await user.click(screen.getByRole('button', { name: '永久刪除' }))
+  expect(await screen.findByText('這天還沒有符合條件的記事')).toBeInTheDocument()
+  expect(rangeCount).toBe(3)
 })
 
 function createClient(

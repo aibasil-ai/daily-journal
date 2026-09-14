@@ -37,11 +37,6 @@ export function formatEntryTime(timestamp: string, timezone?: string): string {
   }).format(date)
 }
 
-export function monthParts(month: string): { year: number; month: number } {
-  const [year, monthNumber] = month.split('-').map(Number)
-  return { year, month: monthNumber }
-}
-
 export function isSameDate(left: string, right: string): boolean {
   return left === right
 }

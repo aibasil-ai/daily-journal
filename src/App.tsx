@@ -12,7 +12,20 @@ import {
   type ProvisioningStatus,
 } from './services/journal-api-client'
 import { CategoryManager } from './features/categories/category-manager'
-import { CalendarView } from './features/entries/calendar-view'
+import { CalendarFrame } from './features/entries/calendar-frame'
+import { CalendarDayView } from './features/entries/calendar-day-view'
+import { CalendarWeekView } from './features/entries/calendar-week-view'
+import { CalendarMonthView } from './features/entries/calendar-month-view'
+import {
+  clampCalendarAnchorDate,
+  getCalendarDateRange,
+  shiftCalendarAnchorDate,
+  type CalendarMode,
+} from './features/entries/calendar-date'
+import {
+  readCalendarModePreference,
+  saveCalendarModePreference,
+} from './features/entries/calendar-mode-preference'
 import { downloadCsv, createCsvBlob } from './features/entries/csv-download'
 import { EntryDetail } from './features/entries/entry-detail'
 import { EntryForm } from './features/entries/entry-form'
@@ -28,7 +41,7 @@ import {
   saveViewPreference,
   type JournalView,
 } from './features/journal/view-preference'
-import { getJournalMonth, getLocalDate, monthParts } from './utils/date'
+import { getJournalDate, getLocalDate } from './utils/date'
 import './styles/global.css'
 
 type AppProps = {
@@ -37,6 +50,12 @@ type AppProps = {
 
 type Page = JournalView | 'categories' | 'export' | 'settings'
 type AppClient = JournalClient & ProvisioningClient & AccountClient
+
+type LoadState<T> =
+  | { status: 'idle' }
+  | { status: 'loading'; key: string }
+  | { status: 'ready'; key: string; data: T }
+  | { status: 'error'; key: string; message: string }
 
 const WORKSPACE_REVALIDATION_INTERVAL_MS = 2_000
 const AUTH_HINT_KEY = 'daily-journal-auth-hint'
@@ -75,14 +94,15 @@ function AppLoadingScreen() {
 
 export function App({ client }: AppProps) {
   const [journalClient] = useState<AppClient>(() => client ?? new JournalApiClient())
-  const journal = useJournal(journalClient)
   const [page, setPage] = useState<Page>(() => getInitialPage())
-  const [calendarMonth, setCalendarMonth] = useState(() => getLocalDate().slice(0, 7))
-  const [calendarDays, setCalendarDays] = useState<DailyEntries[]>([])
-  const [calendarError, setCalendarError] = useState<string>()
-  const [isCalendarLoading, setIsCalendarLoading] = useState(false)
+  const journal = useJournal(journalClient, page === 'timeline')
+  const [calendarMode, setCalendarMode] = useState<CalendarMode>(() => readCalendarModePreference())
+  const [calendarAnchorDate, setCalendarAnchorDate] = useState<string>()
+  const [calendarQuery, setCalendarQuery] = useState<LoadState<DailyEntries[]>>({ status: 'idle' })
   const [selectedDate, setSelectedDate] = useState<string>()
-  const [selectedDateEntries, setSelectedDateEntries] = useState<Entry[]>([])
+  const [selectedDateQuery, setSelectedDateQuery] = useState<LoadState<Entry[]>>({ status: 'idle' })
+  const [calendarReloadToken, setCalendarReloadToken] = useState(0)
+  const [selectedDateReloadToken, setSelectedDateReloadToken] = useState(0)
   const [selectedEntry, setSelectedEntry] = useState<Entry>()
   const [editingEntry, setEditingEntry] = useState<Entry | null | undefined>()
   const [isExporting, setIsExporting] = useState<'filtered' | 'all'>()
@@ -111,6 +131,7 @@ export function App({ client }: AppProps) {
     signOut,
     updateFilter,
     loadMore,
+    refreshEntries,
     saveEntry,
     deleteEntry,
     saveCategory,
@@ -124,7 +145,8 @@ export function App({ client }: AppProps) {
     exportEntries,
     handleRequestError,
   } = journal
-  const journalTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || timezone || 'Asia/Taipei'
+  const journalTimezone = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Taipei'
+  const calendarToday = getJournalDate(journalTimezone)
   const hasActiveFilters = Boolean(filter.query || filter.from || filter.to || filter.categoryId || filter.tag)
   const workspaceEpoch = useRef(0)
   const previousJournalStatus = useRef(status)
@@ -138,12 +160,12 @@ export function App({ client }: AppProps) {
     entryReturnScrollPositionRef.current = null
     dateSelectionReturnScrollPositionRef.current = null
     setPage(getInitialPage())
-    setCalendarMonth(getLocalDate().slice(0, 7))
-    setCalendarDays([])
-    setCalendarError(undefined)
-    setIsCalendarLoading(false)
+    setCalendarAnchorDate(undefined)
+    setCalendarQuery({ status: 'idle' })
+    setCalendarReloadToken(0)
     setSelectedDate(undefined)
-    setSelectedDateEntries([])
+    setSelectedDateQuery({ status: 'idle' })
+    setSelectedDateReloadToken(0)
     setSelectedEntry(undefined)
     setEditingEntry(undefined)
     setIsExporting(undefined)
@@ -191,8 +213,9 @@ export function App({ client }: AppProps) {
   }, [restoreWorkspaceSession])
 
   useEffect(() => {
-    setCalendarMonth(getJournalMonth(journalTimezone))
-  }, [journalTimezone])
+    if (status !== 'ready') return
+    setCalendarAnchorDate((current) => current ?? clampCalendarAnchorDate(calendarMode, calendarToday))
+  }, [calendarMode, calendarToday, status])
 
   useEffect(() => {
     const leftReady = previousJournalStatus.current === 'ready' && status !== 'ready'
@@ -211,6 +234,7 @@ export function App({ client }: AppProps) {
     lastSessionRevalidationAt.current = now
     void journalClient.restoreSession().then((sessionState) => {
       if (sessionState === 'signed-out') {
+        invalidateWorkspace()
         clearWorkspaceState()
         clearSession()
       } else if (sessionState === 'provisioning') {
@@ -218,11 +242,12 @@ export function App({ client }: AppProps) {
       }
     }).catch((revalidateError: unknown) => {
       if (revalidateError instanceof AuthenticationError) {
+        invalidateWorkspace()
         clearWorkspaceState()
         clearSession()
       }
     })
-  }, [clearSession, clearWorkspaceState, journalClient, restoreWorkspaceSession, status])
+  }, [clearSession, clearWorkspaceState, invalidateWorkspace, journalClient, restoreWorkspaceSession, status])
 
   useEffect(() => {
     const handleFocus = () => revalidateSession()
@@ -258,63 +283,128 @@ export function App({ client }: AppProps) {
     }
   }, [handleRequestError, isChangingDataSpace, isCurrentWorkspace, journalClient, page, status])
 
+  const calendarRange = calendarAnchorDate
+    ? getCalendarDateRange(calendarMode, calendarAnchorDate)
+    : undefined
+  const calendarRangeFrom = calendarRange?.from ?? ''
+  const calendarRangeTo = calendarRange?.to ?? ''
+  const {
+    query: calendarFilterQuery,
+    from: calendarFilterFrom,
+    to: calendarFilterTo,
+    categoryId: calendarFilterCategoryId,
+    tag: calendarFilterTag,
+  } = toFilterCriteria(filter)
+  const calendarQueryKey = calendarRange ? JSON.stringify({
+    from: calendarRange.from,
+    to: calendarRange.to,
+    query: calendarFilterQuery,
+    filterFrom: calendarFilterFrom,
+    filterTo: calendarFilterTo,
+    categoryId: calendarFilterCategoryId,
+    tag: calendarFilterTag,
+    revision,
+    reload: calendarReloadToken,
+  }) : ''
+
   useEffect(() => {
-    if (status !== 'ready' || page !== 'calendar') return
+    if (
+      status !== 'ready'
+      || page !== 'calendar'
+      || !calendarRangeFrom
+      || !calendarRangeTo
+    ) return
 
-    let cancelled = false
     const expectedWorkspaceEpoch = workspaceEpoch.current
-    const { year, month } = monthParts(calendarMonth)
-    setIsCalendarLoading(true)
-    setCalendarError(undefined)
+    const key = calendarQueryKey
+    setCalendarQuery({ status: 'loading', key })
     void journalClient.run<DailyEntries[]>({
-      action: 'getMonthlyEntries',
-      year,
-      month,
-      filter: toFilterCriteria(filter),
-    }).then((counts) => {
-      if (cancelled || !isCurrentWorkspace(expectedWorkspaceEpoch)) return
-      setCalendarDays(counts)
+      action: 'getEntriesForRange',
+      from: calendarRangeFrom,
+      to: calendarRangeTo,
+      filter: {
+        query: calendarFilterQuery,
+        from: calendarFilterFrom,
+        to: calendarFilterTo,
+        categoryId: calendarFilterCategoryId,
+        tag: calendarFilterTag,
+      },
+    }).then((data) => {
+      if (!isCurrentWorkspace(expectedWorkspaceEpoch)) return
+      setCalendarQuery({ status: 'ready', key, data })
     }).catch((loadError: unknown) => {
-      if (cancelled || !isCurrentWorkspace(expectedWorkspaceEpoch)) return
-      setCalendarDays([])
-      setCalendarError(toErrorMessage(loadError))
-      handleRequestError(loadError)
-    }).finally(() => {
-      if (!cancelled && isCurrentWorkspace(expectedWorkspaceEpoch)) setIsCalendarLoading(false)
+      if (!isCurrentWorkspace(expectedWorkspaceEpoch)) return
+      if (loadError instanceof AuthenticationError) handleRequestError(loadError)
+      else setCalendarQuery({ status: 'error', key, message: toErrorMessage(loadError) })
     })
+  }, [
+    calendarFilterCategoryId,
+    calendarFilterFrom,
+    calendarFilterQuery,
+    calendarFilterTag,
+    calendarFilterTo,
+    calendarQueryKey,
+    calendarRangeFrom,
+    calendarRangeTo,
+    handleRequestError,
+    isCurrentWorkspace,
+    journalClient,
+    page,
+    status,
+  ])
 
-    return () => {
-      cancelled = true
-    }
-  }, [calendarMonth, filter, handleRequestError, isCurrentWorkspace, journalClient, page, revision, status])
+  const selectedDateQueryKey = selectedDate ? JSON.stringify({
+    date: selectedDate,
+    query: calendarFilterQuery,
+    filterFrom: calendarFilterFrom,
+    filterTo: calendarFilterTo,
+    categoryId: calendarFilterCategoryId,
+    tag: calendarFilterTag,
+    revision,
+    reload: selectedDateReloadToken,
+  }) : ''
 
   useEffect(() => {
     if (status !== 'ready' || page !== 'calendar' || !selectedDate) return
 
-    let cancelled = false
     const expectedWorkspaceEpoch = workspaceEpoch.current
-    setIsCalendarLoading(true)
-    setCalendarError(undefined)
-    void journalClient.run<Entry[]>({
-      action: 'getEntriesForDate',
-      date: selectedDate,
-      filter: toFilterCriteria(filter),
-    }).then((dateEntries) => {
-      if (cancelled || !isCurrentWorkspace(expectedWorkspaceEpoch)) return
-      setSelectedDateEntries(dateEntries)
+    const date = selectedDate
+    const key = selectedDateQueryKey
+    setSelectedDateQuery({ status: 'loading', key })
+    void journalClient.run<DailyEntries[]>({
+      action: 'getEntriesForRange',
+      from: date,
+      to: date,
+      filter: {
+        query: calendarFilterQuery,
+        from: calendarFilterFrom,
+        to: calendarFilterTo,
+        categoryId: calendarFilterCategoryId,
+        tag: calendarFilterTag,
+      },
+    }).then((days) => {
+      if (!isCurrentWorkspace(expectedWorkspaceEpoch)) return
+      const entries = days.find((day) => day.date === date)?.entries ?? []
+      setSelectedDateQuery({ status: 'ready', key, data: entries })
     }).catch((loadError: unknown) => {
-      if (cancelled || !isCurrentWorkspace(expectedWorkspaceEpoch)) return
-      setSelectedDateEntries([])
-      setCalendarError(toErrorMessage(loadError))
-      handleRequestError(loadError)
-    }).finally(() => {
-      if (!cancelled && isCurrentWorkspace(expectedWorkspaceEpoch)) setIsCalendarLoading(false)
+      if (!isCurrentWorkspace(expectedWorkspaceEpoch)) return
+      if (loadError instanceof AuthenticationError) handleRequestError(loadError)
+      else setSelectedDateQuery({ status: 'error', key, message: toErrorMessage(loadError) })
     })
-
-    return () => {
-      cancelled = true
-    }
-  }, [filter, handleRequestError, isCurrentWorkspace, journalClient, page, revision, selectedDate, status])
+  }, [
+    calendarFilterCategoryId,
+    calendarFilterFrom,
+    calendarFilterQuery,
+    calendarFilterTag,
+    calendarFilterTo,
+    handleRequestError,
+    isCurrentWorkspace,
+    journalClient,
+    page,
+    selectedDate,
+    selectedDateQueryKey,
+    status,
+  ])
 
   useEffect(() => {
     if (status === 'ready') {
@@ -450,9 +540,17 @@ export function App({ client }: AppProps) {
 
   const navigate = (nextPage: Page) => {
     if (nextPage === 'timeline' || nextPage === 'calendar') saveViewPreference(nextPage)
+    if (nextPage === 'timeline' && page !== 'timeline') {
+      void refreshEntries()
+    }
+    if (nextPage === 'calendar' && page !== 'calendar') {
+      setCalendarAnchorDate(clampCalendarAnchorDate(calendarMode, calendarToday))
+    }
     entryReturnScrollPositionRef.current = null
     dateSelectionReturnScrollPositionRef.current = null
     setSelectedDate(undefined)
+    setSelectedDateQuery({ status: 'idle' })
+    setSelectedDateReloadToken(0)
     setSelectedEntry(undefined)
     setPage(nextPage)
   }
@@ -473,7 +571,6 @@ export function App({ client }: AppProps) {
   const handleDeleteEntry = async (id: string) => {
     await deleteEntry(id)
     setSelectedEntry((current) => current?.id === id ? undefined : current)
-    setSelectedDateEntries((current) => current.filter((entry) => entry.id !== id))
   }
 
   const handleSelectDate = (date: string) => {
@@ -481,9 +578,29 @@ export function App({ client }: AppProps) {
       dateSelectionReturnScrollPositionRef.current = window.scrollY
       window.scrollTo(0, 0)
     }
-    setCalendarError(undefined)
-    setSelectedDateEntries([])
+    setSelectedDateQuery({ status: 'idle' })
+    setSelectedDateReloadToken(0)
     setSelectedDate(date)
+  }
+
+  const handleCalendarModeChange = (mode: CalendarMode) => {
+    saveCalendarModePreference(mode)
+    setCalendarMode(mode)
+    setCalendarAnchorDate((date) => date ? clampCalendarAnchorDate(mode, date) : date)
+  }
+
+  const handleCalendarFocusDate = (date: string) => {
+    setCalendarAnchorDate(clampCalendarAnchorDate(calendarMode, date))
+  }
+
+  const handleMoveCalendarPeriod = (direction: -1 | 1) => {
+    setCalendarAnchorDate((date) => (
+      date ? shiftCalendarAnchorDate(calendarMode, date, direction) : date
+    ))
+  }
+
+  const handleCalendarToday = () => {
+    setCalendarAnchorDate(clampCalendarAnchorDate(calendarMode, calendarToday))
   }
 
   const handleExport = async (scope: 'filtered' | 'all') => {
@@ -522,6 +639,46 @@ export function App({ client }: AppProps) {
     )
   }
 
+  const calendarContentKey = calendarRange ? JSON.stringify({
+    from: calendarRange.from,
+    to: calendarRange.to,
+    query: calendarFilterQuery,
+    filterFrom: calendarFilterFrom,
+    filterTo: calendarFilterTo,
+    categoryId: calendarFilterCategoryId,
+    tag: calendarFilterTag,
+  }) : ''
+  const visibleCalendarDays = calendarQuery.status === 'ready' && calendarQuery.key === calendarQueryKey
+    ? calendarQuery.data
+    : []
+  const calendarEntryCount = calendarQuery.status === 'ready' && calendarQuery.key === calendarQueryKey
+    ? visibleCalendarDays.reduce((total, day) => total + day.entries.length, 0)
+    : null
+  const calendarQueryMatches = calendarQuery.status !== 'idle' && calendarQuery.key === calendarQueryKey
+  const isCalendarLoading = Boolean(calendarQueryKey)
+    && (!calendarQueryMatches || calendarQuery.status === 'loading')
+  const calendarError = calendarQueryMatches && calendarQuery.status === 'error'
+    ? calendarQuery.message
+    : undefined
+  const selectedDateQueryMatches = selectedDateQuery.status !== 'idle'
+    && selectedDateQuery.key === selectedDateQueryKey
+  const visibleSelectedDateEntries = selectedDateQuery.status === 'ready'
+    && selectedDateQuery.key === selectedDateQueryKey
+    ? selectedDateQuery.data
+    : []
+  const isSelectedDateLoading = Boolean(selectedDateQueryKey)
+    && (!selectedDateQueryMatches || selectedDateQuery.status === 'loading')
+  const selectedDateError = selectedDateQueryMatches && selectedDateQuery.status === 'error'
+    ? selectedDateQuery.message
+    : undefined
+  const dayEntries = visibleCalendarDays.find(({ date }) => date === calendarAnchorDate)?.entries ?? []
+  const previousCalendarAnchor = calendarAnchorDate
+    ? shiftCalendarAnchorDate(calendarMode, calendarAnchorDate, -1)
+    : undefined
+  const nextCalendarAnchor = calendarAnchorDate
+    ? shiftCalendarAnchorDate(calendarMode, calendarAnchorDate, 1)
+    : undefined
+
   return (
     <div className="app-shell">
       <DesktopNavigation
@@ -557,7 +714,8 @@ export function App({ client }: AppProps) {
                   <h1>{page === 'timeline' ? zhTW.navigation.timeline : zhTW.navigation.calendar}</h1>
                   <p>{page === 'timeline' ? zhTW.app.timelineDescription : zhTW.app.tagline}</p>
                 </div>
-                {((page === 'timeline' && isLoadingEntries) || (page === 'calendar' && isCalendarLoading)) && (
+                {((page === 'timeline' && isLoadingEntries)
+                  || (page === 'calendar' && !calendarAnchorDate)) && (
                   <p className="loading-note search-loading-note" role="status">
                     <Icon className="loading-note-spinner">progress_activity</Icon>
                     <span>{zhTW.filters.searching}</span>
@@ -605,42 +763,102 @@ export function App({ client }: AppProps) {
             />
           )}
 
-          {page === 'calendar' && !selectedDate && (
-            <>
-              {calendarError && <p className="form-error" role="alert">{calendarError}</p>}
-              <CalendarView
-                month={calendarMonth}
-                days={calendarDays}
-                categories={categories}
-                timezone={journalTimezone}
-                onMonthChange={setCalendarMonth}
-                onSelectDate={handleSelectDate}
-                onOpenEntry={handleOpenEntry}
-              />
-            </>
+          {page === 'calendar' && !selectedDate && calendarAnchorDate && (
+            <CalendarFrame
+              mode={calendarMode}
+              anchorDate={calendarAnchorDate}
+              entryCount={calendarEntryCount}
+              isLoading={isCalendarLoading}
+              error={calendarError}
+              canMovePrevious={previousCalendarAnchor !== calendarAnchorDate}
+              canMoveNext={nextCalendarAnchor !== calendarAnchorDate}
+              onModeChange={handleCalendarModeChange}
+              onMovePeriod={handleMoveCalendarPeriod}
+              onToday={handleCalendarToday}
+              onRetry={() => setCalendarReloadToken((value) => value + 1)}
+            >
+              {calendarMode === 'day' && (
+                <CalendarDayView
+                  date={calendarAnchorDate}
+                  today={calendarToday}
+                  entries={dayEntries}
+                  categories={categories}
+                  timezone={journalTimezone}
+                  onOpenEntry={handleOpenEntry}
+                  onEditEntry={(entry) => setEditingEntry(entry)}
+                  onDeleteEntry={handleDeleteEntry}
+                  onCreateEntry={(_date) => setEditingEntry(null)}
+                />
+              )}
+              {calendarMode === 'week' && (
+                <CalendarWeekView
+                  anchorDate={calendarAnchorDate}
+                  today={calendarToday}
+                  days={visibleCalendarDays}
+                  categories={categories}
+                  expansionResetKey={calendarContentKey}
+                  onFocusDate={handleCalendarFocusDate}
+                  onOpenEntry={handleOpenEntry}
+                  onCreateEntry={(_date) => setEditingEntry(null)}
+                />
+              )}
+              {calendarMode === 'month' && (
+                <CalendarMonthView
+                  anchorDate={calendarAnchorDate}
+                  today={calendarToday}
+                  days={visibleCalendarDays}
+                  categories={categories}
+                  onFocusDate={handleCalendarFocusDate}
+                  onSelectDate={handleSelectDate}
+                  onOpenEntry={handleOpenEntry}
+                />
+              )}
+            </CalendarFrame>
           )}
 
           {page === 'calendar' && selectedDate && (
             <section className="calendar-selection">
               <header className="calendar-selection__header">
-                <button className="button button--text" type="button" onClick={() => setSelectedDate(undefined)}>
+                <button
+                  className="button button--text"
+                  type="button"
+                  onClick={() => {
+                    setSelectedDate(undefined)
+                    setSelectedDateQuery({ status: 'idle' })
+                  }}
+                >
                   <Icon>arrow_back</Icon>
                   {zhTW.actions.backToCalendar}
                 </button>
                 <h2>{zhTW.calendar.selectedDateTitle(selectedDate)}</h2>
               </header>
-              <Timeline
-                entries={selectedDateEntries}
-                categories={categories}
-                timezone={journalTimezone}
-                nextCursor={null}
-                isLoading={isCalendarLoading}
-                onLoadMore={() => undefined}
-                onOpen={handleOpenEntry}
-                onEdit={setEditingEntry}
-                onDelete={handleDeleteEntry}
-                onCreate={() => setEditingEntry(null)}
-              />
+              {isSelectedDateLoading ? (
+                <p className="loading-note" role="status">{zhTW.filters.searching}</p>
+              ) : selectedDateError ? (
+                <div className="calendar-frame__error" role="alert">
+                  <p>{selectedDateError}</p>
+                  <button
+                    className="button button--secondary"
+                    type="button"
+                    onClick={() => setSelectedDateReloadToken((value) => value + 1)}
+                  >
+                    {zhTW.actions.reload}
+                  </button>
+                </div>
+              ) : (
+                <Timeline
+                  entries={visibleSelectedDateEntries}
+                  categories={categories}
+                  timezone={journalTimezone}
+                  nextCursor={null}
+                  isLoading={false}
+                  onLoadMore={() => undefined}
+                  onOpen={handleOpenEntry}
+                  onEdit={setEditingEntry}
+                  onDelete={handleDeleteEntry}
+                  onCreate={() => setEditingEntry(null)}
+                />
+              )}
             </section>
           )}
 
