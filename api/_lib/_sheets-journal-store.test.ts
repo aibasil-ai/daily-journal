@@ -238,6 +238,39 @@ describe('SheetsJournalStore', () => {
     expect(client.batchUpdate).toHaveBeenCalledTimes(1)
   })
 
+  test('execute 可查詢日期區間且唯讀請求不寫回 Sheet', async () => {
+    const inside = entryRow('inside')
+    inside[1] = '2026-09-03'
+    inside[3] = '範圍內內容'
+    const outside = entryRow('outside')
+    outside[1] = '2026-09-07'
+    outside[3] = '範圍外內容'
+    const client = fakeClient({
+      metadata: compatibleMetadata(),
+      schemaRanges: compatibleSchemaRanges(),
+      dataRanges: [
+        { range: `${ENTRY_SHEET_NAME}!A2:I`, values: [inside, outside] },
+        { range: `${CATEGORY_SHEET_NAME}!A2:F`, values: [categoryRow('category-a')] },
+      ],
+    })
+    const store = await SheetsJournalStore.load({
+      client,
+      accessToken: 'test-token',
+      spreadsheetId: 'sheet-ref-a',
+    })
+
+    await expect(store.execute({
+      action: 'getEntriesForRange',
+      from: '2026-08-31',
+      to: '2026-09-06',
+      filter: { query: '', from: null, to: null, categoryId: null, tag: null },
+    })).resolves.toEqual({
+      ok: true,
+      data: [{ date: '2026-09-03', entries: [expect.objectContaining({ id: 'inside' })] }],
+    })
+    expect(client.batchUpdate).not.toHaveBeenCalled()
+  })
+
   test('更新記事時以 JSON 寫入 tags 與 links，且不另送值寫入請求', async () => {
     const client = fakeClient({
       metadata: compatibleMetadata(),

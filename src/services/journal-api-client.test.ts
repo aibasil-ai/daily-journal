@@ -31,6 +31,26 @@ describe('JournalApiClient', () => {
     })
   })
 
+  test('原樣送出日期區間查詢並解包每日記事', async () => {
+    const data = [{ date: '2026-09-03', entries: [] }]
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true, data }))
+    vi.stubGlobal('fetch', fetchMock)
+    const request = {
+      action: 'getEntriesForRange' as const,
+      from: '2026-08-31',
+      to: '2026-09-06',
+      filter: { query: '', from: null, to: null, categoryId: null, tag: null },
+    }
+
+    await expect(new JournalApiClient().run(request)).resolves.toEqual(data)
+    expect(fetchMock).toHaveBeenCalledWith('/api/journal', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    })
+  })
+
   test('將 proxy 的 401 與 403 分類為登入失效', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 401 })))
 

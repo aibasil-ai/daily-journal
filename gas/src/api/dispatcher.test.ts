@@ -31,4 +31,16 @@ describe('GAS 分派器相容層', () => {
       message: '請檢查送出的資料格式後再試。',
     })
   })
+
+  it('日期區間 action 自動使用共用分派器', () => {
+    const getEntriesForRange = () => []
+    const service = { getEntriesForRange } as unknown as JournalService
+
+    expect(executeAppRequest({
+      action: 'getEntriesForRange',
+      from: '2026-08-31',
+      to: '2026-09-06',
+      filter: { query: '', from: null, to: null, categoryId: null, tag: null },
+    }, service)).toEqual({ ok: true, data: [] })
+  })
 })

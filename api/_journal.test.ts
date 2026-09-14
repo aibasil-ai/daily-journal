@@ -245,6 +245,25 @@ describe('/api/journal', () => {
     ])
   })
 
+  test('日期區間查詢只走目前 session 的唯讀 store 路徑', async () => {
+    const system = createSystem()
+    const requestBody = {
+      action: 'getEntriesForRange',
+      from: '2026-08-31',
+      to: '2026-09-06',
+      filter: { query: '', from: null, to: null, categoryId: null, tag: null },
+    }
+    system.aliceStore.execute.mockResolvedValueOnce({ ok: true, data: [] })
+
+    const response = await system.handler(journalRequest('session-alice', requestBody))
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ ok: true, data: [] })
+    expect(system.aliceStore.execute).toHaveBeenCalledWith(requestBody)
+    expect(system.rateLimiter.consume).not.toHaveBeenCalled()
+    expect(system.connections.withSheetWriteLease).not.toHaveBeenCalled()
+  })
+
   test('setCategoryColor 走 mutation 的 Origin、限流與 write lease 路徑', async () => {
     const system = createSystem()
     const response = await system.handler(journalRequest('session-alice', {
