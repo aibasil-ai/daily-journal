@@ -74,8 +74,28 @@ export function POST(): Response {
 }
 
 function clientIp(request: Request): string {
+  // 受信任的代理標頭優先順序（依部署環境）
+  // 注意：這些標頭必須由「受信任的反向代理」設定，不可由客戶端直接傳送
+
+  // 1. Vercel 專用標頭（最可信，由 Vercel Edge Network 設定）
+  const vercelIP = request.headers.get('x-vercel-forwarded-for')?.split(',')[0]?.trim()
+  if (vercelIP) return vercelIP
+
+  // 2. Cloudflare 專用標頭（由 Cloudflare 設定）
+  const cfIP = request.headers.get('cf-connecting-ip')?.trim()
+  if (cfIP) return cfIP
+
+  // 3. 標準代理標頭（需確保反向代理正確配置：移除客戶端傳送的同名標頭）
+  // 常見雲端平台：AWS ALB (x-forwarded-for), Google Cloud (x-forwarded-for), Azure (x-forwarded-for)
   const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-  return forwarded || request.headers.get('x-real-ip')?.trim() || 'unknown'
+  if (forwarded) return forwarded
+
+  // 4. Nginx/Apache 常用標頭
+  const realIP = request.headers.get('x-real-ip')?.trim()
+  if (realIP) return realIP
+
+  // 5. 最後回退
+  return 'unknown'
 }
 
 function secureRandomBytes(size: number): Buffer {
