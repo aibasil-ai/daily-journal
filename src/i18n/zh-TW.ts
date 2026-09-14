@@ -143,6 +143,7 @@ export const zhTW = {
     today: '今天',
     reload: '重新載入',
     addEntryForDate: '新增這天的記事',
+    collapse: '收合',
     close: '關閉',
     signOut: '登出',
     saving: '儲存中...',
@@ -210,6 +211,8 @@ export const zhTW = {
     chooseEntryTitle: (date: string) => `${date} 的記事`,
     chooseEntryDescription: '請選擇要閱讀的記事。',
     modes: { day: '日', week: '週', month: '月' },
+    moreCompactEntries: (count: number) => `還有 ${count} 則`,
+    addEntryForSpecificDate: (date: string) => `新增 ${date} 的記事`,
     periodEntryCount: {
       day: (count: number) => `本日共有 ${count} 則記事`,
       week: (count: number) => `本週共有 ${count} 則記事`,
