@@ -44,6 +44,15 @@ describe('CalendarFrame', () => {
     expect(defaultProps.onToday).toHaveBeenCalledOnce()
   })
 
+  it('顯示模式切換並以 live region 播報期間標題', () => {
+    render(<CalendarFrame {...defaultProps}><p>週內容</p></CalendarFrame>)
+
+    expect(screen.getByRole('button', { name: '日' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: '週' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('heading', { name: '2026年8月31日－9月6日' }).parentElement)
+      .toHaveAttribute('aria-live', 'polite')
+  })
+
   it('在互動日期邊界停用無法移動的方向', () => {
     render(
       <CalendarFrame {...defaultProps} canMovePrevious={false} canMoveNext={false}>

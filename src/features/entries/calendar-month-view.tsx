@@ -68,7 +68,7 @@ export function CalendarMonthView({
             >
               <button
                 type="button"
-                className={`calendar-day${count ? ' calendar-day--has-entries' : ''}${cell === anchorDate ? ' calendar-day--focused' : ''}`}
+                className={`calendar-day${count ? ' calendar-day--has-entries' : ''}${cell === today ? ' calendar-day--today' : ''}${cell === anchorDate ? ' calendar-day--focused' : ''}`}
                 aria-label={dateLabel}
                 aria-current={cell === today ? 'date' : undefined}
                 disabled={count === 0}

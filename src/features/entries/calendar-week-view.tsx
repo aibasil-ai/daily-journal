@@ -61,7 +61,12 @@ export function CalendarWeekView({
         ].filter(Boolean)
 
         return (
-          <section className="calendar-week-day" role="region" aria-labelledby={headingId} key={date}>
+          <section
+            className={`calendar-week-day${date === today ? ' calendar-week-day--today' : ''}${date === anchorDate ? ' calendar-week-day--focused' : ''}`}
+            role="region"
+            aria-labelledby={headingId}
+            key={date}
+          >
             <h3 id={headingId} className="calendar-week-day__header">
               <button type="button" onClick={() => onFocusDate(date)}>
                 {headingParts.map((part) => <span key={part}>{part}</span>)}

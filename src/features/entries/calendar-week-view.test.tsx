@@ -49,6 +49,8 @@ test('依週一到週日呈現七個具關聯標題的日期區段', () => {
     expect(document.getElementById(headingId!)).toHaveProperty('tagName', 'H3')
   }
   expect(screen.getByRole('region', { name: /9月3日.*今天.*焦點日期/ })).toBeInTheDocument()
+  expect(screen.getByRole('region', { name: /9月3日.*今天.*焦點日期/ }))
+    .toHaveClass('calendar-week-day--today', 'calendar-week-day--focused')
 })
 
 test('每天先顯示三則並可原地展開、收合及依 resetKey 重設', async () => {

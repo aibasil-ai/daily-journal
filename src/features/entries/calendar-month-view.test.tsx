@@ -77,6 +77,7 @@ it('對今日與焦點日期顯示提示並標記目前日期', () => {
 
   const today = screen.getByRole('button', { name: /2026-08-04.*今天.*焦點日期/ })
   expect(today).toHaveAttribute('aria-current', 'date')
+  expect(today).toHaveClass('calendar-day--today', 'calendar-day--focused')
 })
 
 it('空白日期停用且不標記為有記事', () => {

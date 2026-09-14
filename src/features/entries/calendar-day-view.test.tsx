@@ -42,6 +42,7 @@ test('顯示完整摘要卡並傳遞詳情、編輯、刪除與指定日期新�
   await user.click(screen.getByRole('button', { name: '刪除記事' }))
   await user.click(screen.getByRole('button', { name: '永久刪除' }))
   await user.click(screen.getByRole('button', { name: '新增這天的記事' }))
+  expect(screen.getByRole('button', { name: '新增這天的記事' })).toHaveClass('calendar-day-view__create')
   expect(onOpenEntry).toHaveBeenCalledWith(entry)
   expect(onEditEntry).toHaveBeenCalledWith(entry)
   expect(onDeleteEntry).toHaveBeenCalledWith('entry-1')

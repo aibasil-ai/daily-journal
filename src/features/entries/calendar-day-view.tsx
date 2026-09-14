@@ -52,7 +52,7 @@ export function CalendarDayView({
           )
         })}
       </div>
-      <button className="button button--primary" type="button" onClick={() => onCreateEntry(date)}>
+      <button className="button button--primary calendar-day-view__create" type="button" onClick={() => onCreateEntry(date)}>
         <Icon filled>add</Icon>
         {zhTW.actions.addEntryForDate}
       </button>

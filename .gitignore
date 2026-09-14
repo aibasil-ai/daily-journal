@@ -14,6 +14,7 @@ __pycache__/
 !.env.example
 .clasp.json
 .gitconfig
+.vercel/
 
 # Tooling output
 coverage/
