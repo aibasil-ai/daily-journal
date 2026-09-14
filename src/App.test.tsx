@@ -1050,6 +1050,152 @@ test('日視角編輯與刪除成功後依序刷新目前期間', async () => {
   expect(rangeCount).toBe(3)
 })
 
+test('快速切換期間時不在新標題下顯示舊資料，且只採最後回應', async () => {
+  const octoberRange = deferred<DailyEntries[]>()
+  const novemberRange = deferred<DailyEntries[]>()
+  let rangeCount = 0
+  const run = vi.fn(async (request: ApiRequest) => {
+    if (request.action === 'bootstrap') return bootstrapForCalendar
+    if (request.action === 'listCategories') return categoryManagementForCalendar
+    if (request.action === 'listEntries') return { items: [], nextCursor: null }
+    if (request.action === 'getEntriesForRange') {
+      rangeCount += 1
+      if (rangeCount === 1) {
+        return [{ date: '2026-09-03', entries: [calendarEntry({ title: '舊期間記事' })] }]
+      }
+      return rangeCount === 2 ? octoberRange.promise : novemberRange.promise
+    }
+    throw new Error(`未預期的請求：${request.action}`)
+  })
+  const user = renderCalendarApp(run)
+  await waitFor(() => expect(rangeCount).toBe(1))
+  expect(await screen.findByText('舊期間記事')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: '下一個月' }))
+  await waitFor(() => expect(rangeCount).toBe(2))
+  expect(screen.getByText('查詢中...')).toBeInTheDocument()
+  expect(screen.queryByText('舊期間記事')).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: '下一個月' }))
+  await waitFor(() => expect(rangeCount).toBe(3))
+  await act(async () => {
+    novemberRange.resolve([{
+      date: '2026-11-03',
+      entries: [calendarEntry({ id: 'new', entryDate: '2026-11-03', title: '新期間記事' })],
+    }])
+  })
+  expect(await screen.findByText('新期間記事')).toBeInTheDocument()
+
+  await act(async () => {
+    octoberRange.resolve([{
+      date: '2026-10-03',
+      entries: [calendarEntry({ id: 'stale', entryDate: '2026-10-03', title: '過期回應記事' })],
+    }])
+  })
+  expect(screen.queryByText('過期回應記事')).not.toBeInTheDocument()
+  expect(screen.getByText('新期間記事')).toBeInTheDocument()
+})
+
+test('日曆查詢失敗只顯示局部錯誤，重試保留模式日期與篩選', async () => {
+  let rangeAttempts = 0
+  const rangeRequests: ApiRequest[] = []
+  const run = vi.fn(async (request: ApiRequest) => {
+    if (request.action === 'bootstrap') return bootstrapForCalendar
+    if (request.action === 'listCategories') return categoryManagementForCalendar
+    if (request.action === 'listEntries') return { items: [], nextCursor: null }
+    if (request.action === 'getEntriesForRange') {
+      rangeRequests.push(request)
+      rangeAttempts += 1
+      if (rangeAttempts === 1) throw new Error('日曆暫時無法載入')
+      return []
+    }
+    throw new Error(`未預期的請求：${request.action}`)
+  })
+  const user = renderCalendarApp(run, 'week')
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('日曆暫時無法載入')
+  expect(screen.queryByRole('button', { name: '重新嘗試' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: '重新載入' }))
+  await waitFor(() => expect(rangeAttempts).toBe(2))
+  expect(rangeRequests[1]).toEqual(rangeRequests[0])
+  expect(screen.getByRole('button', { name: '週' })).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('月期間與單日清單使用獨立 loading 與錯誤 state', async () => {
+  const date = '2026-09-03'
+  const selectedRange = deferred<DailyEntries[]>()
+  const run = vi.fn(async (request: ApiRequest) => {
+    if (request.action === 'bootstrap') return bootstrapForCalendar
+    if (request.action === 'listCategories') return categoryManagementForCalendar
+    if (request.action === 'listEntries') return { items: [], nextCursor: null }
+    if (request.action === 'getEntriesForRange' && request.from === request.to) return selectedRange.promise
+    if (request.action === 'getEntriesForRange') {
+      return [{ date, entries: [calendarEntry({ entryDate: date, title: '月格記事' })] }]
+    }
+    throw new Error(`未預期的請求：${request.action}`)
+  })
+  const user = renderCalendarApp(run)
+  await user.click(await screen.findByRole('button', { name: new RegExp(`^${date}，共 1 則記事`) }))
+
+  expect(screen.getByRole('heading', { name: `${date} 的記事` })).toBeInTheDocument()
+  expect(screen.getByText('查詢中...')).toBeInTheDocument()
+  await act(async () => selectedRange.reject(new Error('單日暫時無法載入')))
+  expect(await screen.findByRole('alert')).toHaveTextContent('單日暫時無法載入')
+  expect(screen.queryByText('月格記事')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: '返回日曆' }))
+  expect(await screen.findByText('月格記事')).toBeInTheDocument()
+})
+
+test.each(['success', 'error', 'authentication'] as const)(
+  '快速切換單日清單時忽略過期的 %s 回應',
+  async (staleOutcome) => {
+    const firstDate = '2026-09-02'
+    const secondDate = '2026-09-03'
+    const firstRange = deferred<DailyEntries[]>()
+    const secondRange = deferred<DailyEntries[]>()
+    const firstEntry = calendarEntry({ id: 'first', entryDate: firstDate, title: '第一天舊記事' })
+    const secondEntry = calendarEntry({ id: 'second', entryDate: secondDate, title: '第二天目前記事' })
+    const run = vi.fn(async (request: ApiRequest) => {
+      if (request.action === 'bootstrap') return bootstrapForCalendar
+      if (request.action === 'listCategories') return categoryManagementForCalendar
+      if (request.action === 'getEntriesForRange' && request.from === request.to) {
+        return request.from === firstDate ? firstRange.promise : secondRange.promise
+      }
+      if (request.action === 'getEntriesForRange') {
+        return [
+          { date: firstDate, entries: [firstEntry] },
+          { date: secondDate, entries: [secondEntry] },
+        ]
+      }
+      throw new Error(`未預期的請求：${request.action}`)
+    })
+    const user = renderCalendarApp(run)
+
+    await user.click(await screen.findByRole('button', { name: new RegExp(`^${firstDate}，共 1 則記事`) }))
+    expect(screen.getByText('查詢中...')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '返回日曆' }))
+    await user.click(await screen.findByRole('button', { name: new RegExp(`^${secondDate}，共 1 則記事`) }))
+    await act(async () => secondRange.resolve([{ date: secondDate, entries: [secondEntry] }]))
+    expect(await screen.findByText('第二天目前記事')).toBeInTheDocument()
+
+    await act(async () => {
+      if (staleOutcome === 'success') {
+        firstRange.resolve([{ date: firstDate, entries: [firstEntry] }])
+      } else if (staleOutcome === 'error') {
+        firstRange.reject(new Error('第一天過期錯誤'))
+      } else {
+        firstRange.reject(new AuthenticationError())
+      }
+    })
+
+    expect(screen.getByText('第二天目前記事')).toBeInTheDocument()
+    expect(screen.queryByText('第一天舊記事')).not.toBeInTheDocument()
+    expect(screen.queryByText('第一天過期錯誤')).not.toBeInTheDocument()
+    expect(screen.queryByText('查詢中...')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '使用 Google 帳號登入' })).not.toBeInTheDocument()
+  },
+)
+
 function createClient(
   overrides: Partial<JournalClient> & Partial<ProvisioningClient> & Partial<AccountClient> = {},
 ): JournalClient & ProvisioningClient & AccountClient {
@@ -1078,6 +1224,50 @@ function createClient(
     deleteAccount: vi.fn(async () => undefined),
     ...overrides,
   }
+}
+
+const calendarCategory = {
+  id: 'work',
+  name: '工作',
+  color: null,
+  isActive: true,
+  createdAt: '2026-09-03T00:00:00+08:00',
+  updatedAt: '2026-09-03T00:00:00+08:00',
+}
+
+const bootstrapForCalendar = {
+  timezone: 'Asia/Taipei',
+  categories: [calendarCategory],
+  tagSuggestions: [],
+}
+
+const categoryManagementForCalendar = {
+  categories: [calendarCategory],
+  entryCounts: { work: 0 },
+}
+
+function calendarEntry(overrides: Partial<Entry> = {}): Entry {
+  return {
+    id: 'entry-calendar',
+    entryDate: '2026-09-03',
+    title: '日曆記事',
+    content: '內容',
+    categoryId: 'work',
+    tags: [],
+    links: [],
+    createdAt: '2026-09-03T09:00:00+08:00',
+    updatedAt: '2026-09-03T09:00:00+08:00',
+    ...overrides,
+  }
+}
+
+function renderCalendarApp(run: ReturnType<typeof vi.fn>, mode: 'day' | 'week' | 'month' = 'month') {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-09-02T16:30:00.000Z'))
+  window.localStorage.setItem('daily-journal:view', 'calendar')
+  window.localStorage.setItem('daily-journal:calendar-mode', mode)
+  render(<App client={createClient({ run: run as JournalClient['run'] })} />)
+  return userEvent.setup()
 }
 
 function deferred<T>() {

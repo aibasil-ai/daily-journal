@@ -155,6 +155,8 @@ export function App({ client }: AppProps) {
   const lastSessionRevalidationAt = useRef(0)
   const entryReturnScrollPositionRef = useRef<number | null>(null)
   const dateSelectionReturnScrollPositionRef = useRef<number | null>(null)
+  const calendarRequestId = useRef(0)
+  const selectedDateRequestId = useRef(0)
 
   const clearWorkspaceState = useCallback(() => {
     entryReturnScrollPositionRef.current = null
@@ -315,6 +317,7 @@ export function App({ client }: AppProps) {
       || !calendarRangeTo
     ) return
 
+    const requestId = ++calendarRequestId.current
     const expectedWorkspaceEpoch = workspaceEpoch.current
     const key = calendarQueryKey
     setCalendarQuery({ status: 'loading', key })
@@ -330,13 +333,26 @@ export function App({ client }: AppProps) {
         tag: calendarFilterTag,
       },
     }).then((data) => {
-      if (!isCurrentWorkspace(expectedWorkspaceEpoch)) return
-      setCalendarQuery({ status: 'ready', key, data })
+      if (requestId !== calendarRequestId.current || !isCurrentWorkspace(expectedWorkspaceEpoch)) return
+      setCalendarQuery((current) => {
+        if (current.status === 'idle' || current.key !== key) return current
+        return { status: 'ready', key, data }
+      })
     }).catch((loadError: unknown) => {
-      if (!isCurrentWorkspace(expectedWorkspaceEpoch)) return
-      if (loadError instanceof AuthenticationError) handleRequestError(loadError)
-      else setCalendarQuery({ status: 'error', key, message: toErrorMessage(loadError) })
+      if (requestId !== calendarRequestId.current || !isCurrentWorkspace(expectedWorkspaceEpoch)) return
+      if (loadError instanceof AuthenticationError) {
+        handleRequestError(loadError)
+        return
+      }
+      setCalendarQuery((current) => {
+        if (current.status === 'idle' || current.key !== key) return current
+        return { status: 'error', key, message: toErrorMessage(loadError) }
+      })
     })
+
+    return () => {
+      if (calendarRequestId.current === requestId) calendarRequestId.current += 1
+    }
   }, [
     calendarFilterCategoryId,
     calendarFilterFrom,
@@ -367,6 +383,7 @@ export function App({ client }: AppProps) {
   useEffect(() => {
     if (status !== 'ready' || page !== 'calendar' || !selectedDate) return
 
+    const requestId = ++selectedDateRequestId.current
     const expectedWorkspaceEpoch = workspaceEpoch.current
     const date = selectedDate
     const key = selectedDateQueryKey
@@ -383,14 +400,27 @@ export function App({ client }: AppProps) {
         tag: calendarFilterTag,
       },
     }).then((days) => {
-      if (!isCurrentWorkspace(expectedWorkspaceEpoch)) return
+      if (requestId !== selectedDateRequestId.current || !isCurrentWorkspace(expectedWorkspaceEpoch)) return
       const entries = days.find((day) => day.date === date)?.entries ?? []
-      setSelectedDateQuery({ status: 'ready', key, data: entries })
+      setSelectedDateQuery((current) => {
+        if (current.status === 'idle' || current.key !== key) return current
+        return { status: 'ready', key, data: entries }
+      })
     }).catch((loadError: unknown) => {
-      if (!isCurrentWorkspace(expectedWorkspaceEpoch)) return
-      if (loadError instanceof AuthenticationError) handleRequestError(loadError)
-      else setSelectedDateQuery({ status: 'error', key, message: toErrorMessage(loadError) })
+      if (requestId !== selectedDateRequestId.current || !isCurrentWorkspace(expectedWorkspaceEpoch)) return
+      if (loadError instanceof AuthenticationError) {
+        handleRequestError(loadError)
+        return
+      }
+      setSelectedDateQuery((current) => {
+        if (current.status === 'idle' || current.key !== key) return current
+        return { status: 'error', key, message: toErrorMessage(loadError) }
+      })
     })
+
+    return () => {
+      if (selectedDateRequestId.current === requestId) selectedDateRequestId.current += 1
+    }
   }, [
     calendarFilterCategoryId,
     calendarFilterFrom,
