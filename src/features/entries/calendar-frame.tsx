@@ -41,6 +41,7 @@ export function CalendarFrame({
   children,
 }: CalendarFrameProps) {
   const [previousLabel, nextLabel] = navigationLabels[mode]
+  const showContentLoading = isLoading && mode === 'month'
 
   return (
     <section className="calendar-frame" aria-label={zhTW.navigation.calendar}>
@@ -83,7 +84,7 @@ export function CalendarFrame({
         aria-label={zhTW.accessibility.calendarContent}
         aria-busy={isLoading}
       >
-        {isLoading ? (
+        {showContentLoading ? (
           <p className="loading-note" role="status">{zhTW.filters.searching}</p>
         ) : error ? (
           <div className="calendar-frame__error" role="alert">

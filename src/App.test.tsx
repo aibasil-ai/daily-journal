@@ -1240,6 +1240,29 @@ test('日與週視角新增預填指定日期，全域新增仍預填今天', as
   expect(screen.getByLabelText('記事日期')).toHaveValue('2026-09-03')
 })
 
+test('日與週視角查詢中狀態顯示於頁面頂部且不遮蔽內容', async () => {
+  const delayedRange = deferred<DailyEntries[]>()
+  const run = vi.fn(async (request: ApiRequest) => {
+    if (request.action === 'bootstrap') return bootstrapForCalendar
+    if (request.action === 'listCategories') return categoryManagementForCalendar
+    if (request.action === 'listEntries') return { items: [], nextCursor: null }
+    if (request.action === 'getEntriesForRange') return delayedRange.promise
+    throw new Error(`未預期的請求：${request.action}`)
+  })
+
+  renderCalendarApp(run, 'day')
+  await screen.findByRole('heading', { name: '2026年9月3日 星期四' })
+  const topLoading = await screen.findByRole('status')
+  expect(topLoading).toHaveClass('search-loading-note')
+  expect(topLoading).toHaveTextContent('查詢中...')
+  expect(screen.getByRole('button', { name: '新增這天的記事' })).toBeInTheDocument()
+  expect(screen.getByRole('region', { name: '日曆內容' })).toHaveAttribute('aria-busy', 'true')
+
+  await act(async () => delayedRange.resolve([]))
+  await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())
+  expect(screen.getByRole('region', { name: '日曆內容' })).toHaveAttribute('aria-busy', 'false')
+})
+
 test('mutation 後依序等待目前單日與月期間 query 才還原兩層捲動', async () => {
   const date = '2026-09-03'
   const entry = calendarEntry({ id: 'scroll-delete', entryDate: date, title: '兩層捲動記事' })

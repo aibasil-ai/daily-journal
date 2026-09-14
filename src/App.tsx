@@ -765,7 +765,7 @@ export function App({ client }: AppProps) {
                   <p>{page === 'timeline' ? zhTW.app.timelineDescription : zhTW.app.tagline}</p>
                 </div>
                 {((page === 'timeline' && isLoadingEntries)
-                  || (page === 'calendar' && !calendarAnchorDate)) && (
+                  || (page === 'calendar' && (!calendarAnchorDate || (!selectedDate && isCalendarLoading && (calendarMode === 'day' || calendarMode === 'week'))))) && (
                   <p className="loading-note search-loading-note" role="status">
                     <Icon className="loading-note-spinner">progress_activity</Icon>
                     <span>{zhTW.filters.searching}</span>
