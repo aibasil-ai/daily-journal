@@ -608,7 +608,7 @@ test('更換資料表期間忽略舊月曆與日期請求的回應及登入失�
   await waitFor(() => expect(monthlyRequestCount).toBe(1))
   await user.click(screen.getByRole('button', { name: '下一個月' }))
   await waitFor(() => expect(monthlyRequestCount).toBe(2))
-  await user.click(await screen.findByRole('button', { name: `${selectableDate}，共 1 則記事` }))
+  await user.click(await screen.findByRole('button', { name: new RegExp(`${selectableDate}，共 1 則記事.*焦點日期`) }))
   await waitFor(() => expect(run).toHaveBeenCalledWith(expect.objectContaining({ action: 'getEntriesForDate', date: selectableDate })))
 
   await user.click(screen.getAllByRole('button', { name: '資料空間設定' })[0])
