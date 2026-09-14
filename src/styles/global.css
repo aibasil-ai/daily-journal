@@ -1753,6 +1753,13 @@ p {
   border-bottom: 1px solid var(--outline-variant);
 }
 
+.calendar-frame__period {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+}
+
 .calendar-frame__period h2 {
   margin: 0;
   font-size: clamp(1.25rem, 3vw, 1.75rem);
@@ -1760,9 +1767,10 @@ p {
 }
 
 .calendar-frame__period p {
-  margin: 0.25rem 0 0;
+  margin: 0;
   color: var(--ink-muted);
   font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .calendar-frame__mode-toggle,
