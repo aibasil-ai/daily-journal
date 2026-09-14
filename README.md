@@ -6,7 +6,7 @@
 
 - 首次登入可建立新的「每日記事」Sheet，或連結自己擁有且符合 schema 的既有 Sheet。
 - 每個 Google 帳號同時只有一份作用中的日記 Sheet；更換時會封存舊連線，不會複製、搬移、清空或刪除舊 Sheet 的資料。
-- 支援記事、分類、搜尋、月曆與 CSV 匯出，所有 API 都依伺服器驗證的 session 選擇資料來源。
+- 支援記事、分類、搜尋、日／週／月日曆與 CSV 匯出，所有 API 都依伺服器驗證的 session 選擇資料來源。
 - 中央 Cloud Firestore Native mode 僅保存帳號對應、加密 refresh token、Sheet 連線、工作階段與短效設定流程資料；不保存日記內容、分類、標籤、連結或 CSV。
 - 使用者 A 與 B 的 session、OAuth 憑證及 Sheet 連線完全分離；A 無法透過 API 讀取、修改、刪除或匯出 B 的資料。
 
@@ -32,14 +32,16 @@ Cloud Firestore Native mode
 
 ## 本機開發
 
-先決條件：Node.js 24.x（與 `package.json` 的 `engines` 一致）、npm，以及 Python 3（虛擬環境若需要請以 `python -m venv .venv` 建立，且不納入版本控制）。
+先決條件：Node.js 24.x（與 `package.json` 的 `engines` 一致）、npm、Vercel CLI，以及 Python 3（虛擬環境若需要請以 `python -m venv .venv` 建立，且不納入版本控制）。
+
+`npm run dev` 只啟動無 `/api` proxy 的 Vite 前端，適合純前端工作；需要登入及 serverless API 的完整本機流程請改用 `vercel dev`：
 
 ```bash
 npm install
-npm run dev
+vercel dev --listen 127.0.0.1:3000
 ```
 
-建立未追蹤的 `.env`，填入下列 10 個 server-only 環境變數：
+建立未追蹤的 `.env.local`，填入下列 10 個 server-only 環境變數：
 
 ```ini
 GOOGLE_CLIENT_ID=
@@ -60,7 +62,7 @@ CRON_SECRET=
 node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
 ```
 
-詳細的 Google Cloud、Firestore、Vercel、OAuth 驗證與遷移程序請見[部署指南](docs/deployment.md)。
+詳細的 Google Cloud、Firestore、Vercel、OAuth 驗證與遷移程序請見[部署指南](docs/deployment.md)。本機開發只使用隔離的 Development env 與測試帳號，不得下載 Production env、使用 Production OAuth client 或真實日記資料。
 
 ## OAuth 與安全
 

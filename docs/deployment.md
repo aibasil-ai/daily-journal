@@ -265,7 +265,7 @@ cleanup 只會實體刪除已過期的 Firestore 文件。登入、session、OAu
 
 2. 用測試帳號 A 登入、建立 Sheet、建立分類與一筆記事。
 3. 登出後，用測試帳號 B 登入並建立另一份 Sheet。
-4. 確認 B 看不到 A 的記事、分類、搜尋結果、月曆、CSV 或 Sheet 名稱；再切回 A 確認 A 的資料仍完整。
+4. 確認 B 看不到 A 的記事、分類、搜尋結果、日曆、CSV 或 Sheet 名稱；再切回 A 確認 A 的資料仍完整。
 5. 到 Vercel Logs 確認沒有下列類型的設定錯誤：
 
    ```text
