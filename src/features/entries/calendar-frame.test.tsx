@@ -64,24 +64,24 @@ describe('CalendarFrame', () => {
     expect(screen.getByRole('button', { name: '下一週' })).toBeDisabled()
   })
 
-  it('在月視角載入與錯誤狀態不顯示過期 children', async () => {
-    const { rerender } = render(
-      <CalendarFrame {...defaultProps} mode="month" entryCount={null} isLoading><p>過期內容</p></CalendarFrame>,
-    )
-    expect(screen.getByRole('region', { name: '日曆內容' })).toHaveAttribute('aria-busy', 'true')
-    expect(screen.getByText('查詢中...')).toBeInTheDocument()
-    expect(screen.queryByText('過期內容')).not.toBeInTheDocument()
-
-    rerender(
-      <CalendarFrame {...defaultProps} mode="month" entryCount={null} error="載入失敗"><p>過期內容</p></CalendarFrame>,
+  it('在錯誤狀態顯示重試按鈕', async () => {
+    render(
+      <CalendarFrame {...defaultProps} entryCount={null} error="載入失敗"><p>過期內容</p></CalendarFrame>,
     )
     expect(screen.getByRole('alert')).toHaveTextContent('載入失敗')
     await userEvent.click(screen.getByRole('button', { name: '重新載入' }))
     expect(defaultProps.onRetry).toHaveBeenCalledOnce()
   })
 
-  it('在日與週視角載入狀態仍保留結構供上方查詢狀態呈現', () => {
+  it('在各視角（日、週、月）載入狀態仍保留結構供上方查詢狀態呈現', () => {
     const { rerender } = render(
+      <CalendarFrame {...defaultProps} mode="month" isLoading><p>月結構</p></CalendarFrame>,
+    )
+    expect(screen.getByRole('region', { name: '日曆內容' })).toHaveAttribute('aria-busy', 'true')
+    expect(screen.queryByText('查詢中...')).not.toBeInTheDocument()
+    expect(screen.getByText('月結構')).toBeInTheDocument()
+
+    rerender(
       <CalendarFrame {...defaultProps} mode="week" isLoading><p>週結構</p></CalendarFrame>,
     )
     expect(screen.getByRole('region', { name: '日曆內容' })).toHaveAttribute('aria-busy', 'true')

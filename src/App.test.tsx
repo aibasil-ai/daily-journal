@@ -1240,7 +1240,7 @@ test('日與週視角新增預填指定日期，全域新增仍預填今天', as
   expect(screen.getByLabelText('記事日期')).toHaveValue('2026-09-03')
 })
 
-test('日與週視角查詢中狀態顯示於頁面頂部且不遮蔽內容', async () => {
+test('日曆各視角（日、週、月）查詢中狀態顯示於頁面頂部且不遮蔽內容', async () => {
   const delayedRange = deferred<DailyEntries[]>()
   const run = vi.fn(async (request: ApiRequest) => {
     if (request.action === 'bootstrap') return bootstrapForCalendar
@@ -1250,12 +1250,12 @@ test('日與週視角查詢中狀態顯示於頁面頂部且不遮蔽內容', as
     throw new Error(`未預期的請求：${request.action}`)
   })
 
-  renderCalendarApp(run, 'day')
-  await screen.findByRole('heading', { name: '2026年9月3日 星期四' })
+  renderCalendarApp(run, 'month')
+  await screen.findByRole('heading', { name: '2026年9月' })
   const topLoading = await screen.findByRole('status')
   expect(topLoading).toHaveClass('search-loading-note')
   expect(topLoading).toHaveTextContent('查詢中...')
-  expect(screen.getByRole('button', { name: '新增這天的記事' })).toBeInTheDocument()
+  expect(screen.getByRole('grid', { name: '2026年9月' })).toBeInTheDocument()
   expect(screen.getByRole('region', { name: '日曆內容' })).toHaveAttribute('aria-busy', 'true')
 
   await act(async () => delayedRange.resolve([]))
