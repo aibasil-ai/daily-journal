@@ -21,6 +21,7 @@ import {
   assertEntryFilterCriteria,
   assertValidEntry,
   assertValidEntryDate,
+  assertValidEntryRange,
   normalizeEntryInput,
 } from './validation.js'
 import type { JournalStore } from './store.js'
@@ -274,10 +275,16 @@ export class JournalService {
     }
   }
 
+  getEntriesForRange(from: string, to: string, filter: EntryFilterCriteria): DailyEntries[] {
+    assertValidEntryRange(from, to)
+    assertEntryFilterCriteria(filter)
+    return this.groupEntriesForRange(from, to, filter)
+  }
+
   getEntriesForDate(date: string, filter: EntryFilterCriteria): Entry[] {
     assertValidEntryDate(date)
     assertEntryFilterCriteria(filter)
-    return this.filteredEntries(filter).filter((entry) => entry.entryDate === date)
+    return this.groupEntriesForRange(date, date, filter)[0]?.entries ?? []
   }
 
   getMonthlyEntryCounts(year: number, month: number, filter: EntryFilterCriteria): DailyEntryCount[] {
@@ -296,18 +303,10 @@ export class JournalService {
       throw new JournalError('VALIDATION_ERROR', '月份必須介於 1 到 12。')
     }
 
-    const prefix = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-`
-    const entriesByDate = new Map<string, Entry[]>()
-    for (const entry of this.filteredEntries(filter)) {
-      if (!entry.entryDate.startsWith(prefix)) continue
-      const entries = entriesByDate.get(entry.entryDate) ?? []
-      entries.push(entry)
-      entriesByDate.set(entry.entryDate, entries)
-    }
-
-    return [...entriesByDate.entries()]
-      .map(([date, entries]) => ({ date, entries }))
-      .sort((left, right) => left.date.localeCompare(right.date))
+    const prefix = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}`
+    const from = `${prefix}-01`
+    const to = `${prefix}-${String(daysInMonth(year, month)).padStart(2, '0')}`
+    return this.groupEntriesForRange(from, to, filter)
   }
 
   listTagSuggestions(): string[] {
@@ -358,6 +357,20 @@ export class JournalService {
     )
   }
 
+  private groupEntriesForRange(from: string, to: string, filter: EntryFilterCriteria): DailyEntries[] {
+    const entriesByDate = new Map<string, Entry[]>()
+    for (const entry of this.filteredEntries(filter)) {
+      if (entry.entryDate < from || entry.entryDate > to) continue
+      const entries = entriesByDate.get(entry.entryDate) ?? []
+      entries.push(entry)
+      entriesByDate.set(entry.entryDate, entries)
+    }
+
+    return [...entriesByDate.entries()]
+      .map(([date, entries]) => ({ date, entries }))
+      .sort((left, right) => left.date.localeCompare(right.date))
+  }
+
   private filteredEntries(filter: EntryFilterCriteria): Entry[] {
     return [...this.store.listEntries()]
       .filter((entry) => this.matchesFilter(entry, filter))
@@ -391,4 +404,12 @@ function compareEntriesNewestFirst(left: Entry, right: Entry): number {
 
   // 同一時間建立時以 ID 固定排序，讓 cursor 分頁不會遺漏或重複資料。
   return right.id.localeCompare(left.id)
+}
+
+function daysInMonth(year: number, month: number): number {
+  if (month === 2) {
+    const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+    return leapYear ? 29 : 28
+  }
+  return [4, 6, 9, 11].includes(month) ? 30 : 31
 }

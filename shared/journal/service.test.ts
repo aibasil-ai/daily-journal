@@ -314,6 +314,57 @@ describe('JournalService', () => {
     ]))
     expect(() => service.getMonthlyEntryCounts(2026, 13, emptyCriteria)).toThrow('月份必須介於 1 到 12。')
   })
+
+  it('以含頭含尾區間分組，先套篩選再依日期升冪回傳', () => {
+    const service = createService({
+      categories: [category({ id: 'work' }), category({ id: 'life', name: '生活' })],
+      entries: [
+        entry({ id: 'outside', entryDate: '2026-08-30', content: '專案', tags: ['會議'] }),
+        entry({ id: 'older', entryDate: '2026-09-01', content: '專案', tags: ['會議'], createdAt: '2026-09-01T09:00:00+08:00' }),
+        entry({ id: 'newer', entryDate: '2026-09-01', content: '專案', tags: ['會議'], createdAt: '2026-09-01T15:00:00+08:00' }),
+        entry({ id: 'wrong-tag', entryDate: '2026-09-02', content: '專案', tags: ['閱讀'] }),
+        entry({ id: 'last', entryDate: '2026-09-06', content: '專案', tags: ['會議'] }),
+      ],
+    })
+
+    expect(service.getEntriesForRange('2026-08-31', '2026-09-06', {
+      ...emptyCriteria,
+      query: '專案',
+      from: '2026-09-01',
+      categoryId: 'work',
+      tag: '會議',
+    })).toEqual([
+      { date: '2026-09-01', entries: [expect.objectContaining({ id: 'newer' }), expect.objectContaining({ id: 'older' })] },
+      { date: '2026-09-06', entries: [expect.objectContaining({ id: 'last' })] },
+    ])
+  })
+
+  it('區間查詢回傳稀疏空結果並限制最多 42 天', () => {
+    const service = createService({ categories: [category()] })
+
+    expect(service.getEntriesForRange('2026-01-01', '2026-02-11', emptyCriteria)).toEqual([])
+    expect(() => service.getEntriesForRange('2026-01-01', '2026-02-12', emptyCriteria))
+      .toThrow('一次最多查詢 42 天。')
+  })
+
+  it('舊日期與月份方法保留回應形狀及驗證訊息', () => {
+    const service = createService({
+      categories: [category()],
+      entries: [entry({ id: 'leap', entryDate: '2024-02-29' })],
+    })
+
+    expect(service.getEntriesForDate('2024-02-29', emptyCriteria)).toEqual([
+      expect.objectContaining({ id: 'leap' }),
+    ])
+    expect(service.getMonthlyEntries(2024, 2, emptyCriteria)).toEqual([
+      { date: '2024-02-29', entries: [expect.objectContaining({ id: 'leap' })] },
+    ])
+    expect(service.getMonthlyEntryCounts(2024, 2, emptyCriteria)).toEqual([
+      { date: '2024-02-29', count: 1 },
+    ])
+    expect(() => service.getEntriesForDate('2026-02-29', emptyCriteria)).toThrow('請選擇記錄日期。')
+    expect(() => service.getMonthlyEntries(2026, 13, emptyCriteria)).toThrow('月份必須介於 1 到 12。')
+  })
 })
 
 function createService(options: ConstructorParameters<typeof InMemoryJournalStore>[0] = {}): JournalService {

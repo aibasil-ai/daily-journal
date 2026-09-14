@@ -75,6 +75,27 @@ export function assertValidEntryDate(value: string): void {
   }
 }
 
+export const MAX_ENTRY_RANGE_DAYS = 42
+
+export function assertValidEntryRange(from: string, to: string): void {
+  if (!isIsoDate(from)) {
+    throw new JournalError('VALIDATION_ERROR', '查詢起始日期格式錯誤。')
+  }
+  if (!isIsoDate(to)) {
+    throw new JournalError('VALIDATION_ERROR', '查詢結束日期格式錯誤。')
+  }
+  if (from > to) {
+    throw new JournalError('VALIDATION_ERROR', '查詢起始日期不可晚於結束日期。')
+  }
+
+  const fromTime = Date.parse(`${from}T00:00:00.000Z`)
+  const toTime = Date.parse(`${to}T00:00:00.000Z`)
+  const inclusiveDays = Math.round((toTime - fromTime) / 86_400_000) + 1
+  if (inclusiveDays > MAX_ENTRY_RANGE_DAYS) {
+    throw new JournalError('VALIDATION_ERROR', `一次最多查詢 ${MAX_ENTRY_RANGE_DAYS} 天。`)
+  }
+}
+
 export function assertEntryFilterCriteria(filter: EntryFilterCriteria): void {
   if (filter.from && !isIsoDate(filter.from)) {
     throw new JournalError('VALIDATION_ERROR', '起始日期格式錯誤，請重新選擇日期。')
