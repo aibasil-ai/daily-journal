@@ -65,7 +65,7 @@ test('空白日仍可新增指定日期記事', async () => {
     />,
   )
 
-  expect(screen.getByText('這天還沒有符合條件的記事')).toBeInTheDocument()
+  expect(screen.queryByText('這天還沒有符合條件的記事')).not.toBeInTheDocument()
   await userEvent.click(screen.getByRole('button', { name: '新增這天的記事' }))
   expect(onCreateEntry).toHaveBeenCalledWith('2026-09-03')
 })

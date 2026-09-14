@@ -1862,6 +1862,10 @@ p {
   justify-self: center;
 }
 
+.calendar-day-view__status + .calendar-day-view__create {
+  margin: 1.5rem auto;
+}
+
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -2167,6 +2171,10 @@ p {
   background: var(--surface-low);
   color: var(--primary);
   font-weight: 700;
+}
+
+.calendar-week-day__header + .calendar-week-day__create {
+  margin-top: 0.75rem;
 }
 
 .calendar-week-day__expand:hover,
@@ -3649,6 +3657,10 @@ p {
   .calendar-week-day__create {
     width: calc(100% - 1rem);
     margin: 0 0.5rem 0.5rem;
+  }
+
+  .calendar-week-day__header + .calendar-week-day__create {
+    margin-top: 0.5rem;
   }
 
   .app-main:has(.calendar-frame) {

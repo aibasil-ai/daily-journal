@@ -1064,7 +1064,7 @@ test('日視角編輯與刪除成功後依序刷新目前期間', async () => {
 
   await user.click(screen.getByRole('button', { name: '刪除記事' }))
   await user.click(screen.getByRole('button', { name: '永久刪除' }))
-  expect(await screen.findByText('這天還沒有符合條件的記事')).toBeInTheDocument()
+  expect(await screen.findByText('本日共有 0 則記事')).toBeInTheDocument()
   expect(rangeCount).toBe(3)
 })
 
@@ -1316,7 +1316,7 @@ test('日視角新增成功後保留模式與日期並重新查詢目前 range',
     throw new Error(`未預期的請求：${request.action}`)
   })
   const user = renderCalendarApp(run, 'day')
-  await screen.findByText('這天還沒有符合條件的記事')
+  await screen.findByRole('button', { name: '新增這天的記事' })
 
   await user.click(screen.getByRole('button', { name: '後一天' }))
   await screen.findByRole('heading', { name: '2026年9月4日 星期五' })
@@ -1341,7 +1341,7 @@ test('新增失敗時保留表單與指定日期', async () => {
     throw new Error(`未預期的請求：${request.action}`)
   })
   const user = renderCalendarApp(run, 'day')
-  await screen.findByText('這天還沒有符合條件的記事')
+  await screen.findByRole('button', { name: '新增這天的記事' })
   await user.click(screen.getByRole('button', { name: '後一天' }))
   await screen.findByRole('heading', { name: '2026年9月4日 星期五' })
   await user.click(await screen.findByRole('button', { name: '新增這天的記事' }))

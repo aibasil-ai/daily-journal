@@ -72,24 +72,25 @@ export function CalendarWeekView({
                 {headingParts.map((part) => <span key={part}>{part}</span>)}
               </button>
             </h3>
-            <div className="calendar-week-day__entries" id={entriesId}>
-              {entries.length === 0 && <p>{zhTW.calendar.emptyDay}</p>}
-              {visibleEntries.map((entry) => {
-                const category = categoriesById.get(entry.categoryId)
-                return (
-                  <WeekEntryCard
-                    key={entry.id}
-                    entry={entry}
-                    categoryName={category?.name ?? zhTW.detail.category}
-                    categoryColor={category?.color ?? null}
-                    onOpen={() => {
-                      onFocusDate(date)
-                      onOpenEntry(entry)
-                    }}
-                  />
-                )
-              })}
-            </div>
+            {entries.length > 0 && (
+              <div className="calendar-week-day__entries" id={entriesId}>
+                {visibleEntries.map((entry) => {
+                  const category = categoriesById.get(entry.categoryId)
+                  return (
+                    <WeekEntryCard
+                      key={entry.id}
+                      entry={entry}
+                      categoryName={category?.name ?? zhTW.detail.category}
+                      categoryColor={category?.color ?? null}
+                      onOpen={() => {
+                        onFocusDate(date)
+                        onOpenEntry(entry)
+                      }}
+                    />
+                  )
+                })}
+              </div>
+            )}
             {entries.length > VISIBLE_ENTRIES_PER_DAY && (
               <button
                 className="calendar-week-day__expand"

@@ -84,3 +84,9 @@ test('每一天都可新增並先更新焦點日期', async () => {
   expect(props.onFocusDate).toHaveBeenCalledWith('2026-09-01')
   expect(props.onCreateEntry).toHaveBeenCalledWith('2026-09-01')
 })
+
+test('無記事之日期不顯示冗餘提示文字', () => {
+  render(<CalendarWeekView {...props} days={[]} />)
+
+  expect(screen.queryByText('這天還沒有符合條件的記事')).not.toBeInTheDocument()
+})

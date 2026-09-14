@@ -34,24 +34,25 @@ export function CalendarDayView({
         {date === today && <span aria-current="date">{zhTW.calendar.todayIndicator}</span>}
         <span>{zhTW.calendar.anchorDateIndicator}</span>
       </p>
-      <div className="calendar-day-view__entries">
-        {entries.length === 0 && <p className="calendar-day-view__empty">{zhTW.calendar.emptyDay}</p>}
-        {entries.map((entry) => {
-          const category = categoriesById.get(entry.categoryId)
-          return (
-            <EntryCard
-              key={entry.id}
-              entry={entry}
-              categoryName={category?.name ?? zhTW.detail.category}
-              categoryColor={category?.color ?? null}
-              timezone={timezone}
-              onOpen={() => onOpenEntry(entry)}
-              onEdit={() => onEditEntry(entry)}
-              onDelete={() => onDeleteEntry(entry.id)}
-            />
-          )
-        })}
-      </div>
+      {entries.length > 0 && (
+        <div className="calendar-day-view__entries">
+          {entries.map((entry) => {
+            const category = categoriesById.get(entry.categoryId)
+            return (
+              <EntryCard
+                key={entry.id}
+                entry={entry}
+                categoryName={category?.name ?? zhTW.detail.category}
+                categoryColor={category?.color ?? null}
+                timezone={timezone}
+                onOpen={() => onOpenEntry(entry)}
+                onEdit={() => onEditEntry(entry)}
+                onDelete={() => onDeleteEntry(entry.id)}
+              />
+            )
+          })}
+        </div>
+      )}
       <button className="button button--primary calendar-day-view__create" type="button" onClick={() => onCreateEntry(date)}>
         <Icon filled>add</Icon>
         {zhTW.actions.addEntryForDate}
