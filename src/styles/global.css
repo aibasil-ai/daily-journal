@@ -1815,12 +1815,13 @@ p {
   justify-content: space-between;
 }
 
-.calendar-frame__content {
-  min-height: 12rem;
-}
-
 .calendar-frame__content > .loading-note,
 .calendar-frame__error {
+  min-height: 12rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   margin: 0;
   padding: 2rem 1rem;
   text-align: center;
@@ -3640,15 +3641,23 @@ p {
 
   .calendar-week-view {
     grid-template-columns: repeat(7, minmax(0, 1fr));
-    align-items: start;
     gap: 1px;
     padding: 0;
+    overflow: hidden;
+    border-radius: 0 0 0.875rem 0.875rem;
     background: var(--outline-variant);
   }
 
   .calendar-week-day {
+    display: flex;
+    flex-direction: column;
     border: 0;
     border-radius: 0;
+  }
+
+  .calendar-week-day__header button {
+    min-height: 5.25rem;
+    align-content: flex-start;
   }
 
   .calendar-week-day__header button,
@@ -3667,8 +3676,12 @@ p {
     margin: 0 0.5rem 0.5rem;
   }
 
+  .calendar-week-day__create {
+    margin-top: auto;
+  }
+
   .calendar-week-day__header + .calendar-week-day__create {
-    margin-top: 0.5rem;
+    margin-top: auto;
   }
 
   .app-main:has(.calendar-frame) {
