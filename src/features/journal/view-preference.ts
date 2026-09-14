@@ -7,10 +7,18 @@ export function getInitialView(width: number, stored: JournalView | null): Journ
 }
 
 export function readViewPreference(): JournalView | null {
-  const value = window.localStorage.getItem(VIEW_STORAGE_KEY)
-  return value === 'timeline' || value === 'calendar' ? value : null
+  try {
+    const value = window.localStorage.getItem(VIEW_STORAGE_KEY)
+    return value === 'timeline' || value === 'calendar' ? value : null
+  } catch {
+    return null
+  }
 }
 
 export function saveViewPreference(view: JournalView): void {
-  window.localStorage.setItem(VIEW_STORAGE_KEY, view)
+  try {
+    window.localStorage.setItem(VIEW_STORAGE_KEY, view)
+  } catch {
+    // 目前導覽仍應繼續，只有跨重新整理偏好無法保存。
+  }
 }
