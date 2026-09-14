@@ -45,6 +45,15 @@ export function executeJournalRequest(
           data: getService().getEntriesForDate(date, filter),
         }
       }
+      case 'getEntriesForRange': {
+        const from = readString(request, 'from')
+        const to = readString(request, 'to')
+        const filter = parseEntryFilterCriteria(request.filter)
+        return {
+          ok: true,
+          data: getService().getEntriesForRange(from, to, filter),
+        }
+      }
       case 'getMonthlyEntryCounts': {
         const year = readNumber(request, 'year')
         const month = readNumber(request, 'month')
@@ -146,6 +155,7 @@ function isSupportedAction(action: string): action is ApiRequest['action'] {
     || action === 'listCategories'
     || action === 'listEntries'
     || action === 'getEntriesForDate'
+    || action === 'getEntriesForRange'
     || action === 'getMonthlyEntryCounts'
     || action === 'getMonthlyEntries'
     || action === 'saveEntry'

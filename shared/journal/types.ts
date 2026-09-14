@@ -94,6 +94,12 @@ export type ApiRequest =
   | { action: 'listCategories' }
   | { action: 'listEntries'; filter: EntryFilter }
   | { action: 'getEntriesForDate'; date: string; filter: EntryFilterCriteria }
+  | {
+      action: 'getEntriesForRange'
+      from: string
+      to: string
+      filter: EntryFilterCriteria
+    }
   | { action: 'getMonthlyEntryCounts'; year: number; month: number; filter: EntryFilterCriteria }
   | { action: 'getMonthlyEntries'; year: number; month: number; filter: EntryFilterCriteria }
   | { action: 'saveEntry'; entry: EntryInput }

@@ -74,6 +74,30 @@ describe('executeJournalRequest', () => {
     })
   })
 
+  it('分派日期區間查詢並維持唯讀分類', () => {
+    const journalService = service()
+    const getEntriesForRange = vi.spyOn(journalService, 'getEntriesForRange')
+    const filter = { query: '', from: null, to: null, categoryId: null, tag: null }
+    const request = {
+      action: 'getEntriesForRange' as const,
+      from: '2026-08-31',
+      to: '2026-09-06',
+      filter,
+    }
+
+    expect(executeJournalRequest(request, journalService)).toEqual({ ok: true, data: [] })
+    expect(getEntriesForRange).toHaveBeenCalledWith('2026-08-31', '2026-09-06', filter)
+    expect(isJournalMutation(request)).toBe(false)
+  })
+
+  it.each([
+    [{ action: 'getEntriesForRange', to: '2026-09-06', filter: {} }, 'INVALID_REQUEST'],
+    [{ action: 'getEntriesForRange', from: 1, to: '2026-09-06', filter: {} }, 'INVALID_REQUEST'],
+    [{ action: 'getEntriesForRange', from: '2026-09-07', to: '2026-09-06', filter: { query: '', from: null, to: null, categoryId: null, tag: null } }, 'VALIDATION_ERROR'],
+  ])('拒絕畸形日期區間請求', (request, code) => {
+    expect(executeJournalRequest(request, service())).toMatchObject({ ok: false, code })
+  })
+
   it('允許重新啟用停用分類', () => {
     const journalService = service()
     journalService.deactivateCategory('work')
