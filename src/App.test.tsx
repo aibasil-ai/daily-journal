@@ -732,7 +732,7 @@ test('點選記事進入詳情後返回月曆，能恢復原本的滾軸位置',
   await user.click(screen.getByRole('button', { name: '閱讀記事：測試記事' }))
   expect(await screen.findByRole('heading', { level: 1, name: '測試記事' })).toBeInTheDocument()
 
-  await user.click(screen.getByRole('button', { name: '返回月曆' }))
+  await user.click(screen.getByRole('button', { name: '返回日曆' }))
   expect(await screen.findByText('測試記事')).toBeInTheDocument()
 
   expect(scrollToSpy).toHaveBeenCalledWith(0, 350)
@@ -774,13 +774,43 @@ test('點選特定日期查看記事列表後返回月曆，能恢復原本的�
   await user.click(screen.getByRole('button', { name: `${testDate}，共 1 則記事` }))
   expect(await screen.findByRole('heading', { level: 2, name: `${testDate} 的記事` })).toBeInTheDocument()
 
-  // Click "返回月曆" on the date selection view
-  await user.click(screen.getByRole('button', { name: '返回月曆' }))
+  // Click "返回日曆" on the date selection view
+  await user.click(screen.getByRole('button', { name: '返回日曆' }))
   expect(await screen.findByRole('grid', { name: `${year}年${monthNumber}月` })).toBeInTheDocument()
 
   // Verify scroll position was restored to 420
   expect(scrollToSpy).toHaveBeenCalledWith(0, 420)
   scrollToSpy.mockRestore()
+})
+
+test('記事詳情依原主頁顯示返回時間軸或日曆', async () => {
+  const user = userEvent.setup()
+  const entryDate = `${getJournalMonth('Asia/Taipei')}-03`
+  const entry = {
+    id: 'entry-source', entryDate, title: '來源測試', content: '內容', categoryId: 'work',
+    tags: [], links: [], createdAt: `${entryDate}T09:00:00+08:00`, updatedAt: `${entryDate}T09:00:00+08:00`,
+  }
+  const category = {
+    id: 'work', name: '工作', color: null, isActive: true,
+    createdAt: '2026-09-03T00:00:00+08:00', updatedAt: '2026-09-03T00:00:00+08:00',
+  }
+  const run = vi.fn(async (request: ApiRequest) => {
+    if (request.action === 'bootstrap') return { timezone: 'Asia/Taipei', categories: [category], tagSuggestions: [] }
+    if (request.action === 'listCategories') return { categories: [category], entryCounts: { work: 1 } }
+    if (request.action === 'listEntries') return { items: [entry], nextCursor: null }
+    if (request.action === 'getMonthlyEntries') return [{ date: entry.entryDate, entries: [entry] }]
+    throw new Error(`未預期的請求：${request.action}`)
+  })
+  render(<App client={createClient({ run: run as JournalClient['run'] })} />)
+
+  await user.click((await screen.findAllByRole('button', { name: '時間軸' }))[0])
+  await user.click(await screen.findByRole('button', { name: '閱讀記事：來源測試' }))
+  expect(screen.getByRole('button', { name: '返回時間軸' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: '返回時間軸' }))
+
+  await user.click(screen.getAllByRole('button', { name: '月曆' })[0])
+  await user.click(await screen.findByRole('button', { name: '閱讀記事：來源測試' }))
+  expect(screen.getByRole('button', { name: '返回日曆' })).toBeInTheDocument()
 })
 
 function createClient(

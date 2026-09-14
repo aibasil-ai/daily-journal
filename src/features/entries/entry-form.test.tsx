@@ -7,6 +7,15 @@ afterEach(() => {
   cleanup()
 })
 
+const category = {
+  id: 'work',
+  name: '工作',
+  color: null,
+  isActive: true,
+  createdAt: '2026-08-04T00:00:00+08:00',
+  updatedAt: '2026-08-04T00:00:00+08:00',
+}
+
 test('提交含標籤與連結的記事', async () => {
   const user = userEvent.setup()
   const onSave = vi.fn().mockResolvedValue(undefined)
@@ -62,4 +71,27 @@ test('儲存記事時按鈕顯示「儲存中...」並處於停用狀態', async
 
   expect(screen.getByRole('button', { name: '儲存中...' })).toBeDisabled()
   resolveSave()
+})
+
+test('新增記事使用指定日期，編輯記事仍使用原日期', () => {
+  const props = {
+    categories: [category],
+    tagSuggestions: [],
+    timezone: 'Asia/Taipei',
+    onSave: vi.fn().mockResolvedValue(undefined),
+    onCancel: vi.fn(),
+  }
+  const { rerender } = render(<EntryForm {...props} initialDate="2026-09-03" />)
+
+  expect(screen.getByLabelText('記事日期')).toHaveValue('2026-09-03')
+
+  rerender(<EntryForm
+    {...props}
+    initialDate="2026-09-03"
+    entry={{
+      id: 'entry-1', entryDate: '2026-08-20', title: '', content: '既有內容', categoryId: 'work',
+      tags: [], links: [], createdAt: '2026-08-20T09:00:00+08:00', updatedAt: '2026-08-20T09:00:00+08:00',
+    }}
+  />)
+  expect(screen.getByLabelText('記事日期')).toHaveValue('2026-08-20')
 })

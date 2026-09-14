@@ -11,12 +11,13 @@ type EntryDetailProps = {
   categoryName: string
   categoryColor: CategoryColor | null
   timezone: string
+  returnTarget: 'timeline' | 'calendar'
   onBack: () => void
   onEdit: () => void
   onDelete: () => Promise<void>
 }
 
-export function EntryDetail({ entry, categoryName, categoryColor, timezone, onBack, onEdit, onDelete }: EntryDetailProps) {
+export function EntryDetail({ entry, categoryName, categoryColor, timezone, returnTarget, onBack, onEdit, onDelete }: EntryDetailProps) {
   const [isConfirming, setIsConfirming] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string>()
@@ -44,7 +45,7 @@ export function EntryDetail({ entry, categoryName, categoryColor, timezone, onBa
       <header className="entry-detail__actions">
         <button className="button button--text" type="button" onClick={onBack}>
           <Icon>arrow_back</Icon>
-          {zhTW.actions.backToCalendar}
+          {returnTarget === 'timeline' ? zhTW.actions.backToTimeline : zhTW.actions.backToCalendar}
         </button>
         <div>
           <button className="button button--secondary" type="button" onClick={onEdit}>

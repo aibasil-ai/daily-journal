@@ -511,6 +511,7 @@ export function App({ client }: AppProps) {
           categoryName={selectedCategory?.name ?? zhTW.detail.category}
           categoryColor={selectedCategory?.color ?? null}
           timezone={journalTimezone}
+          returnTarget={page === 'timeline' ? 'timeline' : 'calendar'}
           onBack={() => setSelectedEntry(undefined)}
           onEdit={() => setEditingEntry(selectedEntry)}
           onDelete={() => handleDeleteEntry(selectedEntry.id)}

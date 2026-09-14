@@ -130,7 +130,7 @@ export const zhTW = {
     deleteEntry: '刪除記事',
     loadMore: '載入更多',
     addLink: '新增連結',
-    backToCalendar: '返回月曆',
+    backToCalendar: '返回日曆',
     backToTimeline: '返回時間軸',
     previousMonth: '上一個月',
     nextMonth: '下一個月',

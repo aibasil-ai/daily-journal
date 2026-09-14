@@ -8,6 +8,7 @@ import { getJournalDate } from '../../utils/date'
 
 type EntryFormProps = {
   entry?: Entry
+  initialDate?: string
   categories: Category[]
   tagSuggestions: string[]
   timezone: string
@@ -17,21 +18,21 @@ type EntryFormProps = {
 
 type DraftLink = JournalLink
 
-export function EntryForm({ entry, categories, tagSuggestions, timezone, onSave, onCancel }: EntryFormProps) {
+export function EntryForm({ entry, initialDate, categories, tagSuggestions, timezone, onSave, onCancel }: EntryFormProps) {
   const formId = useId()
   const defaultCategoryId = categories.find((category) => category.isActive)?.id ?? ''
-  const [draft, setDraft] = useState<EntryInput>(() => createDraft(entry, defaultCategoryId, timezone))
+  const [draft, setDraft] = useState<EntryInput>(() => createDraft(entry, initialDate, defaultCategoryId, timezone))
   const [tagInput, setTagInput] = useState('')
   const [issues, setIssues] = useState<ValidationIssue[]>([])
   const [submitError, setSubmitError] = useState<string>()
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
-    setDraft(createDraft(entry, defaultCategoryId, timezone))
+    setDraft(createDraft(entry, initialDate, defaultCategoryId, timezone))
     setTagInput('')
     setIssues([])
     setSubmitError(undefined)
-  }, [defaultCategoryId, entry, timezone])
+  }, [defaultCategoryId, entry, initialDate, timezone])
 
   const addTag = (value = tagInput) => {
     const nextTags = value
@@ -256,7 +257,12 @@ export function EntryForm({ entry, categories, tagSuggestions, timezone, onSave,
   )
 }
 
-function createDraft(entry: Entry | undefined, defaultCategoryId: string, timezone: string): EntryInput {
+function createDraft(
+  entry: Entry | undefined,
+  initialDate: string | undefined,
+  defaultCategoryId: string,
+  timezone: string,
+): EntryInput {
   if (entry) {
     const { id, entryDate, title, content, categoryId, tags, links } = entry
     return {
@@ -271,7 +277,7 @@ function createDraft(entry: Entry | undefined, defaultCategoryId: string, timezo
   }
 
   return {
-    entryDate: getJournalDate(timezone),
+    entryDate: initialDate ?? getJournalDate(timezone),
     title: '',
     content: '',
     categoryId: defaultCategoryId,

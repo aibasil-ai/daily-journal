@@ -35,6 +35,7 @@ describe('EntryDetail', () => {
         categoryName="工作"
         categoryColor={null}
         timezone="Asia/Taipei"
+        returnTarget="calendar"
         onBack={vi.fn()}
         onEdit={vi.fn()}
         onDelete={vi.fn().mockResolvedValue(undefined)}
@@ -73,13 +74,14 @@ describe('EntryDetail', () => {
         categoryName="工作"
         categoryColor={null}
         timezone="Asia/Taipei"
+        returnTarget="calendar"
         onBack={onBack}
         onEdit={onEdit}
         onDelete={onDelete}
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: '返回月曆' }))
+    await user.click(screen.getByRole('button', { name: '返回日曆' }))
     expect(onBack).toHaveBeenCalledTimes(1)
 
     await user.click(screen.getByRole('button', { name: '編輯' }))
@@ -99,6 +101,7 @@ describe('EntryDetail', () => {
         categoryName="工作"
         categoryColor="#b97c66"
         timezone="Asia/Taipei"
+        returnTarget="calendar"
         onBack={vi.fn()}
         onEdit={vi.fn()}
         onDelete={vi.fn().mockResolvedValue(undefined)}
@@ -117,6 +120,7 @@ describe('EntryDetail', () => {
         categoryName="工作"
         categoryColor={null}
         timezone="Asia/Taipei"
+        returnTarget="calendar"
         onBack={vi.fn()}
         onEdit={vi.fn()}
         onDelete={vi.fn().mockResolvedValue(undefined)}
@@ -125,5 +129,27 @@ describe('EntryDetail', () => {
 
     expect(scrollToSpy).toHaveBeenCalledWith(0, 0)
     scrollToSpy.mockRestore()
+  })
+
+  it.each([
+    ['timeline' as const, '返回時間軸'],
+    ['calendar' as const, '返回日曆'],
+  ])('依 %s 來源顯示返回文字', async (returnTarget, label) => {
+    const onBack = vi.fn()
+    render(
+      <EntryDetail
+        entry={mockEntry}
+        categoryName="工作"
+        categoryColor={null}
+        timezone="Asia/Taipei"
+        returnTarget={returnTarget}
+        onBack={onBack}
+        onEdit={vi.fn()}
+        onDelete={vi.fn().mockResolvedValue(undefined)}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: label }))
+    expect(onBack).toHaveBeenCalledOnce()
   })
 })
