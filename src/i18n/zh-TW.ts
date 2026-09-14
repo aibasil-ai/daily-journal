@@ -192,6 +192,8 @@ export const zhTW = {
     selectDate: (date: string, count: number) => `${date}，共 ${count} 則記事`,
     noEntries: '沒有記事',
     entryCount: (count: number) => `${count} 則`,
+    todayIndicator: '今天',
+    anchorDateIndicator: '焦點日期',
     monthTitle: (year: number, month: number) => `${year}年 ${month}月`,
     monthLabel: (year: number, month: number) => `${year}年${month}月`,
     selectedDateTitle: (date: string) => `${date} 的記事`,
