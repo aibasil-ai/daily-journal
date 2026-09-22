@@ -1244,6 +1244,7 @@ p {
 }
 
 .app-shell__workspace {
+  min-width: 0;
   min-height: 100vh;
 }
 
@@ -1289,6 +1290,7 @@ p {
 }
 
 .app-main {
+  min-width: 0;
   width: min(100%, 78rem);
   margin: 0 auto;
   padding: 1rem 1rem 7.25rem;
@@ -1516,8 +1518,10 @@ p {
 }
 
 .timeline {
+  width: 100%;
   max-width: 64rem;
   margin: 0 auto;
+  min-width: 0;
 }
 
 .timeline__group + .timeline__group {
@@ -1555,12 +1559,15 @@ p {
 .timeline__entries {
   position: relative;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.875rem;
   padding-top: 0.375rem;
 }
 
 .entry-card {
   position: relative;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .entry-card__time {
@@ -1578,6 +1585,7 @@ p {
 .entry-card__body {
   position: relative;
   display: flex;
+  min-width: 0;
   overflow: hidden;
   min-height: 8rem;
   border: 1px solid rgb(195 198 215 / 66%);
@@ -1632,6 +1640,8 @@ p {
   margin-top: 0.5rem;
   font-size: 1.0625rem;
   line-height: 1.45;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .entry-card__read > p {
@@ -1643,6 +1653,8 @@ p {
   white-space: pre-line;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .entry-card__tags,
@@ -1663,6 +1675,9 @@ p {
   color: var(--ink-muted);
   font-size: 0.6875rem;
   font-weight: 700;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .entry-card__actions {
@@ -1848,6 +1863,7 @@ p {
 
 .calendar-day-view__entries {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.875rem;
   width: min(100%, 64rem);
   margin: 0 auto;
@@ -2150,6 +2166,8 @@ p {
   white-space: pre-line;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .week-entry-card__tags {
@@ -3501,6 +3519,7 @@ p {
   }
 
   .app-shell__workspace {
+    min-width: 0;
     width: calc(100% - 16rem);
     min-height: 100vh;
     margin-left: 16rem;
